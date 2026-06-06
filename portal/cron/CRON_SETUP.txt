@@ -1,0 +1,43 @@
+====================================================
+Karate Portal — cPanel Cron Job Setup
+====================================================
+
+In cPanel, go to:  Advanced > Cron Jobs
+
+Add the following 4 jobs. Use "Once Per Minute" to test,
+then change to the schedule shown once confirmed working.
+
+Base path (your server's public_html):
+  /home/sites/35b/0/049118ce4f/public_html/karate/portal/cron/
+
+----------------------------------------------------
+1. WEEKLY BACKUP  (every Wednesday at 2:00 AM)
+----------------------------------------------------
+Schedule:  0  2  *  *  3
+Command:   php /home/sites/35b/0/049118ce4f/public_html/karate/portal/cron/backup.php
+
+----------------------------------------------------
+2. ATTENDANCE ALERT  (every Sunday at 7:00 AM)
+----------------------------------------------------
+Schedule:  0  7  *  *  0
+Command:   php /home/sites/35b/0/049118ce4f/public_html/karate/portal/cron/attendance_alert.php
+
+----------------------------------------------------
+3. INJURY WAIVER ALERT  (daily at 8:00 AM)
+----------------------------------------------------
+Schedule:  0  8  *  *  *
+Command:   php /home/sites/35b/0/049118ce4f/public_html/karate/portal/cron/waiver_alert.php
+
+----------------------------------------------------
+4. RENT REMINDER  (every Saturday at 7:00 AM)
+   (only fires alert on the 1st Saturday of the month)
+----------------------------------------------------
+Schedule:  0  7  *  *  6
+Command:   php /home/sites/35b/0/049118ce4f/public_html/karate/portal/cron/rent_reminder.php
+
+----------------------------------------------------
+NOTE: Backup files are stored at:
+  /home/sites/35b/0/049118ce4f/backups/karate/
+This is OUTSIDE public_html so they are not web-accessible.
+8 weeks of backups are kept; older ones are auto-deleted.
+====================================================

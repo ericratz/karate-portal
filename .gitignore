@@ -1,0 +1,12 @@
+.env
+node_modules/
+playwright-report/
+test-results/
+tests/.db-snapshot.sql
+tests/.test-status.json
+tests/credentials.js
+memory/
+changes.txt
+design.txt
+clear_rate_limit.php
+cleanup.config.js

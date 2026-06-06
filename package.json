@@ -1,0 +1,27 @@
+{
+  "name": "karate",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "npx playwright test",
+    "test:admin": "npx playwright test tests/admin.spec.js",
+    "test:instructor": "npx playwright test tests/instructor.spec.js",
+    "test:student": "npx playwright test tests/student.spec.js",
+    "test:guest": "npx playwright test tests/guest.spec.js",
+    "test:bugs": "npx playwright test tests/bugs.spec.js",
+    "test:coverage": "npx playwright test tests/coverage.spec.js",
+    "test:functional": "npx playwright test tests/functional.spec.js",
+    "test:waiver": "npx playwright test tests/waiver.spec.js",
+    "test:email": "npx playwright test tests/email_and_promote.spec.js",
+    "test:belt": "npx playwright test tests/belt_tests.spec.js",
+    "test:security": "npx playwright test tests/security.spec.js",
+    "test:ui": "npx playwright test --headed"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@playwright/test": "^1.60.0"
+  }
+}

@@ -1,0 +1,103 @@
+<?php
+// Called via fetch() after the user approves the payment in the PayPal popup
+// Captures the payment and logs it to the database
+
+require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/includes/db.php';
+require_once __DIR__ . '/includes/config.php';
+require_once __DIR__ . '/includes/paypal.php';
+require_login();
+
+header('Content-Type: application/json');
+
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405);
+    echo json_encode(['success' => false, 'error' => 'Method not allowed']);
+    exit;
+}
+
+// CSRF check for fetch()-based requests
+$csrf_token = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+if (!isset($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $csrf_token)) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'error' => 'Invalid request token']);
+    exit;
+}
+
+$input    = json_decode(file_get_contents('php://input'), true);
+$order_id = $input['orderID'] ?? '';
+
+// Validate against session — prevents a user from submitting a foreign order ID
+$pending = $_SESSION['pending_payment'] ?? null;
+if (!$pending || $pending['order_id'] !== $order_id || $pending['user_id'] !== current_user_id()) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'error' => 'Invalid or expired payment session']);
+    exit;
+}
+
+try {
+    $capture = paypal_capture_order($order_id);
+    $status  = $capture['status'] ?? '';
+
+    if ($status !== 'COMPLETED') {
+        echo json_encode(['success' => false, 'error' => 'Payment not completed (status: ' . $status . ')']);
+        exit;
+    }
+
+    // Verify the captured amount matches what we set (fraud check)
+    $captured_amount = paypal_captured_amount($capture);
+    if (abs($captured_amount - $pending['total']) > 0.01) {
+        error_log("PayPal amount mismatch: expected {$pending['total']}, got $captured_amount, order $order_id");
+        echo json_encode(['success' => false, 'error' => 'Payment amount mismatch — contact the instructor']);
+        exit;
+    }
+
+    // Get student_id for the logged-in user
+    $student = db()->prepare('SELECT id FROM students WHERE user_id = ?');
+    $student->execute([$pending['user_id']]);
+    $student_id = $student->fetchColumn();
+
+    // Pull PayPal transaction ID from capture response
+    $txn_id = $capture['purchase_units'][0]['payments']['captures'][0]['id'] ?? null;
+    $note   = $pending['note'] ?? null;
+
+    // Record one payment row per item
+    $insert = db()->prepare(
+        'INSERT INTO payments
+         (student_id, amount, payment_type, payment_method, transaction_id, month_covered, notes)
+         VALUES (?,?,?,?,?,?,?)'
+    );
+    foreach ($pending['items'] as $item) {
+        $amount = ($item['type'] === 'other')
+            ? (float)$item['amount']
+            : fee_for_type($item['type']);
+        $insert->execute([
+            $student_id,
+            $amount,
+            $item['type'],
+            'paypal',
+            $txn_id,
+            $item['type'] === 'monthly_tuition' ? ($item['month_covered'] ?? date('Y-m-01')) : null,
+            $note ?: ($item['reason'] ?? null),
+        ]);
+        // Auto-promote guest to student on registration fee payment
+        if ($item['type'] === 'registration') {
+            db()->prepare("UPDATE students SET student_type='student' WHERE id=?")
+                 ->execute([$student_id]);
+        }
+    }
+
+    // Clear pending payment from session
+    unset($_SESSION['pending_payment']);
+
+    echo json_encode([
+        'success'        => true,
+        'amount'         => $captured_amount,
+        'transaction_id' => $txn_id,
+    ]);
+
+} catch (RuntimeException $e) {
+    error_log('PayPal capture error: ' . $e->getMessage());
+    http_response_code(500);
+    echo json_encode(['success' => false, 'error' => 'Payment capture failed — contact the instructor']);
+}
