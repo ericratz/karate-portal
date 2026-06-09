@@ -41,72 +41,6 @@ test('after logout, protected page redirects to login', async ({ page }) => {
     expect(page.url()).toContain('login.php');
 });
 
-// ── BACK BUTTONS ─────────────────────────────────────────────────────────────
-
-test('student: attendance.php ← goes to dashboard', async ({ page }) => {
-    await login(page, STU_USER, STU_PASS);
-    await page.goto(BASE + '/student/attendance.php');
-    const back = await page.locator('a:has-text("← Dashboard"), a:has-text("← Back")').first().getAttribute('href');
-    expect(back).toContain('index.php');
-});
-
-test('student: payment_history.php ← goes to dashboard', async ({ page }) => {
-    await login(page, STU_USER, STU_PASS);
-    await page.goto(BASE + '/student/payment_history.php');
-    const back = await page.locator('a:has-text("← Dashboard"), a:has-text("← Back")').getAttribute('href');
-    expect(back).toContain('index.php');
-});
-
-test('student: belt_tests.php ← goes to dashboard', async ({ page }) => {
-    await login(page, STU_USER, STU_PASS);
-    await page.goto(BASE + '/student/belt_tests.php');
-    const back = await page.locator('a:has-text("← Dashboard"), a:has-text("← Back")').getAttribute('href');
-    expect(back).toContain('index.php');
-});
-
-test('student: pay.php ← goes to dashboard', async ({ page }) => {
-    await login(page, STU_USER, STU_PASS);
-    await page.goto(BASE + '/student/pay.php');
-    const back = await page.locator('a:has-text("← Dashboard"), a:has-text("← Back")').getAttribute('href');
-    expect(back).toContain('index.php');
-});
-
-test('student: profile_edit.php ← goes to dashboard', async ({ page }) => {
-    await login(page, STU_USER, STU_PASS);
-    await page.goto(BASE + '/student/profile_edit.php');
-    const back = await page.locator('a:has-text("← Dashboard"), a:has-text("← Back")').getAttribute('href');
-    expect(back).toContain('index.php');
-});
-
-test('instructor: attendance.php ← goes to instructor dashboard', async ({ page }) => {
-    await login(page, INST_USER, INST_PASS);
-    const today = new Date().toISOString().slice(0, 10);
-    await page.goto(BASE + `/instructor/attendance.php?date=${today}`);
-    const back = await page.locator('a:has-text("← Back")').getAttribute('href');
-    expect(back).toContain('index.php');
-});
-
-test('instructor: belt_test_edit.php ← goes to all belt tests', async ({ page }) => {
-    await login(page, INST_USER, INST_PASS);
-    await page.goto(BASE + '/instructor/belt_test_edit.php');
-    const back = await page.locator('a:has-text("← All Belt Tests")').getAttribute('href');
-    expect(back).toContain('belt_tests_all.php');
-});
-
-test('admin: student_notes.php ← goes back to student notes picker', async ({ page }) => {
-    await login(page, ADMIN_USER, ADMIN_PASS);
-    await page.goto(BASE + '/admin/student_notes.php?student_id=2');
-    const back = await page.locator('a:has-text("← Student Notes")').getAttribute('href');
-    expect(back).toContain('student_notes.php');
-});
-
-test('admin: student_edit.php back goes to student profile', async ({ page }) => {
-    await login(page, ADMIN_USER, ADMIN_PASS);
-    await page.goto(BASE + '/admin/student_edit.php?id=2');
-    const back = await page.locator('a:has-text("← Back")').getAttribute('href');
-    expect(back).toContain('student_profile.php');
-});
-
 // ── PAYPAL PAGE ───────────────────────────────────────────────────────────────
 
 test('pay.php loads without PHP errors', async ({ page }) => {
@@ -175,7 +109,7 @@ test('student: wrong current password shows error', async ({ page }) => {
     await page.fill('input[name="confirm_password"]', 'NewPass123!');
     await page.click('button:has-text("Update Password")');
     await page.waitForLoadState('domcontentloaded');
-    await expect(page.locator('.alert-danger')).toContainText('incorrect');
+    await expect(page.locator('.alert-danger').first()).toContainText('incorrect');
     await logout(page);
 });
 
@@ -189,7 +123,7 @@ test('student: mismatched new passwords shows error', async ({ page }) => {
     await page.fill('input[name="confirm_password"]', 'DifferentPass!');
     await page.click('button:has-text("Update Password")');
     await page.waitForLoadState('domcontentloaded');
-    await expect(page.locator('.alert-danger')).toContainText('do not match');
+    await expect(page.locator('.alert-danger').first()).toContainText('do not match');
     await logout(page);
 });
 
@@ -207,7 +141,7 @@ test('student: valid password change succeeds and new password works', async ({ 
     await page.fill('input[name="confirm_password"]', TEMP_PASS);
     await page.click('button:has-text("Update Password")');
     await page.waitForLoadState('domcontentloaded');
-    await expect(page.locator('.alert-success')).toContainText('updated');
+    await expect(page.locator('.alert-success').first()).toContainText('updated');
     await logout(page);
 
     // Verify new password works — ALWAYS reset back in finally so other tests aren't broken
@@ -264,30 +198,4 @@ test('admin expense record saves and appears in list', async ({ page }) => {
     await expect(page.locator('body')).toContainText('Playwright test expense');
 });
 
-test.afterAll(async ({ browser }) => {
-    const page = await browser.newPage();
-    try {
-        await login(page, ADMIN_USER, ADMIN_PASS);
-
-        // Delete lingering general note
-        await page.goto(BASE + '/admin/general_notes.php');
-        await page.click('#editToggle');
-        const noteEntry = page.locator('.note-entry').filter({ hasText: NOTE_TEXT });
-        if (await noteEntry.isVisible()) {
-            page.once('dialog', d => d.accept());
-            await noteEntry.locator('.delete-btn button').click();
-            await page.waitForLoadState('domcontentloaded');
-        }
-
-        // Delete lingering expense
-        await page.goto(BASE + '/admin/expenses.php');
-        await page.click('#editToggle');
-        const expRow = page.locator('tr').filter({ hasText: 'Playwright test expense' });
-        if (await expRow.isVisible()) {
-            page.once('dialog', d => d.accept());
-            await expRow.locator('.btn-outline-danger').click();
-            await page.waitForLoadState('domcontentloaded');
-        }
-    } catch (e) { /* best-effort cleanup */ }
-    await page.close();
-});
+// No afterAll cleanup needed — global-teardown always restores the DB snapshot.

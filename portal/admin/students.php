@@ -34,6 +34,9 @@ $students = array_filter($all, function($s) {
 $guests = array_filter($all, function($s) {
     return $s['student_type'] === 'guest';
 });
+$parents = array_filter($all, function($s) {
+    return $s['student_type'] === 'parent';
+});
 
 $all_ranks = db()->query('SELECT kyu_dan FROM ranks ORDER BY rank_order')->fetchAll(PDO::FETCH_COLUMN);
 
@@ -60,9 +63,15 @@ function student_row($s, $id_col = true) {
         : '<span class="text-danger">✗</span>') . '</td>';
     echo '<td>' . $att_txt . '</td>';
     echo '<td>';
-    if ($s['active']) echo '<span class="badge bg-success">Active</span>';
-    else              echo '<span class="badge bg-secondary">Inactive</span>';
-    if ($s['active_override'] !== null) echo ' <span class="badge bg-warning text-dark">Override</span>';
+    if ($s['active'])
+        echo '<span class="badge bg-success" data-bs-toggle="tooltip"'
+           . ' title="Active: attended class in the last 3 months">Active</span>';
+    else
+        echo '<span class="badge bg-secondary" data-bs-toggle="tooltip"'
+           . ' title="Inactive: no attendance in the last 3 months">Inactive</span>';
+    if ($s['active_override'] !== null)
+        echo ' <span class="badge bg-warning text-dark" data-bs-toggle="tooltip"'
+           . ' title="Override: active/inactive status manually set by admin">Override</span>';
     echo '</td>';
     echo '</tr>';
 }
@@ -137,6 +146,17 @@ function student_table($rows, $empty_msg) {
     </div>
 </div>
 
+<!-- Parents -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white fw-semibold">
+        Parents
+        <span class="badge bg-primary ms-2" id="count-parents"><?= count($parents) ?></span>
+    </div>
+    <div class="card-body p-0">
+        <?php student_table($parents, 'No parents on roster.'); ?>
+    </div>
+</div>
+
 <!-- Students -->
 <div class="card border-0 shadow-sm mb-4">
     <div class="card-header bg-white fw-semibold">
@@ -192,7 +212,7 @@ function filterRoster() {
                  && attMatch;
         row.style.display = match ? '' : 'none';
     });
-    ['instructors','students','guests'].forEach(function(key) {
+    ['instructors','parents','students','guests'].forEach(function(key) {
         var badge = document.getElementById('count-' + key);
         if (!badge) return;
         var count = 0;
@@ -202,6 +222,12 @@ function filterRoster() {
         badge.textContent = count;
     });
 }
+</script>
+
+<script>
+document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
+    new bootstrap.Tooltip(el);
+});
 </script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>

@@ -7,7 +7,7 @@ module.exports = defineConfig({
     timeout: 12000,
     retries: 0,
     failFast: false,
-    workers: 4,                // run up to 4 test files in parallel
+    workers: 6,                // run up to 6 test files in parallel
     globalSetup:    './tests/global-setup.js',
     globalTeardown: './tests/global-teardown.js',
     reporter: [

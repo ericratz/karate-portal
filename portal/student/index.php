@@ -16,9 +16,28 @@ $student = db()->prepare(
 $student->execute([$user_id]);
 $student = $student->fetch();
 
-// No profile yet — send them to create one
+// No roster entry linked yet — show a pending screen
 if (!$student) {
-    header('Location: /karate/portal/student/profile_edit.php');
+    $page_title = 'Account Pending';
+    include __DIR__ . '/../includes/header.php';
+    ?>
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm text-center p-4">
+                <div class="fs-1 mb-3">⏳</div>
+                <h5 class="mb-2">Your account is pending</h5>
+                <p class="text-muted mb-3">
+                    Your login has been created but hasn't been linked to a student record yet.
+                    Contact Noji to get set up — it usually takes just a few minutes.
+                </p>
+                <a href="mailto:<?= htmlspecialchars(DOJO_EMAIL) ?>" class="btn btn-primary">
+                    Email Noji
+                </a>
+            </div>
+        </div>
+    </div>
+    <?php
+    include __DIR__ . '/../includes/footer.php';
     exit;
 }
 
@@ -38,7 +57,7 @@ $rank = $rank->fetch();
 
 // Last 10 sessions the student actually attended
 $attendance = db()->prepare(
-    'SELECT cs.session_date
+    'SELECT cs.session_date, cs.class_type
      FROM attendance a
      JOIN class_sessions cs ON cs.id = a.session_id
      WHERE a.student_id = ? AND a.present = 1
@@ -82,27 +101,6 @@ $payments = db()->prepare(
 $payments->execute([$student_id]);
 $payments = $payments->fetchAll();
 
-// Check if tuition is paid for the current month (payment or active waiver)
-$tp_stmt = db()->prepare(
-    'SELECT COUNT(*) FROM payments
-     WHERE student_id = ?
-       AND payment_type = "monthly_tuition"
-       AND YEAR(payment_date) = YEAR(NOW())
-       AND MONTH(payment_date) = MONTH(NOW())'
-);
-$tp_stmt->execute([$student_id]);
-$tuition_paid = (int)$tp_stmt->fetchColumn() > 0;
-
-if (!$tuition_paid) {
-    $w_stmt = db()->prepare(
-        'SELECT COUNT(*) FROM payment_waivers
-         WHERE student_id = ?
-           AND waiver_type IN ("monthly_tuition", "all")'
-    );
-    $w_stmt->execute([$student_id]);
-    $tuition_paid = (int)$w_stmt->fetchColumn() > 0;
-}
-
 // Active payment waivers for this student
 $waivers_stmt = db()->prepare(
     'SELECT waiver_type FROM payment_waivers
@@ -111,26 +109,6 @@ $waivers_stmt = db()->prepare(
 );
 $waivers_stmt->execute([$student_id]);
 $active_waivers = $waivers_stmt->fetchAll();
-
-// Handle feedback form submission
-$feedback_sent  = false;
-$feedback_error = '';
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['feedback_message'])) {
-    $message = trim($_POST['feedback_message'] ?? '');
-    if ($message === '') {
-        $feedback_error = 'Please enter a message before sending.';
-    } else {
-        $name    = $student['first_name'] . ' ' . $student['last_name'];
-        $subject = "Portal Message from $name";
-        $body    = "Message from: $name\n\n" . $message;
-        $headers = "From: " . DOJO_EMAIL . "\r\nReply-To: " . DOJO_EMAIL . "\r\nContent-Type: text/plain; charset=UTF-8\r\n";
-        if (mail(DOJO_EMAIL, $subject, $body, $headers)) {
-            $feedback_sent = true;
-        } else {
-            $feedback_error = 'Something went wrong sending your message. Please try again.';
-        }
-    }
-}
 
 // Auto-pay status
 $sub_stmt = db()->prepare(
@@ -173,6 +151,7 @@ function badge_result(string $r): string {
         <a href="../instructor/student_profile.php?id=<?= $student_id ?>" class="btn btn-success">View Profile</a>
         <a href="pay.php" class="btn btn-success">Make a Payment</a>
     </div>
+
 </div>
 
 <!-- ── Summary cards ── -->
@@ -185,20 +164,6 @@ function badge_result(string $r): string {
                     <?= $att_summary['attended'] ?? 0 ?>
                 </div>
                 <div class="text-muted small">Classes Attended</div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-sm-6 col-lg-3">
-        <div class="card text-center h-100 border-0 shadow-sm">
-            <div class="card-body">
-                <div class="display-6 fw-bold <?= $tuition_paid ? 'text-success' : 'text-danger' ?>">
-                    <?= $tuition_paid ? '✓' : '✗' ?>
-                </div>
-                <div class="text-muted small"><?= date('F') ?> Payment</div>
-                <?php if ($has_autopay): ?>
-                    <div class="small text-success mt-1">Auto-Pay ✓</div>
-                <?php endif; ?>
             </div>
         </div>
     </div>
@@ -220,11 +185,11 @@ function badge_result(string $r): string {
                 <div class="display-6 fw-bold <?= $student['injury_waiver'] ? 'text-success' : 'text-danger' ?>">
                     <?= $student['injury_waiver'] ? '✓' : '✗' ?>
                 </div>
-                <div class="text-muted small mb-2">Injury Waiver</div>
+                <div class="text-muted small mb-2">Liability Waiver</div>
                 <?php if (!$student['injury_waiver']): ?>
                 <a href="waiver.php" class="btn btn-sm btn-warning mt-1">Complete Waiver</a>
                 <?php else: ?>
-                <a href="waiver.php" class="btn btn-sm btn-success mt-1">View Injury Waiver</a>
+                <a href="waiver.php" class="btn btn-sm btn-success mt-1">View Liability Waiver</a>
                 <?php endif; ?>
             </div>
         </div>
@@ -267,52 +232,19 @@ function badge_result(string $r): string {
                 <?php else: ?>
                 <table class="table table-sm table-hover mb-0">
                     <thead class="table-light">
-                        <tr><th>Date Attended</th></tr>
+                        <tr><th>Date Attended</th><th>Type</th></tr>
                     </thead>
                     <tbody>
                     <?php foreach ($attendance as $row): ?>
                         <tr>
                             <td><?= fmt_date($row['session_date']) ?></td>
+                            <td><?= ucfirst($row['class_type']) ?></td>
                         </tr>
                     <?php endforeach; ?>
                     </tbody>
                 </table>
                 <?php endif; ?>
             </div>
-        </div>
-
-        <!-- Contact / Feedback -->
-        <div class="card border-0 shadow-sm">
-            <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                <span class="fw-semibold">Questions or Issues?</span>
-                <button class="btn btn-sm btn-warning"
-                        type="button"
-                        data-bs-toggle="collapse"
-                        data-bs-target="#feedbackForm">
-                    Contact Noji
-                </button>
-            </div>
-            <div class="collapse <?= $feedback_sent || $feedback_error ? 'show' : '' ?>" id="feedbackForm">
-            <div class="card-body">
-                <?php if ($feedback_sent): ?>
-                    <div class="alert alert-success mb-0">Message sent! Noji will get back to you soon.</div>
-                <?php else: ?>
-                    <?php if ($feedback_error): ?>
-                        <div class="alert alert-danger"><?= htmlspecialchars($feedback_error) ?></div>
-                    <?php endif; ?>
-                    <p class="text-muted small mb-3">
-                        Have a question or running into an issue? Send Noji a message below.
-                    </p>
-                    <form method="post">
-                        <div class="mb-3">
-                            <textarea name="feedback_message" class="form-control" rows="4"
-                                      placeholder="Type your message here…" required></textarea>
-                        </div>
-                        <button type="submit" class="btn btn-primary">Send Message</button>
-                    </form>
-                <?php endif; ?>
-            </div>
-            </div><!-- /collapse -->
         </div>
 
     </div>

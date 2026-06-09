@@ -76,28 +76,6 @@ foreach ($all_students as $s) {
     <div class="card-header bg-white fw-semibold">Compose</div>
     <div class="card-body">
 
-        <!-- Group quick-select (client-side only — not posted) -->
-        <div class="mb-3">
-            <label class="form-label">Quick Select</label>
-            <div class="d-flex gap-3 flex-wrap align-items-center">
-                <div class="form-check">
-                    <input type="checkbox" class="form-check-input" id="chk_all"
-                           onchange="toggleAll(this)">
-                    <label class="form-check-label fw-semibold" for="chk_all">All</label>
-                </div>
-                <div class="vr mx-1"></div>
-                <?php foreach (['instructors' => 'Instructors', 'students' => 'Students', 'guests' => 'Guests'] as $val => $label): ?>
-                <div class="form-check">
-                    <input type="checkbox" class="form-check-input group-chk"
-                           id="chk_<?= $val ?>" data-group="<?= $val ?>"
-                           onchange="onGroupChange(this)">
-                    <label class="form-check-label" for="chk_<?= $val ?>"><?= $label ?></label>
-                </div>
-                <?php endforeach; ?>
-                <span class="text-muted small ms-2">— or select individuals in the list below</span>
-            </div>
-        </div>
-
         <div class="mb-3">
             <label class="form-label">Subject *</label>
             <input type="text" name="subject" class="form-control" required
@@ -108,6 +86,27 @@ foreach ($all_students as $s) {
             <label class="form-label">Message *</label>
             <textarea name="body" class="form-control" rows="7" required
                       placeholder="Your message here…&#10;&#10;Each email will be addressed to the recipient by name automatically."></textarea>
+        </div>
+
+        <!-- Group select (client-side only — not posted) -->
+        <div class="mb-3">
+            <div class="d-flex gap-3 flex-wrap align-items-center">
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input" id="chk_all"
+                           onchange="toggleAll(this)">
+                    <label class="form-check-label fw-semibold" for="chk_all">All</label>
+                </div>
+                <div class="vr mx-1"></div>
+                <?php foreach (['instructors' => 'Instructors', 'parents' => 'Parents', 'students' => 'Students', 'guests' => 'Guests'] as $val => $label): ?>
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input group-chk"
+                           id="chk_<?= $val ?>" data-group="<?= $val ?>"
+                           onchange="onGroupChange(this)">
+                    <label class="form-check-label" for="chk_<?= $val ?>"><?= $label ?></label>
+                </div>
+                <?php endforeach; ?>
+                <span class="text-muted small ms-2">— or select individuals in the list below</span>
+            </div>
         </div>
 
         <button type="submit" class="btn btn-primary px-4" id="sendBtn"
@@ -140,7 +139,7 @@ foreach ($all_students as $s) {
                     $hasEmail = $email && filter_var($email, FILTER_VALIDATE_EMAIL);
                 ?>
                 <tr class="recipient-row" data-type="<?= $s['student_type'] ?>"
-                    data-group="<?= in_array($s['student_type'], ['instructor','admin']) ? 'instructors' : ($s['student_type'] === 'student' ? 'students' : 'guests') ?>">
+                    data-group="<?= in_array($s['student_type'], ['instructor','admin']) ? 'instructors' : ($s['student_type'] === 'student' ? 'students' : ($s['student_type'] === 'parent' ? 'parents' : 'guests')) ?>">
                     <td>
                         <input type="checkbox" class="form-check-input recipient-chk"
                                name="send_to[]" value="<?= $s['id'] ?>"

@@ -24,7 +24,22 @@ test('setup: register fresh account for waiver tests', async ({ page }) => {
     await page.fill('input[name="confirm"]',  W_PASS);
     await page.click('button:has-text("Create Account")');
     await page.waitForLoadState('domcontentloaded');
-    await expect(page.locator('.alert-success')).toContainText('Account created');
+    // Registration now shows the Notify Noji step — skip it to reach the done screen
+    await page.click('button:has-text("Skip")');
+    await page.waitForLoadState('domcontentloaded');
+    await expect(page.locator('.alert-success').first()).toBeVisible();
+
+    // Submit profile form to create a linked student record (needed for dashboard to load)
+    // profile_edit.php creates a guest student row when none exists
+    await login(page, W_USER, W_PASS);
+    await page.goto(BASE + '/student/profile_edit.php');
+    await page.fill('input[name="first_name"]', 'Waiver');
+    await page.fill('input[name="last_name"]',  `Tester${TS}`);
+    await page.fill('input[name="date_of_birth"]', '1990-03-15');
+    await page.fill('input[name="email"]', `waiver${TS}@test.com`);
+    await page.click('button:has-text("Save Profile")');
+    await page.waitForLoadState('domcontentloaded');
+    await logout(page);
 });
 
 // ── DASHBOARD BUTTON ──────────────────────────────────────────────────────────
@@ -56,7 +71,7 @@ test('waiver page shows full agreement text', async ({ page }) => {
     await login(page, W_USER, W_PASS);
     await page.goto(BASE + '/student/waiver.php');
     await expect(page.locator('body')).toContainText('Shotokan Karate Training Program');
-    await expect(page.locator('body')).toContainText('Waiver of Legal Rights and Indemnification Agreement');
+    await expect(page.locator('body')).toContainText('Liability Waiver and Indemnification Agreement');
     await expect(page.locator('body')).toContainText('Noji Ratzlaff');
     await logout(page);
 });
@@ -111,7 +126,7 @@ test('submitting without signature shows error', async ({ page }) => {
     });
     await page.click('button:has-text("Submit Signed Waiver")');
     await page.waitForLoadState('domcontentloaded');
-    await expect(page.locator('.alert-danger')).toContainText('signature');
+    await expect(page.locator('.alert-danger').first()).toContainText('signature');
     await logout(page);
 });
 
@@ -127,9 +142,11 @@ test('submitting without agreement checkbox shows error', async ({ page }) => {
     await page.evaluate(() => {
         document.querySelector('input[name="i_agree"]').removeAttribute('required');
     });
-    await page.click('button:has-text("Submit Signed Waiver")');
+    const submitBtn = page.locator('button:has-text("Submit Signed Waiver")');
+    await submitBtn.scrollIntoViewIfNeeded();
+    await submitBtn.click();
     await page.waitForLoadState('domcontentloaded');
-    await expect(page.locator('.alert-danger')).toContainText('agreement');
+    await expect(page.locator('.alert-danger').first()).toContainText('agreement');
     await logout(page);
 });
 
@@ -148,7 +165,7 @@ test('submitting without required contact fields shows error', async ({ page }) 
     });
     await page.click('button:has-text("Submit Signed Waiver")');
     await page.waitForLoadState('domcontentloaded');
-    await expect(page.locator('.alert-danger')).toBeVisible();
+    await expect(page.locator('.alert-danger').first()).toBeVisible();
     await logout(page);
 });
 
@@ -182,8 +199,8 @@ test('dashboard shows ✓ and View button after signing', async ({ page }) => {
     await expect(page.locator('a:has-text("Complete Waiver")')).toHaveCount(0);
     // View link should appear
     await expect(page.locator('a[href="waiver.php"]:has-text("View")')).toBeVisible();
-    // Injury waiver icon should be green ✓
-    const icon = await page.locator('.card-body').filter({ hasText: 'Injury Waiver' }).locator('.display-6').textContent();
+    // Liability waiver icon should be green ✓
+    const icon = await page.locator('.card-body').filter({ hasText: 'Liability Waiver' }).locator('.display-6').textContent();
     expect(icon?.trim()).toBe('✓');
     await logout(page);
 });
@@ -195,17 +212,18 @@ test('waiver.php shows read-only signed view after submission', async ({ page })
     // Should NOT show the form
     await expect(page.locator('input[name="signature"]')).toHaveCount(0);
     // Should show the signed confirmation
-    await expect(page.locator('.alert-success')).toContainText('signed this waiver');
+    await expect(page.locator('.alert-success').first()).toContainText('signed this liability waiver');
     await expect(page.locator('body')).toContainText('Waiver Tester');
     await expect(page.locator('body')).toContainText('123 Karate Lane');
     await logout(page);
 });
 
-test('waiver.php back button goes to dashboard', async ({ page }) => {
+test('waiver.php has navigation to student dashboard', async ({ page }) => {
     await login(page, W_USER, W_PASS);
     await page.goto(BASE + '/student/waiver.php');
-    const back = await page.locator('a:has-text("← Dashboard")').getAttribute('href');
-    expect(back).toContain('index.php');
+    // Navigation back to dashboard is via the navbar brand ("My Dashboard")
+    const href = await page.locator('.navbar-brand').getAttribute('href');
+    expect(href).toContain('/student/');
     await logout(page);
 });
 
@@ -294,11 +312,4 @@ test('admin/waiver_view.php requires admin role', async ({ page }) => {
     await logout(page);
 });
 
-// ── CLEANUP ───────────────────────────────────────────────────────────────────
-
-test.afterAll(async ({ browser }) => {
-        test.setTimeout(30_000);
-    const page = await browser.newPage();
-    await deleteTestStudent(page, `Tester${TS}`, ADMIN_USER, ADMIN_PASS);
-    await page.close();
-});
+// No afterAll cleanup — global-teardown always restores the DB snapshot.

@@ -27,7 +27,7 @@ if ($f_from)    { $where[] = 'bt.test_date >= ?';  $params[] = $f_from; }
 if ($f_to)      { $where[] = 'bt.test_date <= ?';  $params[] = $f_to; }
 
 $stmt = db()->prepare(
-    'SELECT bt.id, bt.test_date, bt.result, bt.fee_paid, bt.belt_awarded, bt.notes,
+    'SELECT bt.id, bt.test_date, bt.result, bt.score, bt.fee_paid, bt.belt_awarded, bt.notes,
             s.id AS student_id, s.first_name, s.last_name,
             r.kyu_dan, r.name AS rank_name
      FROM belt_tests bt
@@ -48,7 +48,6 @@ include __DIR__ . '/../includes/header.php';
 ?>
 
 <div class="d-flex align-items-center gap-3 mb-4">
-    <a href="index.php" class="btn btn-outline-secondary btn-sm">← Back</a>
     <h4 class="mb-0">All Belt Tests</h4>
     <a href="belt_test_edit.php" class="btn btn-success btn-sm ms-auto">+ New Test</a>
 </div>
@@ -115,7 +114,7 @@ include __DIR__ . '/../includes/header.php';
                     <th>Date</th>
                     <th>Student</th>
                     <th>Testing For</th>
-                    <th>Result</th>
+                    <th>Score</th>
                     <th class="text-center">Fee Paid</th>
                     <th class="text-center">Belt Awarded</th>
                     <th>Notes</th>
@@ -134,10 +133,12 @@ include __DIR__ . '/../includes/header.php';
                     </td>
                     <td><?= htmlspecialchars($t['kyu_dan']) ?></td>
                     <td>
-                        <?php if ($t['result'] === 'pass'): ?>
-                            <span class="badge bg-success">Pass</span>
-                        <?php elseif ($t['result'] === 'fail'): ?>
-                            <span class="badge bg-danger">Fail</span>
+                        <?php if (isset($t['score']) && $t['score'] !== null): ?>
+                            <?php if ($t['result'] === 'pass'): ?>
+                                <span class="badge bg-success"><?= (int)$t['score'] ?>%</span>
+                            <?php else: ?>
+                                <span class="badge bg-danger"><?= (int)$t['score'] ?>%</span>
+                            <?php endif; ?>
                         <?php else: ?>
                             <span class="badge bg-secondary">Pending</span>
                         <?php endif; ?>

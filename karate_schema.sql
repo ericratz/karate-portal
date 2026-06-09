@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS users (
     id            INT AUTO_INCREMENT PRIMARY KEY,
     username      VARCHAR(50)  NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
-    role          ENUM('student','instructor','admin') NOT NULL DEFAULT 'student',
+    role          ENUM('student','instructor','admin','parent') NOT NULL DEFAULT 'student',
     email         VARCHAR(100) NOT NULL,
     first_name    VARCHAR(50)  DEFAULT NULL,
     last_name     VARCHAR(50)  DEFAULT NULL,
@@ -87,19 +87,19 @@ CREATE TABLE IF NOT EXISTS ranks (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 INSERT INTO ranks (name, kyu_dan, rank_order, test_fee) VALUES
-    ('White Belt',              '10th Kyu', 1,  10.00),
-    ('White Belt',              '9th Kyu',  2,  10.00),
-    ('Yellow Belt',             '8th Kyu',  3,  10.00),
-    ('Orange Belt',             '7th Kyu',  4,  10.00),
-    ('Green Belt',              '6th Kyu',  5,  10.00),
-    ('Purple Belt',             '5th Kyu',  6,  10.00),
-    ('Purple Belt (advanced)',  '4th Kyu',  7,  10.00),
-    ('Brown Belt',              '3rd Kyu',  8,  10.00),
-    ('Brown Belt (advanced)',   '2nd Kyu',  9,  10.00),
-    ('Brown Belt (senior)',     '1st Kyu',  10, 10.00),
-    ('Black Belt (Shodan)',     '1st Dan',  11, 10.00),
-    ('Black Belt (Nidan)',      '2nd Dan',  12, 10.00),
-    ('Black Belt (Sandan)',     '3rd Dan',  13, 10.00);
+    ('White Belt with Black Stripe', '10th Kyu', 1,  10.00),
+    ('Yellow Belt with White Stripe','9th Kyu',  2,  10.00),
+    ('Yellow Belt',                  '8th Kyu',  3,  10.00),
+    ('Orange Belt',                  '7th Kyu',  4,  10.00),
+    ('Purple Belt',                  '6th Kyu',  5,  10.00),
+    ('Blue Belt',                    '5th Kyu',  6,  10.00),
+    ('Green Belt',                   '4th Kyu',  7,  10.00),
+    ('Brown Belt',                   '3rd Kyu',  8,  10.00),
+    ('Brown Belt',                   '2nd Kyu',  9,  10.00),
+    ('Brown Belt',                   '1st Kyu',  10, 10.00),
+    ('Black Belt (Shodan)',          '1st Dan',  11, 10.00),
+    ('Black Belt (Nidan)',           '2nd Dan',  12, 10.00),
+    ('Black Belt (Sandan)',          '3rd Dan',  13, 10.00);
 
 -- ------------------------------------------------------------
 -- STUDENT RANKS  (rank history — current = highest rank_order)
@@ -120,6 +120,7 @@ CREATE TABLE IF NOT EXISTS student_ranks (
 CREATE TABLE IF NOT EXISTS class_sessions (
     id            INT AUTO_INCREMENT PRIMARY KEY,
     session_date  DATE NOT NULL UNIQUE,
+    class_type    ENUM('class','seminar','private') NOT NULL DEFAULT 'class',
     instructor_id INT,
     location      VARCHAR(100) DEFAULT 'Dojo Location',
     notes         TEXT,
@@ -152,6 +153,7 @@ CREATE TABLE IF NOT EXISTS belt_tests (
     test_date        DATE NOT NULL,
     rank_testing_for INT NOT NULL,
     result           ENUM('pending','pass','fail') NOT NULL DEFAULT 'pending',
+    score            TINYINT UNSIGNED NULL,
     fee_paid         TINYINT(1) NOT NULL DEFAULT 0,
     belt_awarded     TINYINT(1) NOT NULL DEFAULT 0,
     notes            TEXT,
@@ -264,6 +266,33 @@ CREATE TABLE IF NOT EXISTS audit_log (
     created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_created (created_at),
     INDEX idx_user    (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ------------------------------------------------------------
+-- PARENT STUDENTS  (links a parent user to their children's student records)
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS parent_students (
+    id             INT AUTO_INCREMENT PRIMARY KEY,
+    parent_user_id INT NOT NULL,
+    student_id     INT NOT NULL,
+    UNIQUE KEY uq_parent_student (parent_user_id, student_id),
+    FOREIGN KEY (parent_user_id) REFERENCES users(id)    ON DELETE CASCADE,
+    FOREIGN KEY (student_id)     REFERENCES students(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ------------------------------------------------------------
+-- DONATIONS
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS donations (
+    id             INT AUTO_INCREMENT PRIMARY KEY,
+    amount         DECIMAL(8,2) NOT NULL,
+    payment_method ENUM('paypal','cash','check','mail') NOT NULL,
+    donor_name     VARCHAR(100),
+    notes          VARCHAR(255),
+    payment_date   DATE NOT NULL,
+    recorded_by    INT,
+    created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (recorded_by) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ------------------------------------------------------------

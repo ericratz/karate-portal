@@ -3,6 +3,16 @@ require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/db.php';
 require_role('admin');
 
+// If no registration payment remains, revert student back to guest
+function sync_registration_status(int $student_id): void {
+    $stmt = db()->prepare("SELECT COUNT(*) FROM payments WHERE student_id=? AND payment_type='registration'");
+    $stmt->execute([$student_id]);
+    if (!(int)$stmt->fetchColumn()) {
+        db()->prepare("UPDATE students SET student_type='guest' WHERE id=? AND student_type='student'")
+             ->execute([$student_id]);
+    }
+}
+
 $id    = (int)($_GET['id'] ?? 0);
 $msg   = '';
 $error = '';
@@ -72,6 +82,60 @@ if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ===
     exit;
 }
 
+// Edit payment waiver
+if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'edit_waiver') {
+    verify_csrf();
+    $wid    = (int)$_POST['waiver_id'];
+    $type   = $_POST['waiver_type']  ?? '';
+    $date   = $_POST['granted_date'] ?? date('Y-m-d');
+    $reason = trim($_POST['reason']  ?? '');
+    $valid_types = ['monthly_tuition','registration','belt_test','slc_training','seminar','all'];
+    if ($wid && in_array($type, $valid_types)) {
+        db()->prepare(
+            'UPDATE payment_waivers SET waiver_type=?, granted_date=?, reason=? WHERE id=? AND student_id=?'
+        )->execute([$type, $date, $reason ?: null, $wid, $id]);
+        audit('edit_waiver', 'waiver', $wid, "type=$type");
+    }
+    header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
+    exit;
+}
+
+// Delete payment
+if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delete_payment') {
+    verify_csrf();
+    $pid = (int)$_POST['payment_id'];
+    db()->prepare('DELETE FROM payments WHERE id=? AND student_id=?')->execute([$pid, $id]);
+    audit('delete_payment', 'payment', $pid);
+    sync_registration_status($id);
+    header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
+    exit;
+}
+
+// Edit payment
+if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'edit_payment') {
+    verify_csrf();
+    $pid        = (int)$_POST['payment_id'];
+    $pay_date   = $_POST['payment_date']   ?? date('Y-m-d');
+    $pay_type   = $_POST['payment_type']   ?? 'monthly_tuition';
+    $pay_method = $_POST['payment_method'] ?? 'cash';
+    $amount     = (float)($_POST['amount'] ?? 0);
+    $valid_types   = ['monthly_tuition','registration','belt_test','slc_training','seminar','other'];
+    $valid_methods = ['paypal','cash','check','mail','venmo'];
+    if ($amount > 0 && in_array($pay_type, $valid_types) && in_array($pay_method, $valid_methods)) {
+        db()->prepare(
+            'UPDATE payments SET payment_date=?, payment_type=?, payment_method=?, amount=? WHERE id=? AND student_id=?'
+        )->execute([$pay_date, $pay_type, $pay_method, $amount, $pid, $id]);
+        audit('edit_payment', 'payment', $pid, "amount=$amount type=$pay_type");
+        if ($pay_type === 'registration') {
+            db()->prepare("UPDATE students SET student_type='student' WHERE id=? AND student_type='guest'")
+                 ->execute([$id]);
+        }
+        sync_registration_status($id);
+    }
+    header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
+    exit;
+}
+
 // Add payment
 if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add_payment') {
     verify_csrf();
@@ -85,6 +149,11 @@ if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ===
              VALUES (?,?,?,?,?,?)'
         )->execute([$id, $pay_date, $pay_type, $pay_method, $amount, current_user_id()]);
         audit('add_payment', 'student', $id, "amount=$amount type=$pay_type");
+        // Auto-promote guest → student when registration fee is recorded
+        if ($pay_type === 'registration') {
+            db()->prepare("UPDATE students SET student_type='student' WHERE id=? AND student_type='guest'")
+                 ->execute([$id]);
+        }
     }
     header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
     exit;
@@ -121,9 +190,9 @@ if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ===
     $ec_name  = trim($_POST['ec_name']    ?? '');
     $ec_phone = trim($_POST['ec_phone']   ?? '');
     $reg_date = $_POST['registration_date'] ?? date('Y-m-d');
-    $s_type   = in_array($_POST['account_type'] ?? '', ['guest','student','instructor','admin'])
+    $s_type   = in_array($_POST['account_type'] ?? '', ['guest','student','parent','instructor','admin'])
                 ? $_POST['account_type'] : 'guest';
-    $user_role = in_array($s_type, ['instructor','admin']) ? $s_type : 'student';
+    $user_role = in_array($s_type, ['parent','instructor','admin']) ? $s_type : 'student';
     if (!$first || !$last) {
         $error = 'First and last name are required.';
     } else {
@@ -167,16 +236,21 @@ if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ===
     exit;
 }
 
-// Update injury waiver
+// Update liability waiver
 if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'update_injury_waiver') {
     verify_csrf();
     $injury = isset($_POST['injury_waiver']) ? 1 : 0;
-    $i_date = $injury ? (trim($_POST['injury_waiver_date'] ?? '') ?: null) : null;
-    db()->prepare('UPDATE students SET injury_waiver=?, injury_waiver_date=? WHERE id=?')
-         ->execute([$injury, $i_date, $id]);
-    audit('update_student', 'student', $id);
-    header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
-    exit;
+    $i_date = trim($_POST['injury_waiver_date'] ?? '');
+    if ($injury && $i_date === '') {
+        $error = 'A date is required when marking the liability waiver as signed.';
+    } else {
+        $i_date = $injury ? $i_date : null;
+        db()->prepare('UPDATE students SET injury_waiver=?, injury_waiver_date=? WHERE id=?')
+             ->execute([$injury, $i_date, $id]);
+        audit('update_student', 'student', $id);
+        header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
+        exit;
+    }
 }
 
 // Update existing ranks (bulk)
@@ -222,16 +296,17 @@ if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ===
 // Add belt test (inline)
 if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add_belt_test') {
     verify_csrf();
-    $rank_for = (int)($_POST['rank_testing_for'] ?? 0);
+    $rank_for  = (int)($_POST['rank_testing_for'] ?? 0);
     $test_date = $_POST['test_date'] ?? date('Y-m-d');
-    $result    = in_array($_POST['result'] ?? '', ['pending','pass','fail']) ? $_POST['result'] : 'pending';
+    $score     = ($_POST['score'] ?? '') !== '' ? min(100, max(0, (int)$_POST['score'])) : null;
+    $result    = $score === null ? 'pending' : ($score >= 80 ? 'pass' : 'fail');
     $fee_paid     = isset($_POST['fee_paid'])     ? 1 : 0;
     $belt_awarded = ($result === 'pass' && isset($_POST['belt_awarded'])) ? 1 : 0;
     if ($rank_for) {
         db()->prepare(
-            'INSERT INTO belt_tests (student_id, rank_testing_for, test_date, result, fee_paid, belt_awarded)
-             VALUES (?,?,?,?,?,?)'
-        )->execute([$id, $rank_for, $test_date, $result, $fee_paid, $belt_awarded]);
+            'INSERT INTO belt_tests (student_id, rank_testing_for, test_date, result, score, fee_paid, belt_awarded)
+             VALUES (?,?,?,?,?,?,?)'
+        )->execute([$id, $rank_for, $test_date, $result, $score, $fee_paid, $belt_awarded]);
         audit('add_belt_test', 'student', $id);
     }
     header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
@@ -241,17 +316,18 @@ if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ===
 // Update belt test
 if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'update_belt_test') {
     verify_csrf();
-    $bt_id    = (int)($_POST['bt_id'] ?? 0);
-    $rank_for = (int)($_POST['rank_testing_for'] ?? 0);
-    $test_date    = $_POST['test_date'] ?? date('Y-m-d');
-    $result       = in_array($_POST['result'] ?? '', ['pending','pass','fail']) ? $_POST['result'] : 'pending';
+    $bt_id     = (int)($_POST['bt_id'] ?? 0);
+    $rank_for  = (int)($_POST['rank_testing_for'] ?? 0);
+    $test_date = $_POST['test_date'] ?? date('Y-m-d');
+    $score     = ($_POST['score'] ?? '') !== '' ? min(100, max(0, (int)$_POST['score'])) : null;
+    $result    = $score === null ? 'pending' : ($score >= 80 ? 'pass' : 'fail');
     $fee_paid     = isset($_POST['fee_paid'])     ? 1 : 0;
     $belt_awarded = ($result === 'pass' && isset($_POST['belt_awarded'])) ? 1 : 0;
     if ($bt_id && $rank_for) {
         db()->prepare(
-            'UPDATE belt_tests SET rank_testing_for=?, test_date=?, result=?, fee_paid=?, belt_awarded=?
+            'UPDATE belt_tests SET rank_testing_for=?, test_date=?, result=?, score=?, fee_paid=?, belt_awarded=?
              WHERE id=? AND student_id=?'
-        )->execute([$rank_for, $test_date, $result, $fee_paid, $belt_awarded, $bt_id, $id]);
+        )->execute([$rank_for, $test_date, $result, $score, $fee_paid, $belt_awarded, $bt_id, $id]);
         audit('update_belt_test', 'student', $id);
     }
     header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
@@ -299,7 +375,7 @@ if (!$id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ==
     $ec_name  = trim($_POST['ec_name']    ?? '');
     $ec_phone = trim($_POST['ec_phone']   ?? '');
     $reg_date = $_POST['registration_date'] ?? date('Y-m-d');
-    $s_type   = in_array($_POST['account_type'] ?? '', ['guest','student','instructor','admin'])
+    $s_type   = in_array($_POST['account_type'] ?? '', ['guest','student','parent','instructor','admin'])
                 ? $_POST['account_type'] : 'guest';
     if (!$first || !$last) {
         $error = 'First and last name are required.';
@@ -359,7 +435,7 @@ if ($id) {
     $att_total    = count($attendance);
 
     $bt_stmt = db()->prepare(
-        'SELECT bt.id, bt.test_date, bt.result, bt.fee_paid, bt.belt_awarded,
+        'SELECT bt.id, bt.test_date, bt.result, bt.score, bt.fee_paid, bt.belt_awarded,
                 bt.rank_testing_for, r.kyu_dan
          FROM belt_tests bt
          JOIN ranks r ON r.id = bt.rank_testing_for
@@ -388,7 +464,7 @@ if ($id) {
     $notes = $notes_stmt->fetchAll();
 
     $pw_stmt = db()->prepare(
-        'SELECT id, waiver_type, granted_date
+        'SELECT id, waiver_type, granted_date, reason
          FROM payment_waivers
          WHERE student_id = ?
          ORDER BY granted_date DESC'
@@ -397,7 +473,7 @@ if ($id) {
     $payment_waivers = $pw_stmt->fetchAll();
 
     $pay_stmt = db()->prepare(
-        'SELECT payment_date, payment_type, payment_method, amount
+        'SELECT id, payment_date, payment_type, payment_method, amount
          FROM payments WHERE student_id = ? ORDER BY payment_date DESC'
     );
     $pay_stmt->execute([$id]);
@@ -414,7 +490,6 @@ include __DIR__ . '/../includes/header.php';
 ?>
 
 <div class="d-flex align-items-center gap-3 mb-4">
-    <a href="<?= htmlspecialchars($back_url) ?>" class="btn btn-success btn-sm">← Back</a>
     <h4 class="mb-0"><?= $id ? 'Edit: '.htmlspecialchars($student['first_name'].' '.$student['last_name']) : 'New Student' ?></h4>
 </div>
 
@@ -488,9 +563,41 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                             <div class="text-muted small">Member Since</div>
                             <div><?= $student['registration_date'] ? date('M j, Y', strtotime($student['registration_date'])) : '—' ?></div>
                         </div>
+                        <?php
+                        $acct_tips = [
+                            'student'    => 'Paying participant ($30/month tuition)',
+                            'guest'      => 'Non-paying participant (registration fee not yet paid)',
+                            'parent'     => 'Family account — one tuition payment covers the whole family',
+                            'instructor' => 'Teaches or assists with classes',
+                            'admin'      => 'Full administrative access',
+                        ];
+                        ?>
                         <div class="col-6">
                             <div class="text-muted small">Account Type</div>
-                            <div><?= ucfirst($acct_val) ?></div>
+                            <div>
+                                <?= ucfirst($acct_val) ?>
+                                <?php if (isset($acct_tips[$acct_val])): ?>
+                                <span class="text-muted small ms-1"
+                                      data-bs-toggle="tooltip"
+                                      title="<?= htmlspecialchars($acct_tips[$acct_val]) ?>">ⓘ</span>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="text-muted small">Active Status</div>
+                            <div>
+                                <?php if ($is_active): ?>
+                                    <span class="badge bg-success" data-bs-toggle="tooltip"
+                                          title="Active: attended class in the last 3 months">Active</span>
+                                <?php else: ?>
+                                    <span class="badge bg-secondary" data-bs-toggle="tooltip"
+                                          title="Inactive: no attendance in the last 3 months">Inactive</span>
+                                <?php endif; ?>
+                                <?php if ($ov_val !== 'auto'): ?>
+                                    <span class="badge bg-warning text-dark ms-1" data-bs-toggle="tooltip"
+                                          title="Override: active/inactive status manually set by admin">Override</span>
+                                <?php endif; ?>
+                            </div>
                         </div>
                     </div>
                     <!-- Edit mode (hidden) -->
@@ -540,6 +647,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                             <select name="account_type" class="form-select">
                                 <option value="guest"       <?= $acct_val==='guest'       ? 'selected':'' ?>>Guest</option>
                                 <option value="student"     <?= $acct_val==='student'     ? 'selected':'' ?>>Student</option>
+                                <option value="parent"      <?= $acct_val==='parent'      ? 'selected':'' ?>>Parent</option>
                                 <option value="instructor"  <?= $acct_val==='instructor'  ? 'selected':'' ?>>Instructor</option>
                                 <option value="admin"       <?= $acct_val==='admin'       ? 'selected':'' ?>>Admin</option>
                             </select>
@@ -596,6 +704,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                             <select name="account_type" class="form-select">
                                 <option value="guest">Guest</option>
                                 <option value="student">Student</option>
+                                <option value="parent">Parent</option>
                                 <option value="instructor">Instructor</option>
                                 <option value="admin">Admin</option>
                             </select>
@@ -615,9 +724,6 @@ $injury_date = $student['injury_waiver_date'] ?? null;
             <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
                 <span>
                     Recent Attendance
-                    <span class="text-muted fw-normal small ms-2">
-                        <?= $att_attended ?>/<?= $att_total ?> sessions
-                    </span>
                 </span>
                 <?php if (!empty($attendance)): ?>
                 <div class="d-flex gap-2">
@@ -633,7 +739,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                 <input type="hidden" name="action" value="update_attendance">
                 <div class="card-body p-0" style="max-height:320px;overflow-y:auto">
                     <?php if (empty($attendance)): ?>
-                        <p class="p-3 text-muted">No sessions recorded.</p>
+                        <p class="p-3 text-muted">No classes recorded.</p>
                     <?php else: ?>
                     <table class="table table-sm table-hover mb-0">
                         <tbody>
@@ -648,8 +754,6 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                                 <td>
                                     <?php if ($a['present']): ?>
                                         <span class="badge bg-success">Present</span>
-                                    <?php else: ?>
-                                        <span class="badge bg-danger">Absent</span>
                                     <?php endif; ?>
                                     <span class="att-edit ms-2" style="display:none">
                                         <input type="checkbox" class="form-check-input"
@@ -726,8 +830,14 @@ $injury_date = $student['injury_waiver_date'] ?? null;
         <div class="card border-0 shadow-sm">
             <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
                 <span>Payment History</span>
-                <button type="button" class="btn btn-sm btn-success"
-                        onclick="toggleBox('pay-add-box')">+ Add Payment</button>
+                <div class="d-flex gap-2">
+                    <?php if (!empty($payments)): ?>
+                    <button id="payEditToggle" type="button" class="btn btn-sm btn-success"
+                            onclick="togglePayEdit()">Edit</button>
+                    <?php endif; ?>
+                    <button type="button" class="btn btn-sm btn-success"
+                            onclick="toggleBox('pay-add-box')">+ Add Payment</button>
+                </div>
             </div>
             <div id="pay-add-box" style="display:none">
                 <div class="card-body border-bottom pb-3">
@@ -762,7 +872,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                                     <option value="cash">Cash</option>
                                     <option value="check">Check</option>
                                     <option value="paypal">PayPal</option>
-                                    <option value="venmo">Venmo</option>
+                                    <option value="mail">Mail</option>
                                 </select>
                             </div>
                         </div>
@@ -778,22 +888,77 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                 <?php if (empty($payments)): ?>
                     <p class="p-3 text-muted">No payments on record.</p>
                 <?php else: ?>
-                <table class="table table-sm table-hover mb-0">
+                <table id="payTable" class="table table-sm table-hover mb-0 align-middle">
                     <thead class="table-light">
                         <tr>
                             <th>Date</th>
                             <th>Type</th>
                             <th>Method</th>
                             <th class="text-end">Amount</th>
+                            <th class="pay-action-col"></th>
                         </tr>
                     </thead>
                     <tbody>
                     <?php foreach ($payments as $p): ?>
-                        <tr>
+                        <tr class="pay-data-row">
                             <td><?= date('M j, Y', strtotime($p['payment_date'])) ?></td>
                             <td><?= ucwords(str_replace('_', ' ', $p['payment_type'])) ?></td>
-                            <td><?= ['paypal'=>'PayPal','venmo'=>'Venmo','cash'=>'Cash','check'=>'Check'][$p['payment_method']] ?? ucfirst($p['payment_method']) ?></td>
+                            <td><?= ['paypal'=>'PayPal','venmo'=>'Venmo','cash'=>'Cash','check'=>'Check','mail'=>'Mail'][$p['payment_method']] ?? ucfirst($p['payment_method']) ?></td>
                             <td class="text-end">$<?= number_format($p['amount'], 2) ?></td>
+                            <td class="pay-action-col text-end text-nowrap">
+                                <button type="button" class="btn btn-sm btn-outline-primary py-0 me-1"
+                                        onclick="togglePayRow(<?= $p['id'] ?>)">Edit</button>
+                                <form method="post" class="d-inline"
+                                      onsubmit="return confirm('Delete this payment?')">
+                                    <?= csrf_input() ?>
+                                    <input type="hidden" name="action" value="delete_payment">
+                                    <input type="hidden" name="payment_id" value="<?= $p['id'] ?>">
+                                    <button class="btn btn-sm btn-outline-danger py-0">✕</button>
+                                </form>
+                            </td>
+                        </tr>
+                        <tr id="pay-edit-<?= $p['id'] ?>" class="pay-edit-row" style="display:none">
+                            <td colspan="5">
+                                <form method="post" class="row g-2 align-items-end py-1">
+                                    <?= csrf_input() ?>
+                                    <input type="hidden" name="action" value="edit_payment">
+                                    <input type="hidden" name="payment_id" value="<?= $p['id'] ?>">
+                                    <div class="col-auto">
+                                        <label class="form-label small mb-1">Date</label>
+                                        <input type="date" name="payment_date" class="form-control form-control-sm"
+                                               value="<?= htmlspecialchars(date('Y-m-d', strtotime($p['payment_date']))) ?>" required>
+                                    </div>
+                                    <div class="col-auto">
+                                        <label class="form-label small mb-1">Type</label>
+                                        <select name="payment_type" class="form-select form-select-sm">
+                                            <?php foreach (['monthly_tuition'=>'Monthly Tuition','registration'=>'Registration Fee','belt_test'=>'Belt Test Fee','slc_training'=>'SLC Training','seminar'=>'Seminar','other'=>'Other'] as $tv=>$tl): ?>
+                                            <option value="<?= $tv ?>" <?= $p['payment_type']===$tv?'selected':'' ?>><?= $tl ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                    <div class="col-auto">
+                                        <label class="form-label small mb-1">Method</label>
+                                        <select name="payment_method" class="form-select form-select-sm">
+                                            <?php foreach (['cash'=>'Cash','check'=>'Check','paypal'=>'PayPal','mail'=>'Mail'] as $mv=>$ml): ?>
+                                            <option value="<?= $mv ?>" <?= $p['payment_method']===$mv?'selected':'' ?>><?= $ml ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                    <div class="col-auto" style="width:100px">
+                                        <label class="form-label small mb-1">Amount</label>
+                                        <div class="input-group input-group-sm">
+                                            <span class="input-group-text">$</span>
+                                            <input type="number" name="amount" class="form-control"
+                                                   step="0.01" min="0.01" value="<?= $p['amount'] ?>" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <button type="submit" class="btn btn-sm btn-success">Save</button>
+                                        <button type="button" class="btn btn-sm btn-secondary"
+                                                onclick="togglePayRow(<?= $p['id'] ?>)">Cancel</button>
+                                    </div>
+                                </form>
+                            </td>
                         </tr>
                     <?php endforeach; ?>
                     </tbody>
@@ -927,12 +1092,12 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                                        value="<?= date('Y-m-d') ?>" required>
                             </div>
                             <div class="col-6">
-                                <label class="form-label small">Result</label>
-                                <select name="result" class="form-select form-select-sm">
-                                    <option value="pending">Pending</option>
-                                    <option value="pass">Pass</option>
-                                    <option value="fail">Fail</option>
-                                </select>
+                                <label class="form-label small">Score % <span class="text-muted">(blank = pending)</span></label>
+                                <div class="input-group input-group-sm">
+                                    <input type="number" name="score" class="form-control form-control-sm"
+                                           min="0" max="100" step="1" placeholder="0–100">
+                                    <span class="input-group-text">%</span>
+                                </div>
                             </div>
                             <div class="col-12">
                                 <label class="form-label small">Testing For *</label>
@@ -983,10 +1148,12 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                     <div class="bt-row-view-<?= $bt['id'] ?> d-flex align-items-center gap-3 flex-wrap">
                         <span class="text-nowrap"><?= date('M j, Y', strtotime($bt['test_date'])) ?></span>
                         <span class="flex-grow-1"><?= htmlspecialchars($bt['kyu_dan']) ?></span>
-                        <?php if ($bt['result']==='pass'): ?>
-                            <span class="badge bg-success">Pass</span>
-                        <?php elseif ($bt['result']==='fail'): ?>
-                            <span class="badge bg-danger">Fail</span>
+                        <?php if (isset($bt['score']) && $bt['score'] !== null): ?>
+                            <?php if ($bt['result']==='pass'): ?>
+                                <span class="badge bg-success"><?= (int)$bt['score'] ?>%</span>
+                            <?php else: ?>
+                                <span class="badge bg-danger"><?= (int)$bt['score'] ?>%</span>
+                            <?php endif; ?>
                         <?php else: ?>
                             <span class="badge bg-secondary">Pending</span>
                         <?php endif; ?>
@@ -1026,13 +1193,13 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                         </div>
                         <div class="d-flex align-items-center gap-3 flex-wrap">
                             <div>
-                                <label class="form-label small mb-1">Result</label>
-                                <select name="result" form="btEditForm-<?= $bt['id'] ?>"
-                                        class="form-select form-select-sm">
-                                    <option value="pending" <?= $bt['result']==='pending' ? 'selected':'' ?>>Pending</option>
-                                    <option value="pass"    <?= $bt['result']==='pass'    ? 'selected':'' ?>>Pass</option>
-                                    <option value="fail"    <?= $bt['result']==='fail'    ? 'selected':'' ?>>Fail</option>
-                                </select>
+                                <label class="form-label small mb-1">Score % <span class="text-muted">(blank = pending)</span></label>
+                                <div class="input-group input-group-sm" style="width:120px">
+                                    <input type="number" name="score" form="btEditForm-<?= $bt['id'] ?>"
+                                           class="form-control form-control-sm" min="0" max="100" step="1"
+                                           value="<?= (isset($bt['score']) && $bt['score'] !== null) ? (int)$bt['score'] : '' ?>">
+                                    <span class="input-group-text">%</span>
+                                </div>
                             </div>
                             <div class="form-check">
                                 <input type="checkbox" class="form-check-input" name="fee_paid"
@@ -1115,19 +1282,58 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                 <?php if (empty($payment_waivers)): ?>
                     <p class="text-muted mb-0">No payment waivers on record.</p>
                 <?php else: ?>
-                <table id="pwTable" class="table table-sm table-hover mb-0">
+                <table id="pwTable" class="table table-sm table-hover mb-0 align-middle">
                     <tbody>
                     <?php foreach ($payment_waivers as $pw): ?>
-                        <tr>
-                            <td><?= htmlspecialchars(ucwords(str_replace('_',' ',$pw['waiver_type']))) ?></td>
-                            <td class="text-muted small"><?= date('M j, Y', strtotime($pw['granted_date'])) ?></td>
-                            <td class="pw-delete-col text-end">
+                        <tr class="pw-data-row">
+                            <td>
+                                <?= htmlspecialchars(ucwords(str_replace('_',' ',$pw['waiver_type']))) ?>
+                                <?php if (!empty($pw['reason'])): ?>
+                                    <div class="text-muted small"><?= htmlspecialchars($pw['reason']) ?></div>
+                                <?php endif; ?>
+                            </td>
+                            <td class="text-nowrap"><?= date('M j, Y', strtotime($pw['granted_date'])) ?></td>
+                            <td class="pw-action-col text-end text-nowrap">
+                                <button type="button" class="btn btn-sm btn-outline-primary py-0 me-1"
+                                        onclick="togglePwRow(<?= $pw['id'] ?>)">Edit</button>
                                 <form method="post" class="d-inline"
                                       onsubmit="return confirm('Delete this waiver?')">
                                     <?= csrf_input() ?>
                                     <input type="hidden" name="action" value="delete_waiver">
                                     <input type="hidden" name="waiver_id" value="<?= $pw['id'] ?>">
                                     <button class="btn btn-sm btn-outline-danger py-0">✕</button>
+                                </form>
+                            </td>
+                        </tr>
+                        <tr id="pw-edit-<?= $pw['id'] ?>" class="pw-edit-row" style="display:none">
+                            <td colspan="3">
+                                <form method="post" class="row g-2 align-items-end py-1">
+                                    <?= csrf_input() ?>
+                                    <input type="hidden" name="action" value="edit_waiver">
+                                    <input type="hidden" name="waiver_id" value="<?= $pw['id'] ?>">
+                                    <div class="col-auto">
+                                        <label class="form-label small mb-1">Type</label>
+                                        <select name="waiver_type" class="form-select form-select-sm">
+                                            <?php foreach (['monthly_tuition'=>'Monthly Tuition','registration'=>'Registration Fee','belt_test'=>'Belt Test Fee','slc_training'=>'SLC Training','seminar'=>'Seminar','all'=>'All Fees'] as $tv=>$tl): ?>
+                                            <option value="<?= $tv ?>" <?= $pw['waiver_type']===$tv?'selected':'' ?>><?= $tl ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                    <div class="col-auto" style="width:160px">
+                                        <label class="form-label small mb-1">Date</label>
+                                        <input type="date" name="granted_date" class="form-control form-control-sm w-100"
+                                               value="<?= htmlspecialchars($pw['granted_date']) ?>" required>
+                                    </div>
+                                    <div class="col">
+                                        <label class="form-label small mb-1">Reason</label>
+                                        <input type="text" name="reason" class="form-control form-control-sm"
+                                               value="<?= htmlspecialchars($pw['reason'] ?? '') ?>" placeholder="Optional">
+                                    </div>
+                                    <div class="col-auto">
+                                        <button type="submit" class="btn btn-sm btn-success">Save</button>
+                                        <button type="button" class="btn btn-sm btn-secondary"
+                                                onclick="togglePwRow(<?= $pw['id'] ?>)">Cancel</button>
+                                    </div>
                                 </form>
                             </td>
                         </tr>
@@ -1138,13 +1344,13 @@ $injury_date = $student['injury_waiver_date'] ?? null;
             </div>
         </div>
 
-        <!-- Injury Waiver -->
+        <!-- Liability Waiver -->
         <form id="injury-form" method="post">
             <?= csrf_input() ?>
             <input type="hidden" name="action" value="update_injury_waiver">
             <div class="card border-0 shadow-sm">
                 <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
-                    <span>Injury Waiver</span>
+                    <span>Liability Waiver</span>
                     <div class="d-flex gap-2">
                         <button type="button" id="injuryCancelBtn" class="btn btn-sm btn-secondary" style="display:none"
                                 onclick="cardCancel('injury')">Cancel</button>
@@ -1158,7 +1364,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                         <?php if ($injury_done): ?>
                             <span class="badge bg-success">Completed</span>
                             <?php if ($injury_date): ?>
-                                <span class="text-muted small ms-1"><?= date('M j, Y', strtotime($injury_date)) ?></span>
+                                <span class="ms-1"><?= date('M j, Y', strtotime($injury_date)) ?></span>
                             <?php endif; ?>
                         <?php else: ?>
                             <span class="text-muted">Not completed</span>
@@ -1175,9 +1381,11 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                             </div>
                         </div>
                         <div class="col-6">
-                            <label class="form-label small">Waiver Date</label>
-                            <input type="date" name="injury_waiver_date" class="form-control form-control-sm"
-                                   value="<?= htmlspecialchars($injury_date ?? '') ?>">
+                            <label class="form-label small">Waiver Date <span class="text-danger" id="waiver-date-required" <?= $injury_done ? '' : 'style="display:none"' ?>>*</span></label>
+                            <input type="date" name="injury_waiver_date" id="injury_waiver_date"
+                                   class="form-control form-control-sm"
+                                   value="<?= htmlspecialchars($injury_date ?? '') ?>"
+                                   <?= $injury_done ? 'required' : '' ?>>
                         </div>
                     </div>
                 </div>
@@ -1191,14 +1399,16 @@ $injury_date = $student['injury_waiver_date'] ?? null;
 </div><!-- /row -->
 
 <style>
-    .pw-delete-col   { display:none !important; }
+    .pw-action-col   { display:none !important; }
     .rank-delete-col { display:none !important; }
     .note-delete     { display:none !important; }
     .bt-delete-btn   { display:none !important; }
-    #pwTable.editing   .pw-delete-col   { display:table-cell !important; }
+    .pay-action-col  { display:none !important; }
+    #pwTable.editing   .pw-action-col   { display:table-cell !important; }
     #rankTable.editing .rank-delete-col { display:table-cell !important; }
     #notesContainer.notes-editing .note-delete { display:inline-block !important; }
     #btList.editing   .bt-delete-btn   { display:inline !important; }
+    #payTable.editing  .pay-action-col  { display:table-cell !important; }
 </style>
 <script>
 // Generic: toggle a collapsible add-box
@@ -1222,6 +1432,8 @@ function cardToggle(cardId) {
         if (view) view.style.display = 'none';
         if (edit) edit.style.display = '';
     } else {
+        // Programmatic submit doesn't fire the submit event, so clear dirty manually
+        if (typeof setFormClean === 'function') setFormClean();
         document.getElementById(cardId + '-form').submit();
     }
 }
@@ -1236,6 +1448,10 @@ function cardCancel(cardId) {
     if (cancel) cancel.style.display = 'none';
     if (view) view.style.display = '';
     if (edit) edit.style.display = 'none';
+    // Reset form fields to their original server-rendered values and clear dirty flag
+    var form = document.getElementById(cardId + '-form');
+    if (form) form.reset();
+    if (typeof setFormClean === 'function') setFormClean();
 }
 
 // Attendance
@@ -1250,6 +1466,7 @@ function toggleAttEdit() {
         cancel.style.display = '';
         document.querySelectorAll('.att-edit').forEach(function(el) { el.style.display = ''; });
     } else {
+        if (typeof setFormClean === 'function') setFormClean();
         document.getElementById('att-form').submit();
     }
 }
@@ -1261,22 +1478,73 @@ function attCancel() {
     btn.classList.replace('btn-warning', 'btn-success');
     cancel.style.display = 'none';
     document.querySelectorAll('.att-edit').forEach(function(el) { el.style.display = 'none'; });
+    var form = document.getElementById('att-form');
+    if (form) form.reset();
+    if (typeof setFormClean === 'function') setFormClean();
 }
 document.querySelectorAll('.att-edit input[type="checkbox"]').forEach(function(cb) {
     cb.addEventListener('change', function() {
         var badge = this.closest('td').querySelector('.badge');
-        if (this.checked) { badge.className = 'badge bg-success'; badge.textContent = 'Present'; }
-        else               { badge.className = 'badge bg-danger';  badge.textContent = 'Absent'; }
+        if (this.checked) { badge.className = 'badge bg-success'; badge.textContent = 'Present'; badge.style.display = ''; }
+        else               { badge.style.display = 'none'; }
     });
 });
 
-// Payment waivers — edit reveals ✕ buttons
+// Liability waiver — date required when signed is checked
+(function() {
+    var chk      = document.getElementById('injury_waiver');
+    var dateEl   = document.getElementById('injury_waiver_date');
+    var asterisk = document.getElementById('waiver-date-required');
+    if (!chk || !dateEl) return;
+    chk.addEventListener('change', function() {
+        dateEl.required = this.checked;
+        asterisk.style.display = this.checked ? '' : 'none';
+        if (this.checked && !dateEl.value) {
+            dateEl.value = new Date().toISOString().slice(0, 10);
+        }
+    });
+})();
+
+// Payment history — edit toggle reveals action column; per-row edit form
+function togglePayEdit() {
+    var table = document.getElementById('payTable');
+    var btn   = document.getElementById('payEditToggle');
+    var on    = table.classList.toggle('editing');
+    btn.textContent = on ? 'Done' : 'Edit';
+    btn.className   = on ? 'btn btn-sm btn-warning' : 'btn btn-sm btn-success';
+    // Collapse any open edit rows when toggling off
+    if (!on) {
+        table.querySelectorAll('.pay-edit-row').forEach(function(r) { r.style.display = 'none'; });
+        if (typeof setFormClean === 'function') setFormClean();
+    }
+}
+function togglePayRow(pid) {
+    var row = document.getElementById('pay-edit-' + pid);
+    if (!row) return;
+    var closing = row.style.display !== 'none';
+    row.style.display = closing ? 'none' : '';
+    if (closing && typeof setFormClean === 'function') setFormClean();
+}
+
+// Payment waivers — edit reveals action column; per-row edit form
 function togglePwEdit() {
     var table = document.getElementById('pwTable');
     var btn   = document.getElementById('pwEditToggle');
     var on    = table.classList.toggle('editing');
-    btn.textContent = on ? 'Confirm' : 'Edit';
+    btn.textContent = on ? 'Done' : 'Edit';
     btn.className   = on ? 'btn btn-sm btn-warning' : 'btn btn-sm btn-success';
+    // Collapse any open edit rows when toggling off
+    if (!on) {
+        table.querySelectorAll('.pw-edit-row').forEach(function(r) { r.style.display = 'none'; });
+        if (typeof setFormClean === 'function') setFormClean();
+    }
+}
+function togglePwRow(wid) {
+    var row = document.getElementById('pw-edit-' + wid);
+    if (!row) return;
+    var closing = row.style.display !== 'none';
+    row.style.display = closing ? 'none' : '';
+    if (closing && typeof setFormClean === 'function') setFormClean();
 }
 
 // Belt awarded can't be checked when result is Fail
@@ -1298,6 +1566,7 @@ function btRowEdit(id) {
 function btRowCancel(id) {
     document.querySelector('.bt-row-view-' + id).style.display = '';
     document.querySelectorAll('.bt-row-edit-' + id).forEach(function(el) { el.style.display = 'none'; });
+    if (typeof setFormClean === 'function') setFormClean();
 }
 
 // Belt tests card — Edit reveals ✕ buttons
@@ -1337,6 +1606,7 @@ function rankEdit() {
         document.querySelectorAll('.rank-view-cell').forEach(function(el) { el.style.display = 'none'; });
         document.querySelectorAll('.rank-edit-cell').forEach(function(el) { el.style.display = ''; });
     } else {
+        if (typeof setFormClean === 'function') setFormClean();
         document.getElementById('rank-edit-form').submit();
     }
 }
@@ -1352,13 +1622,11 @@ function rankEdit() {
             <button type="button" id="notesEditBtn" class="btn btn-sm btn-success"
                     onclick="toggleNotesEdit()">Edit</button>
             <?php endif; ?>
-            <button type="button" class="btn btn-sm btn-success"
-                    onclick="toggleAddNote()">+ Add Note</button>
         </div>
     </div>
 
-    <!-- Add note (collapsed by default) -->
-    <div id="addNoteBox" style="display:none">
+    <!-- Add note (always visible) -->
+    <div id="addNoteBox">
         <div class="card-body border-bottom pb-3">
             <form method="post" id="addNoteForm">
                 <?= csrf_input() ?>
@@ -1367,8 +1635,6 @@ function rankEdit() {
                           rows="3" placeholder="Add a note…" required></textarea>
                 <div class="d-flex gap-2">
                     <button type="submit" class="btn btn-sm btn-primary">Save Note</button>
-                    <button type="button" class="btn btn-sm btn-secondary"
-                            onclick="toggleAddNote()">Cancel</button>
                 </div>
             </form>
         </div>
@@ -1446,7 +1712,13 @@ function noteEdit(id) {
 function noteCancel(id) {
     document.querySelector('.note-view-' + id).style.display = '';
     document.querySelector('.note-edit-' + id).style.display = 'none';
+    if (typeof setFormClean === 'function') setFormClean();
 }
+</script>
+<script>
+document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
+    new bootstrap.Tooltip(el);
+});
 </script>
 
 <?php endif; // $id — notes card ?>

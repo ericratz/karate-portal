@@ -12,6 +12,12 @@ define('TEST_FEE',      10.00);
 define('SLC_FEE',       10.00);
 define('SEMINAR_FEE',   60.00);
 
+// Google OAuth — credentials loaded from .env (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET)
+// Leave them out of .env to hide the button entirely
+if (!defined('GOOGLE_CLIENT_ID'))     define('GOOGLE_CLIENT_ID',     '');
+if (!defined('GOOGLE_CLIENT_SECRET')) define('GOOGLE_CLIENT_SECRET', '');
+define('GOOGLE_REDIRECT_URI', 'http://localhost/karate/portal/google-callback.php');
+
 // PayPal — switch to live credentials when ready
 define('PAYPAL_MODE',        'sandbox');            // 'sandbox' or 'live'
 define('PAYPAL_CLIENT_ID',   'YOUR_PAYPAL_CLIENT_ID');

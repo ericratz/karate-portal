@@ -79,11 +79,12 @@ $users = db()->query(
      ORDER BY u.role, u.username'
 )->fetchAll();
 
-// Unlinked roster entries (for the link dropdown) — include inactive
+// Unlinked roster entries (for the link dropdown) — exclude children already linked to a parent
 $unlinked_students = db()->query(
     'SELECT id, first_name, last_name, student_type, active
      FROM students
      WHERE user_id IS NULL
+       AND id NOT IN (SELECT student_id FROM parent_students)
      ORDER BY last_name, first_name'
 )->fetchAll();
 
@@ -103,11 +104,12 @@ include __DIR__ . '/../includes/header.php';
         <option value="instructor">Instructor</option>
         <option value="admin">Admin</option>
         <option value="guest">Guest</option>
+        <option value="parent">Parent</option>
     </select>
     <select id="filterStatus" class="form-select form-select-sm" style="width:130px" onchange="filterUsers()">
         <option value="">All Statuses</option>
-        <option value="active">Active</option>
-        <option value="inactive">Inactive</option>
+        <option value="active">Activated</option>
+        <option value="inactive">Deactivated</option>
     </select>
     <select id="filterLinked" class="form-select form-select-sm" style="width:150px" onchange="filterUsers()">
         <option value="">All Accounts</option>
@@ -158,6 +160,13 @@ include __DIR__ . '/../includes/header.php';
                     <td>
                         <?php
                         $role_display = $u['student_type'] ?? $u['role'];
+                        $role_tips = [
+                            'admin'      => 'Full administrative access to all portal features',
+                            'instructor' => 'Can take attendance and view the student roster',
+                            'student'    => 'Paying participant — $30/month tuition',
+                            'guest'      => 'Non-paying participant — registration fee not yet paid',
+                            'parent'     => 'Family account — manages linked children\'s profiles and payments',
+                        ];
                         $role_badges  = [
                             'admin'      => 'bg-danger',
                             'instructor' => 'bg-warning text-dark',
@@ -165,8 +174,12 @@ include __DIR__ . '/../includes/header.php';
                             'guest'      => 'bg-secondary',
                         ];
                         $cls = $role_badges[$role_display] ?? 'bg-secondary';
+                        $tip = $role_tips[$role_display] ?? '';
                         ?>
-                        <span class="badge <?= $cls ?>"><?= ucfirst($role_display) ?></span>
+                        <span class="badge <?= $cls ?>"
+                              <?= $tip ? 'data-bs-toggle="tooltip" title="' . htmlspecialchars($tip) . '"' : '' ?>>
+                            <?= ucfirst($role_display) ?>
+                        </span>
                         <?php if ($u['id'] === current_user_id()): ?>
                             <span class="badge bg-secondary ms-1">you</span>
                         <?php endif; ?>
@@ -175,8 +188,8 @@ include __DIR__ . '/../includes/header.php';
                     <!-- Status -->
                     <td>
                         <?= $u['active']
-                            ? '<span class="badge bg-success">Active</span>'
-                            : '<span class="badge bg-secondary">Inactive</span>' ?>
+                            ? '<span class="badge bg-secondary" data-bs-toggle="tooltip" title="Activated: this login is enabled and can sign in">Activated</span>'
+                            : '<span class="badge bg-danger" data-bs-toggle="tooltip" title="Deactivated: this login has been disabled — cannot sign in">Deactivated</span>' ?>
                     </td>
 
                     <!-- Last login -->
@@ -212,6 +225,12 @@ function filterUsers() {
         row.style.display = match ? '' : 'none';
     });
 }
+</script>
+
+<script>
+document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
+    new bootstrap.Tooltip(el);
+});
 </script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>

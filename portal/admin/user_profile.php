@@ -16,7 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'updat
     $email      = trim($_POST['email']      ?? '');
     $first_name = trim($_POST['first_name'] ?? '');
     $last_name  = trim($_POST['last_name']  ?? '');
-    $role       = in_array($_POST['role'] ?? '', ['student','instructor','admin']) ? $_POST['role'] : 'student';
+    $role       = in_array($_POST['role'] ?? '', ['student','instructor','admin','parent']) ? $_POST['role'] : 'student';
     if (!$username) {
         $error = 'Username is required.';
     } else {
@@ -91,13 +91,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'link_
     }
 }
 
+// ── Link a child to this parent ──────────────────────────────
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'link_child') {
+    verify_csrf();
+    $child_sid = (int)($_POST['child_student_id'] ?? 0);
+    if ($child_sid) {
+        db()->prepare(
+            'INSERT IGNORE INTO parent_students (parent_user_id, student_id) VALUES (?,?)'
+        )->execute([$id, $child_sid]);
+        audit('link_child', 'user', $id, "student_id=$child_sid");
+        header("Location: user_profile.php?id=$id&msg=child_linked");
+        exit;
+    }
+}
+
+// ── Unlink a child from this parent ──────────────────────────
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'unlink_child') {
+    verify_csrf();
+    $child_sid = (int)($_POST['child_student_id'] ?? 0);
+    if ($child_sid) {
+        db()->prepare(
+            'DELETE FROM parent_students WHERE parent_user_id=? AND student_id=?'
+        )->execute([$id, $child_sid]);
+        audit('unlink_child', 'user', $id, "student_id=$child_sid");
+        header("Location: user_profile.php?id=$id&msg=child_unlinked");
+        exit;
+    }
+}
+
 // ── Flash messages ────────────────────────────────────────────
 if (isset($_GET['msg'])) {
     switch ($_GET['msg']) {
-        case 'saved':     $msg = 'Changes saved.'; break;
-        case 'password':  $msg = 'Password updated.'; break;
-        case 'linked':    $msg = 'Account linked to roster entry.'; break;
-        case 'unlinked':  $msg = 'Account unlinked from roster.'; break;
+        case 'saved':         $msg = 'Changes saved.'; break;
+        case 'password':      $msg = 'Password updated.'; break;
+        case 'linked':        $msg = 'Account linked to roster entry.'; break;
+        case 'unlinked':      $msg = 'Account unlinked from roster.'; break;
+        case 'child_linked':  $msg = 'Child linked to this parent account.'; break;
+        case 'child_unlinked':$msg = 'Child unlinked from this parent account.'; break;
     }
 }
 
@@ -112,10 +142,29 @@ $user->execute([$id]);
 $user = $user->fetch();
 if (!$user) { header('Location: users.php'); exit; }
 
-// Unlinked roster entries for link dropdown
+// Unlinked roster entries for link dropdown — exclude children already linked to a parent
 $unlinked = db()->query(
     'SELECT id, first_name, last_name, student_type
-     FROM students WHERE user_id IS NULL ORDER BY last_name, first_name'
+     FROM students
+     WHERE user_id IS NULL
+       AND id NOT IN (SELECT student_id FROM parent_students)
+     ORDER BY last_name, first_name'
+)->fetchAll();
+
+// Children linked to this parent
+$linked_children = db()->prepare(
+    'SELECT s.id, s.first_name, s.last_name, s.student_type
+     FROM parent_students ps JOIN students s ON s.id = ps.student_id
+     WHERE ps.parent_user_id = ?
+     ORDER BY s.last_name, s.first_name'
+);
+$linked_children->execute([$id]);
+$linked_children = $linked_children->fetchAll();
+
+// All students available to link as children (excluding already linked)
+$linked_child_ids = array_column($linked_children, 'id');
+$all_students_for_parent = db()->query(
+    'SELECT id, first_name, last_name FROM students ORDER BY last_name, first_name'
 )->fetchAll();
 
 $role_badges = [
@@ -130,13 +179,12 @@ include __DIR__ . '/../includes/header.php';
 ?>
 
 <div class="d-flex align-items-center gap-3 mb-4">
-    <a href="users.php" class="btn btn-success btn-sm">← Back</a>
     <h4 class="mb-0">
         <?= htmlspecialchars($user['username']) ?>
         <span class="badge <?= $role_badges[$user['role']] ?? 'bg-secondary' ?> ms-1">
             <?= ucfirst($user['role']) ?>
         </span>
-        <?= !$user['active'] ? '<span class="badge bg-secondary ms-1">Inactive</span>' : '' ?>
+        <?= !$user['active'] ? '<span class="badge bg-danger ms-1">Deactivated</span>' : '' ?>
     </h4>
 </div>
 
@@ -206,6 +254,7 @@ include __DIR__ . '/../includes/header.php';
                             <label class="form-label">Role</label>
                             <select name="role" class="form-select">
                                 <option value="student"    <?= $user['role']==='student'    ? 'selected':'' ?>>Student</option>
+                                <option value="parent"     <?= $user['role']==='parent'     ? 'selected':'' ?>>Parent</option>
                                 <option value="instructor" <?= $user['role']==='instructor' ? 'selected':'' ?>>Instructor</option>
                                 <option value="admin"      <?= $user['role']==='admin'      ? 'selected':'' ?>>Admin</option>
                             </select>
@@ -261,6 +310,57 @@ include __DIR__ . '/../includes/header.php';
         </div>
     </div>
 
+    <!-- Linked Children (parent accounts only) -->
+    <?php if ($user['role'] === 'parent'): ?>
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white fw-semibold">Linked Children</div>
+            <div class="card-body">
+                <?php if (!empty($linked_children)): ?>
+                <ul class="list-group list-group-flush mb-3">
+                    <?php foreach ($linked_children as $child): ?>
+                    <li class="list-group-item d-flex align-items-center justify-content-between px-0">
+                        <div>
+                            <a href="student_edit.php?id=<?= $child['id'] ?>" class="text-decoration-none">
+                                <?= htmlspecialchars($child['first_name'].' '.$child['last_name']) ?>
+                            </a>
+                            <span class="badge bg-secondary ms-2"><?= ucfirst($child['student_type']) ?></span>
+                        </div>
+                        <form method="post" class="d-inline"
+                              onsubmit="return confirm('Unlink this child from the parent account?')">
+                            <?= csrf_input() ?>
+                            <input type="hidden" name="action" value="unlink_child">
+                            <input type="hidden" name="child_student_id" value="<?= $child['id'] ?>">
+                            <button class="btn btn-sm btn-outline-danger">Unlink</button>
+                        </form>
+                    </li>
+                    <?php endforeach; ?>
+                </ul>
+                <?php else: ?>
+                <p class="text-muted small mb-3">No children linked to this parent account yet.</p>
+                <?php endif; ?>
+
+                <?php $available = array_filter($all_students_for_parent, fn($s) => !in_array($s['id'], $linked_child_ids)); ?>
+                <?php if (!empty($available)): ?>
+                <form method="post" class="d-flex gap-2 align-items-center flex-wrap">
+                    <?= csrf_input() ?>
+                    <input type="hidden" name="action" value="link_child">
+                    <select name="child_student_id" class="form-select form-select-sm" style="max-width:240px" required>
+                        <option value="">— select child to link —</option>
+                        <?php foreach ($available as $s): ?>
+                        <option value="<?= $s['id'] ?>">
+                            <?= htmlspecialchars($s['last_name'].', '.$s['first_name']) ?>
+                        </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <button type="submit" class="btn btn-sm btn-success">Link Child</button>
+                </form>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
+
     <!-- Password Reset -->
     <div class="col-12">
         <div class="card border-0 shadow-sm">
@@ -293,8 +393,8 @@ include __DIR__ . '/../includes/header.php';
             <div class="card-body d-flex align-items-center justify-content-between gap-3">
                 <div>
                     <?= $user['active']
-                        ? '<span class="badge bg-success me-2">Active</span> This account can log in.'
-                        : '<span class="badge bg-secondary me-2">Inactive</span> This account cannot log in.' ?>
+                        ? '<span class="badge bg-secondary me-2">Activated</span> This account can log in.'
+                        : '<span class="badge bg-danger me-2">Deactivated</span> This account cannot log in.' ?>
                 </div>
                 <form method="post" class="d-inline"
                       onsubmit="return confirm('<?= $user['active'] ? 'Deactivate' : 'Activate' ?> this account?')">
@@ -338,6 +438,7 @@ function cardToggle(cardId) {
         if (view) view.style.display = 'none';
         if (edit) edit.style.display = '';
     } else {
+        if (typeof setFormClean === 'function') setFormClean();
         document.getElementById(cardId + '-form').submit();
     }
 }
@@ -352,6 +453,9 @@ function cardCancel(cardId) {
     if (cancel) cancel.style.display = 'none';
     if (view) view.style.display = '';
     if (edit) edit.style.display = 'none';
+    var form = document.getElementById(cardId + '-form');
+    if (form) form.reset();
+    if (typeof setFormClean === 'function') setFormClean();
 }
 </script>
 

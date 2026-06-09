@@ -7,7 +7,7 @@ apply_auto_inactive();
 
 // Recent sessions
 $recent_sessions = db()->query(
-    'SELECT id, session_date FROM class_sessions ORDER BY session_date DESC LIMIT 10'
+    'SELECT id, session_date, class_type FROM class_sessions ORDER BY session_date DESC LIMIT 10'
 )->fetchAll();
 
 // Recent belt tests — fetch 11 to detect overflow
@@ -43,23 +43,23 @@ include __DIR__ . '/../includes/header.php';
                         <input type="date" name="date" class="form-control"
                                value="<?= date('Y-m-d') ?>" required>
                     </div>
-                    <button class="btn btn-primary w-100">Record New Session</button>
+                    <button class="btn btn-primary w-100">Record New Class</button>
                 </form>
             </div>
         </div>
 
         <div class="card border-0 shadow-sm">
             <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
-                <span>Recent Sessions</span>
-                <a href="attendance_sessions.php" class="btn btn-sm btn-outline-secondary">View by Session</a>
+                <span>Recent Classes</span>
+                <a href="attendance_sessions.php" class="btn btn-sm btn-outline-secondary">View All Classes</a>
             </div>
             <div class="card-body p-0">
                 <?php if (empty($recent_sessions)): ?>
-                    <p class="p-3 text-muted">No sessions recorded yet.</p>
+                    <p class="p-3 text-muted">No classes recorded yet.</p>
                 <?php else: ?>
                 <table class="table table-sm table-hover mb-0">
                     <thead class="table-light">
-                        <tr><th>Date</th></tr>
+                        <tr><th>Date</th><th>Type</th></tr>
                     </thead>
                     <tbody>
                     <?php foreach ($recent_sessions as $s): ?>
@@ -69,6 +69,7 @@ include __DIR__ . '/../includes/header.php';
                                     <?= date('D, M j, Y', strtotime($s['session_date'])) ?>
                                 </a>
                             </td>
+                            <td><?= ucfirst($s['class_type']) ?></td>
                         </tr>
                     <?php endforeach; ?>
                     </tbody>

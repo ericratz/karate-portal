@@ -34,7 +34,6 @@ include __DIR__ . '/../includes/header.php';
 ?>
 
 <div class="d-flex align-items-center gap-3 mb-4">
-    <a href="student_profile.php?id=<?= $student_id ?>" class="btn btn-outline-secondary btn-sm">← Back</a>
     <h4 class="mb-0">Add Note — <?= htmlspecialchars($student['first_name'] . ' ' . $student['last_name']) ?></h4>
 </div>
 

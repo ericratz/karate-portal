@@ -17,16 +17,40 @@ $stats = db()->query(
     '
 )->fetch();
 
-// Students who haven't paid tuition this month
+// Students who haven't paid tuition this month.
+// A child whose family group has already paid is considered covered —
+// one tuition payment covers the whole parent/child group.
 $unpaid = db()->query(
     'SELECT s.id, s.first_name, s.last_name
      FROM students s
      WHERE s.active = 1
+       -- Not paid directly
        AND s.id NOT IN (
            SELECT student_id FROM payments
            WHERE payment_type = "monthly_tuition"
              AND MONTH(payment_date) = MONTH(NOW())
              AND YEAR(payment_date)  = YEAR(NOW())
+       )
+       -- Not covered by a family-group payment (handles both child and parent sides)
+       AND NOT EXISTS (
+           SELECT 1
+           FROM parent_students ps
+           WHERE (
+               ps.student_id = s.id
+               OR (s.user_id IS NOT NULL AND ps.parent_user_id = s.user_id)
+           )
+           AND EXISTS (
+               SELECT 1 FROM payments p
+               WHERE p.payment_type = "monthly_tuition"
+                 AND MONTH(p.payment_date) = MONTH(NOW())
+                 AND YEAR(p.payment_date)  = YEAR(NOW())
+                 AND p.student_id IN (
+                     SELECT student_id FROM parent_students ps2
+                      WHERE ps2.parent_user_id = ps.parent_user_id
+                     UNION
+                     SELECT id FROM students WHERE user_id = ps.parent_user_id
+                 )
+           )
        )
      ORDER BY s.last_name, s.first_name'
 )->fetchAll();
@@ -36,12 +60,26 @@ $no_waiver = db()->query(
     'SELECT id, first_name, last_name FROM students WHERE active=1 AND injury_waiver=0 ORDER BY last_name'
 )->fetchAll();
 
+// Link requests submitted by new registrations
+$link_requests = [];
+try {
+    $link_requests = db()->query(
+        'SELECT lr.id, lr.request_type, lr.notes, lr.created_at,
+                u.id AS user_id, u.username, u.first_name, u.last_name, u.email
+         FROM link_requests lr
+         JOIN users u ON u.id = lr.user_id
+         WHERE lr.resolved = 0
+         ORDER BY lr.created_at DESC'
+    )->fetchAll();
+} catch (Exception $e) {}
+
 // Possible account links: unlinked users whose name or email matches an unlinked student
 $possible_links = db()->query(
     'SELECT u.id AS user_id, u.username, u.first_name AS u_first, u.last_name AS u_last, u.email AS u_email,
             s.id AS student_id, s.first_name AS s_first, s.last_name AS s_last, s.email AS s_email
      FROM users u
      JOIN students s ON s.user_id IS NULL
+         AND s.id NOT IN (SELECT student_id FROM parent_students)
          AND (
              (LOWER(u.first_name) = LOWER(s.first_name) AND LOWER(u.last_name) = LOWER(s.last_name))
              OR
@@ -62,9 +100,15 @@ $recent_payments = db()->query(
 $has_more_payments = count($recent_payments) === 11;
 if ($has_more_payments) array_pop($recent_payments);
 
+$linked_msg = isset($_GET['linked']) ? 'Accounts linked successfully.' : '';
+
 $page_title = 'Admin Dashboard';
 include __DIR__ . '/../includes/header.php';
 ?>
+
+<?php if ($linked_msg): ?>
+<div class="alert alert-success"><?= htmlspecialchars($linked_msg) ?></div>
+<?php endif; ?>
 
 <div class="d-flex align-items-center justify-content-between mb-4">
     <h3 class="mb-0"></h3>
@@ -162,12 +206,64 @@ include __DIR__ . '/../includes/header.php';
             </div>
         </div>
 
+        <!-- Link requests from new registrations -->
+        <?php if (!empty($link_requests)): ?>
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white fw-semibold d-flex justify-content-between">
+                <span>Link Requests</span>
+                <span class="badge bg-warning text-dark"><?= count($link_requests) ?></span>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-sm table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>User</th>
+                            <th>Type</th>
+                            <th>Notes</th>
+                            <th>Date</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    <?php
+                    $lr_type_labels = [
+                        'new_guest'        => ['New Student',       'bg-success'],
+                        'existing_student' => ['Existing Student',  'bg-primary'],
+                        'parent'           => ['Parent',            'bg-purple text-white'],
+                    ];
+                    foreach ($link_requests as $lr):
+                        [$lr_label, $lr_cls] = $lr_type_labels[$lr['request_type']] ?? [ucfirst($lr['request_type']), 'bg-secondary'];
+                    ?>
+                        <tr>
+                            <td>
+                                <div class="fw-semibold small"><?= htmlspecialchars($lr['username']) ?></div>
+                                <div class="text-muted small"><?= htmlspecialchars(trim($lr['first_name'].' '.$lr['last_name'])) ?></div>
+                            </td>
+                            <td><span class="badge <?= $lr_cls ?>"><?= $lr_label ?></span></td>
+                            <td class="small text-muted" style="max-width:160px">
+                                <?= $lr['notes'] ? htmlspecialchars(mb_strimwidth($lr['notes'], 0, 60, '…')) : '—' ?>
+                            </td>
+                            <td class="small text-muted text-nowrap">
+                                <?= date('M j', strtotime($lr['created_at'])) ?>
+                            </td>
+                            <td>
+                                <a href="compare_account.php?user_id=<?= $lr['user_id'] ?>&link_request_id=<?= $lr['id'] ?>"
+                                   class="btn btn-sm btn-outline-primary py-0">Review</a>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <?php endif; ?>
+
         <!-- Possible account links -->
         <?php if (!empty($possible_links)): ?>
         <div class="card border-0 shadow-sm border-start border-4 border-info">
             <div class="card-header bg-white fw-semibold d-flex justify-content-between">
                 <span>Possible Account Links</span>
-                <span class="badge bg-info text-dark"><?= count($possible_links) ?></span>
+                <span class="badge" style="background-color:#fd7e14;color:#fff"><?= count($possible_links) ?></span>
             </div>
             <div class="card-body p-0">
                 <table class="table table-sm table-hover mb-0">
@@ -196,13 +292,8 @@ include __DIR__ . '/../includes/header.php';
                                 <?php endif; ?>
                             </td>
                             <td>
-                                <form method="post" action="users.php">
-                                    <?= csrf_input() ?>
-                                    <input type="hidden" name="link_student" value="1">
-                                    <input type="hidden" name="user_id" value="<?= $m['user_id'] ?>">
-                                    <input type="hidden" name="student_id" value="<?= $m['student_id'] ?>">
-                                    <button type="button" class="btn btn-sm btn-outline-info py-0 link-confirm-btn">Link</button>
-                                </form>
+                                <a href="compare_account.php?user_id=<?= $m['user_id'] ?>&student_id=<?= $m['student_id'] ?>"
+                                   class="btn btn-sm btn-primary py-0">Compare</a>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -254,16 +345,6 @@ include __DIR__ . '/../includes/header.php';
 
 </div>
 
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    document.querySelectorAll('.link-confirm-btn').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-            if (confirm('Link this account to the roster entry?')) {
-                this.closest('form').submit();
-            }
-        });
-    });
-});
-</script>
+<style>.bg-purple { background-color: #6f42c1 !important; }</style>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>

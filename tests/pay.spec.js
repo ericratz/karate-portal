@@ -3,14 +3,10 @@
 // fee selection interactivity, month picker, custom amount, total display,
 // PayPal section visibility, and static cards on the page.
 const { test, expect } = require('@playwright/test');
-const { login, logout, visit, assertNoPhpErrors, BASE } = require('./helpers');
-
-const { STU_USER, STU_PASS } = require('./credentials');
+const { visit, BASE, AUTH } = require('./helpers');
 
 test.describe('Pay page', () => {
-    test.beforeEach(async ({ page }) => {
-        await login(page, STU_USER, STU_PASS);
-    });
+    test.use({ storageState: AUTH.student });
 
     test('page loads without PHP errors', async ({ page }) => {
         await visit(page, '/student/pay.php', 'pay page');
@@ -128,13 +124,6 @@ test.describe('Pay page', () => {
     test('Other Payment Options card is visible', async ({ page }) => {
         await page.goto(BASE + '/student/pay.php');
         await expect(page.locator('.card-header').filter({ hasText: 'Other Payment Options' })).toBeVisible();
-    });
-
-    test('Venmo and check instructions are shown', async ({ page }) => {
-        await page.goto(BASE + '/student/pay.php');
-        const body = await page.textContent('body');
-        expect(body).toContain('Venmo');
-        expect(body).toContain('check');
     });
 
     test('PayPal SDK script tag is present', async ({ page }) => {

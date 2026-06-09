@@ -4,6 +4,16 @@ require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/config.php';
 require_role('admin');
 
+// If no registration payment remains, revert student back to guest
+function sync_registration_status(int $student_id): void {
+    $stmt = db()->prepare("SELECT COUNT(*) FROM payments WHERE student_id=? AND payment_type='registration'");
+    $stmt->execute([$student_id]);
+    if (!(int)$stmt->fetchColumn()) {
+        db()->prepare("UPDATE students SET student_type='guest' WHERE id=? AND student_type='student'")
+             ->execute([$student_id]);
+    }
+}
+
 $msg   = '';
 $error = '';
 
@@ -11,9 +21,54 @@ $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delete') {
     verify_csrf();
     $del_id = (int)$_POST['id'];
+    // Fetch student_id before deleting so we can sync status after
+    $del_row = db()->prepare('SELECT student_id FROM payments WHERE id=?');
+    $del_row->execute([$del_id]);
+    $del_sid = (int)$del_row->fetchColumn();
     db()->prepare('DELETE FROM payments WHERE id=?')->execute([$del_id]);
     audit('delete_payment', 'payment', $del_id);
-    header('Location: payments.php?' . http_build_query(array_diff_key($_GET, [])));
+    if ($del_sid) sync_registration_status($del_sid);
+    header('Location: payments.php?' . http_build_query($_GET));
+    exit;
+}
+
+// ── Edit a payment ────────────────────────────────────────────
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'edit_payment') {
+    verify_csrf();
+    $pid    = (int)$_POST['id'];
+    $amount = (float)($_POST['amount']        ?? 0);
+    $type   = $_POST['payment_type']          ?? '';
+    $method = $_POST['payment_method']        ?? '';
+    $date   = $_POST['payment_date']          ?? date('Y-m-d');
+    $month  = $_POST['month_covered']         ?? '';
+    $txn    = trim($_POST['transaction_id']   ?? '');
+    $notes  = trim($_POST['notes']            ?? '');
+    $valid_types   = ['monthly_tuition','registration','belt_test','slc_training','seminar','other'];
+    $valid_methods = ['paypal','cash','check','mail','venmo'];
+    if ($pid && $amount > 0 && in_array($type, $valid_types) && in_array($method, $valid_methods)) {
+        db()->prepare(
+            'UPDATE payments SET payment_date=?, payment_type=?, payment_method=?, amount=?,
+             transaction_id=?, notes=?, month_covered=? WHERE id=?'
+        )->execute([
+            $date, $type, $method, $amount,
+            $txn ?: null,
+            $notes ?: null,
+            ($type === 'monthly_tuition' && $month) ? $month . '-01' : null,
+            $pid,
+        ]);
+        // Fetch student_id for status sync
+        $sid_row = db()->prepare('SELECT student_id FROM payments WHERE id=?');
+        $sid_row->execute([$pid]);
+        $edit_sid = (int)$sid_row->fetchColumn();
+        // Promote to student if type is now registration
+        if ($type === 'registration' && $edit_sid) {
+            db()->prepare("UPDATE students SET student_type='student' WHERE id=? AND student_type='guest'")->execute([$edit_sid]);
+        }
+        // Revert to guest if registration was removed
+        if ($edit_sid) sync_registration_status($edit_sid);
+        audit('edit_payment', 'payment', $pid);
+    }
+    header('Location: payments.php?' . http_build_query($_GET));
     exit;
 }
 
@@ -30,7 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== 'delet
     $notes  = trim($_POST['notes']           ?? '');
 
     $valid_types   = ['monthly_tuition','registration','belt_test','slc_training','seminar','other'];
-    $valid_methods = ['paypal','venmo','cash','check','mail'];
+    $valid_methods = ['paypal','cash','check','mail','venmo']; // venmo kept for legacy records
 
     $payer_name = trim($_POST['payer_name'] ?? '');
     $payer_note = trim($_POST['payer_note'] ?? '');
@@ -107,9 +162,12 @@ include __DIR__ . '/../includes/header.php';
 
 <div class="d-flex align-items-center justify-content-between mb-4">
     <h3 class="mb-0">Payments</h3>
-    <button class="btn btn-success btn-sm" data-bs-toggle="collapse" data-bs-target="#addPaymentForm">
-        + Record Payment
-    </button>
+    <div class="d-flex gap-2">
+        <a href="student_edit.php" class="btn btn-success btn-sm">+ New Student</a>
+        <button class="btn btn-success btn-sm" data-bs-toggle="collapse" data-bs-target="#addPaymentForm">
+            + Record Payment
+        </button>
+    </div>
 </div>
 
 <?php if ($msg):   ?><div class="alert alert-success"><?= $msg ?></div><?php endif; ?>
@@ -166,7 +224,7 @@ include __DIR__ . '/../includes/header.php';
                         <option value="cash">Cash</option>
                         <option value="check">Check</option>
                         <option value="paypal">PayPal</option>
-                        <option value="venmo">Venmo</option>
+                        <option value="mail">Mail</option>
                     </select>
                 </div>
 
@@ -186,7 +244,7 @@ include __DIR__ . '/../includes/header.php';
                 <div class="col-md-4">
                     <label class="form-label">Transaction ID</label>
                     <input type="text" name="transaction_id" class="form-control"
-                           placeholder="PayPal / Venmo ID (optional)">
+                           placeholder="PayPal transaction ID (optional)">
                 </div>
 
                 <div class="col-md-3">
@@ -298,6 +356,7 @@ include __DIR__ . '/../includes/header.php';
         <table id="paymentsTable" class="table table-sm table-hover mb-0">
             <thead class="table-light">
                 <tr>
+                    <th></th>
                     <th>Date</th>
                     <th>Student</th>
                     <th>Type</th>
@@ -307,35 +366,45 @@ include __DIR__ . '/../includes/header.php';
                     <th>Notes</th>
                     <th>By</th>
                     <th class="text-end">Amount</th>
+                    <th class="edit-col"></th>
                     <th class="delete-col"></th>
                 </tr>
             </thead>
             <tbody>
             <?php foreach ($payments as $p): ?>
                 <tr>
+                    <td>
+                        <button type="button" class="btn btn-sm btn-outline-success py-0"
+                                onclick="prefillPayment(<?= $p['student_id'] ?>, '<?= addslashes($p['last_name'].', '.$p['first_name']) ?>')"
+                                title="Add payment for this student">+</button>
+                    </td>
                     <td class="text-nowrap"><?= date('M j, Y', strtotime($p['payment_date'])) ?></td>
                     <td>
                         <a href="../instructor/student_profile.php?id=<?= $p['student_id'] ?>" class="text-decoration-none">
                             <?= htmlspecialchars($p['last_name'].', '.$p['first_name']) ?>
                         </a>
                         <?php if ($p['payer_name']): ?>
-                            <div>paid by <?= htmlspecialchars($p['payer_name']) ?></div>
+                            <div class="text-muted small">paid by <?= htmlspecialchars($p['payer_name']) ?></div>
                         <?php endif; ?>
                     </td>
                     <td><?= ucwords(str_replace('_',' ',$p['payment_type'])) ?></td>
                     <td class="text-nowrap">
                         <?= $p['month_covered'] ? date('M Y', strtotime($p['month_covered'])) : '—' ?>
                     </td>
-                    <td><?= ['paypal'=>'PayPal','venmo'=>'Venmo','cash'=>'Cash','check'=>'Check'][$p['payment_method']] ?? ucfirst($p['payment_method']) ?></td>
+                    <td><?= ['paypal'=>'PayPal','venmo'=>'Venmo','cash'=>'Cash','check'=>'Check','mail'=>'Mail'][$p['payment_method']] ?? ucfirst($p['payment_method']) ?></td>
                     <td><?= htmlspecialchars($p['transaction_id'] ?? '—') ?></td>
                     <td>
                         <?= htmlspecialchars($p['notes'] ?? '') ?>
                         <?php if ($p['payer_note']): ?>
-                            <div class="fst-italic"><?= htmlspecialchars($p['payer_note']) ?></div>
+                            <div class="fst-italic text-muted small"><?= htmlspecialchars($p['payer_note']) ?></div>
                         <?php endif; ?>
                     </td>
                     <td><?= htmlspecialchars($p['recorded_by_name'] ?? '—') ?></td>
                     <td class="text-end fw-semibold">$<?= number_format($p['amount'],2) ?></td>
+                    <td class="edit-col">
+                        <button type="button" class="btn btn-sm btn-outline-primary py-0"
+                                onclick="toggleEditRow(<?= $p['id'] ?>)">Edit</button>
+                    </td>
                     <td class="delete-col">
                         <form method="post" class="d-inline"
                               onsubmit="return confirm('Delete this payment? This cannot be undone.')">
@@ -343,6 +412,64 @@ include __DIR__ . '/../includes/header.php';
                             <input type="hidden" name="action" value="delete">
                             <input type="hidden" name="id" value="<?= $p['id'] ?>">
                             <button type="submit" class="btn btn-sm btn-outline-danger py-0">✕</button>
+                        </form>
+                    </td>
+                </tr>
+                <tr id="edit-row-<?= $p['id'] ?>" style="display:none">
+                    <td colspan="12">
+                        <form method="post" class="row g-2 align-items-end py-1">
+                            <?= csrf_input() ?>
+                            <input type="hidden" name="action" value="edit_payment">
+                            <input type="hidden" name="id" value="<?= $p['id'] ?>">
+                            <div class="col-auto">
+                                <label class="form-label small mb-1">Date</label>
+                                <input type="date" name="payment_date" class="form-control form-control-sm"
+                                       value="<?= date('Y-m-d', strtotime($p['payment_date'])) ?>" required>
+                            </div>
+                            <div class="col-auto">
+                                <label class="form-label small mb-1">Type</label>
+                                <select name="payment_type" class="form-select form-select-sm">
+                                    <?php foreach (['monthly_tuition'=>'Monthly Tuition','registration'=>'Registration Fee','belt_test'=>'Belt Test Fee','slc_training'=>'SLC Training','seminar'=>'Seminar','other'=>'Other'] as $tv=>$tl): ?>
+                                    <option value="<?= $tv ?>" <?= $p['payment_type']===$tv?'selected':'' ?>><?= $tl ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="col-auto">
+                                <label class="form-label small mb-1">Method</label>
+                                <select name="payment_method" class="form-select form-select-sm">
+                                    <?php foreach (['cash'=>'Cash','check'=>'Check','paypal'=>'PayPal','mail'=>'Mail'] as $mv=>$ml): ?>
+                                    <option value="<?= $mv ?>" <?= $p['payment_method']===$mv?'selected':'' ?>><?= $ml ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="col-auto">
+                                <label class="form-label small mb-1">Month</label>
+                                <input type="month" name="month_covered" class="form-control form-control-sm"
+                                       value="<?= $p['month_covered'] ? date('Y-m', strtotime($p['month_covered'])) : '' ?>">
+                            </div>
+                            <div class="col-auto" style="width:110px">
+                                <label class="form-label small mb-1">Amount</label>
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" name="amount" class="form-control"
+                                           step="0.01" min="0.01" value="<?= $p['amount'] ?>" required>
+                                </div>
+                            </div>
+                            <div class="col-auto" style="width:160px">
+                                <label class="form-label small mb-1">Transaction ID</label>
+                                <input type="text" name="transaction_id" class="form-control form-control-sm"
+                                       value="<?= htmlspecialchars($p['transaction_id'] ?? '') ?>">
+                            </div>
+                            <div class="col-auto" style="width:160px">
+                                <label class="form-label small mb-1">Notes</label>
+                                <input type="text" name="notes" class="form-control form-control-sm"
+                                       value="<?= htmlspecialchars($p['notes'] ?? '') ?>">
+                            </div>
+                            <div class="col-auto">
+                                <button type="submit" class="btn btn-sm btn-success">Save</button>
+                                <button type="button" class="btn btn-sm btn-secondary"
+                                        onclick="toggleEditRow(<?= $p['id'] ?>)">Cancel</button>
+                            </div>
                         </form>
                     </td>
                 </tr>
@@ -356,15 +483,39 @@ include __DIR__ . '/../includes/header.php';
 
 <style>
     .delete-col { display: none; }
+    .edit-col   { display: none; }
     table.editing .delete-col { display: table-cell; }
+    table.editing .edit-col   { display: table-cell; }
 </style>
 <script>
 function toggleEdit() {
     const table = document.querySelector('#paymentsTable');
     const btn   = document.getElementById('editToggle');
     const on    = table.classList.toggle('editing');
-    btn.textContent   = on ? 'Done' : 'Edit';
-    btn.className     = on ? 'btn btn-sm btn-danger' : 'btn btn-sm btn-outline-secondary';
+    btn.textContent = on ? 'Done' : 'Edit';
+    btn.className   = on ? 'btn btn-sm btn-warning' : 'btn btn-sm btn-outline-secondary';
+    // Collapse any open edit rows when toggling off
+    if (!on) {
+        table.querySelectorAll('tr[id^="edit-row-"]').forEach(function(r) { r.style.display = 'none'; });
+        if (typeof setFormClean === 'function') setFormClean();
+    }
+}
+function toggleEditRow(pid) {
+    var row = document.getElementById('edit-row-' + pid);
+    if (!row) return;
+    var closing = row.style.display !== 'none';
+    row.style.display = closing ? 'none' : '';
+    if (closing && typeof setFormClean === 'function') setFormClean();
+}
+
+function prefillPayment(studentId, studentName) {
+    // Open the add-payment form and select this student
+    const collapse = document.getElementById('addPaymentForm');
+    const bsCollapse = bootstrap.Collapse.getOrCreateInstance(collapse);
+    bsCollapse.show();
+    const sel = collapse.querySelector('select[name="student_id"]');
+    if (sel) sel.value = studentId;
+    collapse.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 </script>
 

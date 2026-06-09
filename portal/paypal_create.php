@@ -26,13 +26,40 @@ $items = $input['items'] ?? [];
 $total = (float)($input['total'] ?? 0);
 $note  = $input['note'] ?? '';
 
-// Validate student has a profile
-$student = db()->prepare('SELECT id FROM students WHERE user_id = ?');
-$student->execute([current_user_id()]);
-if (!$student->fetch()) {
-    http_response_code(403);
-    echo json_encode(['error' => 'No student profile linked to this account']);
-    exit;
+// Determine the student this payment is for.
+// Parents may specify a student_id from their family; everyone else uses their own record.
+$role             = $_SESSION['role'] ?? 'student';
+$input_student_id = (int)($input['student_id'] ?? 0);
+
+if ($role === 'parent' && $input_student_id) {
+    // Build the allowed list for this parent
+    $allowed_ids = [];
+    $own = db()->prepare('SELECT id FROM students WHERE user_id = ?');
+    $own->execute([current_user_id()]);
+    if ($own_row = $own->fetch()) $allowed_ids[] = (int)$own_row['id'];
+    $ch = db()->prepare(
+        'SELECT s.id FROM parent_students ps JOIN students s ON s.id = ps.student_id WHERE ps.parent_user_id = ?'
+    );
+    $ch->execute([current_user_id()]);
+    foreach ($ch->fetchAll() as $r) $allowed_ids[] = (int)$r['id'];
+
+    if (!in_array($input_student_id, $allowed_ids, true)) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Student not linked to your account']);
+        exit;
+    }
+    $validated_student_id = $input_student_id;
+} else {
+    // Student / instructor / admin — use their own linked student record
+    $stmt = db()->prepare('SELECT id FROM students WHERE user_id = ?');
+    $stmt->execute([current_user_id()]);
+    $row = $stmt->fetch();
+    if (!$row) {
+        http_response_code(403);
+        echo json_encode(['error' => 'No student profile linked to this account']);
+        exit;
+    }
+    $validated_student_id = (int)$row['id'];
 }
 
 if (empty($items) || $total <= 0) {
@@ -42,7 +69,8 @@ if (empty($items) || $total <= 0) {
 }
 
 // Validate total server-side — client cannot manipulate amounts
-$valid_types  = ['monthly_tuition','registration','belt_test','slc_training','seminar','other'];
+$valid_types       = ['monthly_tuition','registration','belt_test','slc_training','seminar','other','donation'];
+$user_priced_types = ['other', 'donation'];
 $server_total = 0;
 foreach ($items as $item) {
     if (!in_array($item['type'], $valid_types, true)) {
@@ -50,7 +78,7 @@ foreach ($items as $item) {
         echo json_encode(['error' => 'Invalid payment type']);
         exit;
     }
-    $server_total += ($item['type'] === 'other')
+    $server_total += in_array($item['type'], $user_priced_types, true)
         ? (float)$item['amount']
         : fee_for_type($item['type']);
 }
@@ -63,9 +91,9 @@ if (abs($server_total - $total) > 0.01) {
 }
 
 $labels = array_map(function($i) {
-    return $i['type'] === 'other'
-        ? ($i['reason'] ?? 'Other')
-        : ucwords(str_replace('_', ' ', $i['type']));
+    if ($i['type'] === 'other')     return $i['reason'] ?? 'Other';
+    if ($i['type'] === 'donation')  return 'Donation';
+    return ucwords(str_replace('_', ' ', $i['type']));
 }, $items);
 $description = 'Shotokan Karate — ' . implode(', ', $labels);
 
@@ -73,11 +101,12 @@ try {
     $order_id = paypal_create_order($server_total, $description);
 
     $_SESSION['pending_payment'] = [
-        'order_id' => $order_id,
-        'items'    => $items,
-        'total'    => $server_total,
-        'note'     => $note,
-        'user_id'  => current_user_id(),
+        'order_id'   => $order_id,
+        'items'      => $items,
+        'total'      => $server_total,
+        'note'       => $note,
+        'user_id'    => current_user_id(),
+        'student_id' => $validated_student_id,
     ];
 
     echo json_encode(['id' => $order_id]);

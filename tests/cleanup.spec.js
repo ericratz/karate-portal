@@ -60,7 +60,15 @@ test('delete orphaned test users in admin/users.php', async ({ page }) => {
     await page.goto(BASE + '/admin/users.php');
 
     // Look for usernames that are pure timestamp patterns (pw + 13 digits, etc.)
-    const testPatterns = [/^pw\d{10,}$/, /^waiver\d{10,}$/, /^promote\d{10,}$/, /^u\d{10,}$/];
+    const testPatterns = [
+        /^pw\d{10,}$/,
+        /^waiver\d{10,}$/,
+        /^promote\d{10,}$/,
+        /^nj[a-z]\d{10,}$/,   // Notify Noji test accounts (nja..., njb..., etc.)
+        /^notify\d{10,}$/,
+        /^lr\d{10,}$/,
+        /^u\d{10,}$/,
+    ];
 
     const rows = await page.locator('tbody tr').all();
     for (const row of rows) {
@@ -172,6 +180,26 @@ test('delete leftover Playwright test payments', async ({ page }) => {
         const row = page.locator('tr').filter({
             hasText: /Playwright payment \d{10,}/
         }).first();
+        if (await row.count() === 0) { found = false; break; }
+        page.once('dialog', d => d.accept());
+        await row.locator('.btn-outline-danger').click();
+        await page.waitForLoadState('domcontentloaded');
+    }
+    await logout(page);
+});
+
+// ── STALE DONATIONS ──────────────────────────────────────────────────────────
+
+test('delete leftover Test Donor Delete donations', async ({ page }) => {
+    await login(page, ADMIN_USER, ADMIN_PASS);
+    let found = true;
+    while (found) {
+        await page.goto(BASE + '/admin/donations.php');
+        await page.waitForLoadState('domcontentloaded');
+        const editBtn = page.locator('#editToggle');
+        if (await editBtn.count() === 0) { found = false; break; }
+        await editBtn.click();
+        const row = page.locator('tr').filter({ hasText: 'Test Donor Delete' }).first();
         if (await row.count() === 0) { found = false; break; }
         page.once('dialog', d => d.accept());
         await row.locator('.btn-outline-danger').click();

@@ -52,38 +52,60 @@ try {
         exit;
     }
 
-    // Get student_id for the logged-in user
-    $student = db()->prepare('SELECT id FROM students WHERE user_id = ?');
-    $student->execute([$pending['user_id']]);
-    $student_id = $student->fetchColumn();
+    // Use the pre-validated student_id stored at order-creation time.
+    // This supports parents paying for a child as well as the standard student flow.
+    $student_id  = $pending['student_id'] ?? null;
+    $student_row = null;
+    if ($student_id) {
+        $stmt = db()->prepare('SELECT id, first_name, last_name FROM students WHERE id = ?');
+        $stmt->execute([$student_id]);
+        $student_row = $stmt->fetch();
+        if (!$student_row) $student_id = null;
+    }
 
     // Pull PayPal transaction ID from capture response
     $txn_id = $capture['purchase_units'][0]['payments']['captures'][0]['id'] ?? null;
     $note   = $pending['note'] ?? null;
 
-    // Record one payment row per item
-    $insert = db()->prepare(
+    $user_priced = ['other', 'donation'];
+
+    // Record each item to its respective table
+    $insert_payment = db()->prepare(
         'INSERT INTO payments
          (student_id, amount, payment_type, payment_method, transaction_id, month_covered, notes)
          VALUES (?,?,?,?,?,?,?)'
     );
+    $insert_donation = db()->prepare(
+        'INSERT INTO donations (amount, payment_method, payment_date, donor_name, notes)
+         VALUES (?, ?, CURDATE(), ?, ?)'
+    );
+
     foreach ($pending['items'] as $item) {
-        $amount = ($item['type'] === 'other')
+        $amount = in_array($item['type'], $user_priced)
             ? (float)$item['amount']
             : fee_for_type($item['type']);
-        $insert->execute([
-            $student_id,
-            $amount,
-            $item['type'],
-            'paypal',
-            $txn_id,
-            $item['type'] === 'monthly_tuition' ? ($item['month_covered'] ?? date('Y-m-01')) : null,
-            $note ?: ($item['reason'] ?? null),
-        ]);
-        // Auto-promote guest to student on registration fee payment
-        if ($item['type'] === 'registration') {
-            db()->prepare("UPDATE students SET student_type='student' WHERE id=?")
-                 ->execute([$student_id]);
+
+        if ($item['type'] === 'donation') {
+            $donor_name = $student_row
+                ? trim($student_row['first_name'] . ' ' . $student_row['last_name'])
+                : null;
+            $dnotes = $txn_id ? "PayPal: $txn_id" : null;
+            $insert_donation->execute([$amount, 'paypal', $donor_name, $dnotes]);
+        } else {
+            $insert_payment->execute([
+                $student_id,
+                $amount,
+                $item['type'],
+                'paypal',
+                $txn_id,
+                $item['type'] === 'monthly_tuition' ? ($item['month_covered'] ?? date('Y-m-01')) : null,
+                $note ?: ($item['reason'] ?? null),
+            ]);
+            // Auto-promote guest to student on registration fee payment
+            if ($item['type'] === 'registration') {
+                db()->prepare("UPDATE students SET student_type='student' WHERE id=?")
+                     ->execute([$student_id]);
+            }
         }
     }
 

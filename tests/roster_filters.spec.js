@@ -3,16 +3,14 @@
 // search box, status filter, waiver filter, count badges, New Student button,
 // and student name links.
 const { test, expect } = require('@playwright/test');
-const { login, logout, visit, assertNoPhpErrors, BASE } = require('./helpers');
-
-const { ADMIN_USER, ADMIN_PASS, INST_USER, INST_PASS } = require('./credentials');
+const { assertNoPhpErrors, BASE, AUTH } = require('./helpers');
 
 // ── ADMIN ROSTER ──────────────────────────────────────────────────────────────
 
 test.describe('Admin roster filters', () => {
+    test.use({ storageState: AUTH.admin });
 
     test.beforeEach(async ({ page }) => {
-        await login(page, ADMIN_USER, ADMIN_PASS);
         await page.goto(BASE + '/admin/students.php');
     });
 
@@ -154,9 +152,9 @@ test.describe('Admin roster filters', () => {
 // ── INSTRUCTOR ROSTER ─────────────────────────────────────────────────────────
 
 test.describe('Instructor roster filters', () => {
+    test.use({ storageState: AUTH.instructor });
 
     test.beforeEach(async ({ page }) => {
-        await login(page, INST_USER, INST_PASS);
         await page.goto(BASE + '/instructor/students.php');
     });
 

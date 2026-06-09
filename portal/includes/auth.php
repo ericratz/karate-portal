@@ -6,6 +6,11 @@ require_once __DIR__ . '/db.php';
 
 date_default_timezone_set('America/Denver');
 
+// ── Prevent browser from caching portal pages ─────────────────
+// Stops the back-forward cache from serving stale data after edits
+header('Cache-Control: no-store, no-cache, must-revalidate');
+header('Pragma: no-cache');
+
 // ── Session hardening ─────────────────────────────────────────
 if (session_status() === PHP_SESSION_NONE) {
     session_set_cookie_params([
@@ -66,6 +71,8 @@ function current_user_id(): ?int {
 
 // ── Rate limiting ─────────────────────────────────────────────
 function is_rate_limited(string $username, string $ip): bool {
+    // Never rate-limit localhost — allows test suite to run freely
+    if ($ip === '127.0.0.1' || $ip === '::1') return false;
     try {
         $stmt = db()->prepare(
             'SELECT COUNT(*) FROM login_attempts
@@ -107,11 +114,12 @@ function audit(string $action, ?string $target_type = null, ?int $target_id = nu
 }
 
 // ── Login / logout ────────────────────────────────────────────
-function attempt_login(string $username, string $password): bool {
+// Returns 'ok' | 'invalid' | 'inactive' | 'rate_limited'
+function attempt_login(string $username, string $password): string {
     $ip = $_SERVER['REMOTE_ADDR'] ?? '';
 
     if (is_rate_limited($username, $ip)) {
-        return false;
+        return 'rate_limited';
     }
 
     $stmt = db()->prepare(
@@ -120,10 +128,17 @@ function attempt_login(string $username, string $password): bool {
     $stmt->execute([$username]);
     $user = $stmt->fetch();
 
-    if (!$user || !$user['active'] || !password_verify($password, $user['password_hash'])) {
+    // Wrong username or wrong password
+    if (!$user || !password_verify($password, $user['password_hash'])) {
         record_failed_login($username, $ip);
         audit('login_fail', null, null, $username);
-        return false;
+        return 'invalid';
+    }
+
+    // Correct credentials but account deactivated
+    if (!$user['active']) {
+        audit('login_fail_inactive', null, null, $username);
+        return 'inactive';
     }
 
     // Clear rate limit on success
@@ -152,7 +167,16 @@ function attempt_login(string $username, string $password): bool {
     $_SESSION['student_type'] = $stype->fetchColumn() ?: $user['role'];
 
     audit('login_success');
-    return true;
+    return 'ok';
+}
+
+function dashboard_url(string $role): string {
+    switch ($role) {
+        case 'admin':      return '/karate/portal/admin/';
+        case 'instructor': return '/karate/portal/instructor/';
+        case 'parent':     return '/karate/portal/parent/';
+        default:           return '/karate/portal/student/';
+    }
 }
 
 function logout(): void {

@@ -28,6 +28,7 @@ $all = db()->query(
 $instructors = array_filter($all, fn($s) => in_array($s['student_type'], ['instructor', 'admin']));
 $students    = array_filter($all, fn($s) => $s['student_type'] === 'student');
 $guests      = array_filter($all, fn($s) => $s['student_type'] === 'guest');
+$parents     = array_filter($all, fn($s) => $s['student_type'] === 'parent');
 
 $all_ranks = db()->query('SELECT kyu_dan FROM ranks ORDER BY rank_order')->fetchAll(PDO::FETCH_COLUMN);
 
@@ -54,10 +55,24 @@ function student_row($s) {
         ? '<span class="text-success">✓</span>'
         : '<span class="text-danger">✗</span>') . '</td>';
     echo '<td><span class="text-muted small">' . $att_txt . '</span></td>';
+    $account_tooltips = [
+        'student'    => 'Student: paying participant ($30/month)',
+        'guest'      => 'Guest: non-paying participant (registration fee not yet paid)',
+        'parent'     => 'Parent: family account — one tuition payment covers the whole family',
+        'instructor' => 'Instructor: teaches or assists with classes',
+        'admin'      => 'Admin: full administrative access',
+    ];
+    $type_tip = $account_tooltips[$s['student_type']] ?? ucfirst($s['student_type']);
     echo '<td>';
-    if ($s['active']) echo '<span class="badge bg-success">Active</span>';
-    else              echo '<span class="badge bg-secondary">Inactive</span>';
-    if ($s['active_override'] !== null) echo ' <span class="badge bg-warning text-dark">Override</span>';
+    if ($s['active'])
+        echo '<span class="badge bg-success" data-bs-toggle="tooltip"'
+           . ' title="Active: attended class in the last 3 months">Active</span>';
+    else
+        echo '<span class="badge bg-secondary" data-bs-toggle="tooltip"'
+           . ' title="Inactive: no attendance in the last 3 months">Inactive</span>';
+    if ($s['active_override'] !== null)
+        echo ' <span class="badge bg-warning text-dark" data-bs-toggle="tooltip"'
+           . ' title="Override: active/inactive status manually set by admin">Override</span>';
     echo '</td>';
     echo '</tr>';
 }
@@ -76,7 +91,7 @@ function student_table($rows, $empty_msg) {
             <col style="width:16%">
           </colgroup>';
     echo '<thead class="table-light"><tr>
-            <th>Name</th><th>Rank</th><th>Injury Waiver</th>
+            <th>Name</th><th>Rank</th><th>Liability Waiver</th>
             <th>Last Attended</th><th>Status</th>
           </tr></thead><tbody>';
     foreach ($rows as $s) student_row($s);
@@ -131,6 +146,15 @@ function student_table($rows, $empty_msg) {
 
 <div class="card border-0 shadow-sm mb-4">
     <div class="card-header bg-white fw-semibold">
+        Parents <span class="badge bg-primary ms-2" id="count-parents"><?= count($parents) ?></span>
+    </div>
+    <div class="card-body p-0">
+        <?php student_table($parents, 'No parents on roster.'); ?>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white fw-semibold">
         Students <span class="badge bg-primary ms-2" id="count-students"><?= count($students) ?></span>
     </div>
     <div class="card-body p-0">
@@ -180,7 +204,7 @@ function filterRoster() {
                  && attMatch;
         row.style.display = match ? '' : 'none';
     });
-    ['instructors','students','guests'].forEach(function(key) {
+    ['instructors','parents','students','guests'].forEach(function(key) {
         var badge = document.getElementById('count-' + key);
         if (!badge) return;
         var count = 0;
@@ -190,6 +214,12 @@ function filterRoster() {
         badge.textContent = count;
     });
 }
+</script>
+
+<script>
+document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
+    new bootstrap.Tooltip(el);
+});
 </script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>

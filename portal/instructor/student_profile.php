@@ -90,9 +90,10 @@ $ranks = db()->prepare(
 $ranks->execute([$id]);
 $ranks = $ranks->fetchAll();
 
-// All attendance
+// All class sessions and whether this student was present
 $attendance = db()->prepare(
-    'SELECT cs.session_date, cs.id AS session_id, a.present
+    'SELECT cs.session_date, cs.id AS session_id,
+            COALESCE(a.present, 0) AS present
      FROM class_sessions cs
      LEFT JOIN attendance a ON a.session_id = cs.id AND a.student_id = ?
      ORDER BY cs.session_date DESC'
@@ -106,7 +107,7 @@ $pct      = $total ? round($attended / $total * 100) : 0;
 
 // Belt test history
 $belt_tests = db()->prepare(
-    'SELECT bt.id, bt.test_date, bt.result, bt.fee_paid, bt.belt_awarded,
+    'SELECT bt.id, bt.test_date, bt.result, bt.score, bt.fee_paid, bt.belt_awarded,
             r.kyu_dan, r.name AS rank_name
      FROM belt_tests bt
      JOIN ranks r ON r.id = bt.rank_testing_for
@@ -138,13 +139,82 @@ if (has_role('instructor', 'admin')) {
     $notes = $notes_stmt->fetchAll();
 }
 
+// ── Family tabs ───────────────────────────────────────────────
+// Build a tab list if this student is a parent or is a child of a parent.
+$family_tabs = [];
+
+if ($student['student_type'] === 'parent' && $student['user_id']) {
+    // Viewing a parent — load their linked children
+    $ch_stmt = db()->prepare(
+        'SELECT s.id, s.first_name, s.last_name
+         FROM parent_students ps
+         JOIN students s ON s.id = ps.student_id
+         WHERE ps.parent_user_id = ?
+         ORDER BY s.first_name, s.last_name'
+    );
+    $ch_stmt->execute([$student['user_id']]);
+    $children = $ch_stmt->fetchAll();
+
+    if (!empty($children)) {
+        $family_tabs[] = [
+            'id'   => $id,
+            'name' => $student['first_name'] . ' ' . $student['last_name'],
+            'role' => 'parent',
+        ];
+        foreach ($children as $ch) {
+            $family_tabs[] = [
+                'id'   => $ch['id'],
+                'name' => $ch['first_name'] . ' ' . $ch['last_name'],
+                'role' => 'child',
+            ];
+        }
+    }
+} else {
+    // Viewing a child — check if they belong to a parent
+    $par_stmt = db()->prepare(
+        'SELECT u.id AS parent_user_id, sp.id AS parent_sid,
+                sp.first_name AS par_first, sp.last_name AS par_last
+         FROM parent_students ps
+         JOIN users u ON u.id = ps.parent_user_id
+         JOIN students sp ON sp.user_id = u.id
+         WHERE ps.student_id = ?
+         LIMIT 1'
+    );
+    $par_stmt->execute([$id]);
+    $par_row = $par_stmt->fetch();
+
+    if ($par_row) {
+        // Load all siblings under this parent
+        $sib_stmt = db()->prepare(
+            'SELECT s.id, s.first_name, s.last_name
+             FROM parent_students ps
+             JOIN students s ON s.id = ps.student_id
+             WHERE ps.parent_user_id = ?
+             ORDER BY s.first_name, s.last_name'
+        );
+        $sib_stmt->execute([$par_row['parent_user_id']]);
+        $siblings = $sib_stmt->fetchAll();
+
+        $family_tabs[] = [
+            'id'   => $par_row['parent_sid'],
+            'name' => $par_row['par_first'] . ' ' . $par_row['par_last'],
+            'role' => 'parent',
+        ];
+        foreach ($siblings as $sib) {
+            $family_tabs[] = [
+                'id'   => $sib['id'],
+                'name' => $sib['first_name'] . ' ' . $sib['last_name'],
+                'role' => 'child',
+            ];
+        }
+    }
+}
+
 $page_title = $student['first_name'] . ' ' . $student['last_name'];
 include __DIR__ . '/../includes/header.php';
 ?>
 
-<div class="d-flex align-items-center gap-3 mb-4">
-    <a href="<?= has_role('admin') ? '../admin/students.php' : (has_role('instructor') ? 'index.php#tab-students' : '../student/index.php') ?>"
-       class="btn btn-success btn-sm">← Back</a>
+<div class="d-flex align-items-center gap-3 mb-3">
     <h4 class="mb-0">
         <?= htmlspecialchars($student['first_name'] . ' ' . $student['last_name']) ?>
         <?php if (!$student['active']): ?>
@@ -163,6 +233,22 @@ include __DIR__ . '/../includes/header.php';
     </div>
     <?php endif; ?>
 </div>
+
+<?php if (!empty($family_tabs)): ?>
+<ul class="nav nav-tabs mb-4">
+    <?php foreach ($family_tabs as $tab): ?>
+    <li class="nav-item">
+        <a class="nav-link <?= $tab['id'] === $id ? 'active' : '' ?>"
+           href="student_profile.php?id=<?= $tab['id'] ?>">
+            <?= htmlspecialchars($tab['name']) ?>
+            <?php if ($tab['role'] === 'parent'): ?>
+                <span class="badge bg-secondary ms-1" style="font-size:.6rem;vertical-align:middle">Parent</span>
+            <?php endif; ?>
+        </a>
+    </li>
+    <?php endforeach; ?>
+</ul>
+<?php endif; ?>
 
 <div class="row g-4">
 
@@ -202,18 +288,29 @@ include __DIR__ . '/../includes/header.php';
                         <div class="small text-muted mb-1">Account Type</div>
                         <div>
                             <?php
+                            $acct_tips = [
+                                'student'    => 'Paying participant ($30/month tuition)',
+                                'guest'      => 'Non-paying participant (registration fee not yet paid)',
+                                'parent'     => 'Family account — one tuition payment covers the whole family',
+                                'instructor' => 'Teaches or assists with classes',
+                                'admin'      => 'Full administrative access',
+                            ];
                             $type_badges = [
                                 'admin'      => '<span class="badge bg-danger">Admin</span>',
                                 'instructor' => '<span class="badge bg-warning text-dark">Instructor</span>',
                                 'student'    => '<span class="badge bg-primary">Student</span>',
+                                'parent'     => '<span class="badge bg-info text-dark">Parent</span>',
                                 'guest'      => '<span class="badge bg-secondary">Guest</span>',
                             ];
                             echo $type_badges[$student['student_type']] ?? '<span class="badge bg-secondary">Guest</span>';
-                            ?>
+                            $tip = $acct_tips[$student['student_type']] ?? '';
+                            if ($tip): ?>
+                            <span class="text-muted small ms-1" data-bs-toggle="tooltip" title="<?= htmlspecialchars($tip) ?>">ⓘ</span>
+                        <?php endif; ?>
                         </div>
                     </div>
                     <div class="col-6">
-                        <div class="small text-muted mb-1">Injury Waiver</div>
+                        <div class="small text-muted mb-1">Liability Waiver</div>
                         <div>
                             <?php if ($student['injury_waiver']): ?>
                                 <span class="text-success">✓ <?= $student['injury_waiver_date'] ? date('M j, Y', strtotime($student['injury_waiver_date'])) : '' ?></span>
@@ -245,11 +342,6 @@ include __DIR__ . '/../includes/header.php';
             <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
                 <span>
                     Recent Attendance
-                    <?php if (has_role('instructor', 'admin')): ?>
-                    <span class="text-muted fw-normal small ms-2">
-                        <?= $attended ?>/<?= $total ?> sessions (<?= $pct ?>%)
-                    </span>
-                    <?php endif; ?>
                 </span>
                 <?php if (has_role('instructor') && !has_role('admin') && !empty($attendance)): ?>
                 <div class="d-flex gap-2">
@@ -265,7 +357,7 @@ include __DIR__ . '/../includes/header.php';
                 <input type="hidden" name="action" value="update_attendance">
                 <div class="card-body p-0" style="max-height:320px;overflow-y:auto">
                     <?php if (empty($attendance)): ?>
-                        <p class="p-3 text-muted">No sessions recorded.</p>
+                        <p class="p-3 text-muted">No classes recorded.</p>
                     <?php else: ?>
                     <table class="table table-sm table-hover mb-0">
                         <tbody>
@@ -277,8 +369,6 @@ include __DIR__ . '/../includes/header.php';
                                 <td>
                                     <?php if ($a['present']): ?>
                                         <span class="badge bg-success">Present</span>
-                                    <?php else: ?>
-                                        <span class="badge bg-danger">Absent</span>
                                     <?php endif; ?>
                                     <?php if (has_role('instructor') && !has_role('admin')): ?>
                                     <span class="att-edit ms-2" style="display:none">
@@ -371,7 +461,7 @@ include __DIR__ . '/../includes/header.php';
                         <tr>
                             <th>Date</th>
                             <th>Testing For</th>
-                            <th>Result</th>
+                            <th>Score</th>
                             <th class="text-center">Fee</th>
                             <th class="text-center">Awarded</th>
                         </tr>
@@ -382,10 +472,12 @@ include __DIR__ . '/../includes/header.php';
                             <td class="text-nowrap"><?= date('M j, Y', strtotime($bt['test_date'])) ?></td>
                             <td><?= htmlspecialchars($bt['kyu_dan']) ?></td>
                             <td>
-                                <?php if ($bt['result']==='pass'): ?>
-                                    <span class="badge bg-success">Pass</span>
-                                <?php elseif ($bt['result']==='fail'): ?>
-                                    <span class="badge bg-danger">Fail</span>
+                                <?php if (isset($bt['score']) && $bt['score'] !== null): ?>
+                                    <?php if ($bt['result']==='pass'): ?>
+                                        <span class="badge bg-success"><?= (int)$bt['score'] ?>%</span>
+                                    <?php else: ?>
+                                        <span class="badge bg-danger"><?= (int)$bt['score'] ?>%</span>
+                                    <?php endif; ?>
                                 <?php else: ?>
                                     <span class="badge bg-secondary">Pending</span>
                                 <?php endif; ?>
@@ -447,6 +539,12 @@ include __DIR__ . '/../includes/header.php';
     </div>
 </div>
 <?php endif; ?>
+
+<script>
+document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
+    new bootstrap.Tooltip(el);
+});
+</script>
 
 <?php if (has_role('instructor', 'admin')): ?>
 <script>

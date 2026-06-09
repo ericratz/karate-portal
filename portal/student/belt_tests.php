@@ -10,7 +10,7 @@ if (!$student) { header('Location: index.php'); exit; }
 
 // All belt tests
 $tests = db()->prepare(
-    'SELECT bt.test_date, r.name AS rank_name, r.kyu_dan, bt.result, bt.fee_paid, bt.belt_awarded
+    'SELECT bt.test_date, r.name AS rank_name, r.kyu_dan, bt.result, bt.score, bt.fee_paid, bt.belt_awarded
      FROM belt_tests bt
      JOIN ranks r ON r.id = bt.rank_testing_for
      WHERE bt.student_id = ?
@@ -19,7 +19,7 @@ $tests = db()->prepare(
 $tests->execute([$student['id']]);
 $tests = $tests->fetchAll();
 
-$passed = count(array_filter($tests, fn($t) => $t['result'] === 'pass'));
+$passed  = count(array_filter($tests, fn($t) => $t['result'] === 'pass'));
 $pending = count(array_filter($tests, fn($t) => $t['result'] === 'pending'));
 
 $page_title = 'Belt Test History';
@@ -28,17 +28,16 @@ include __DIR__ . '/../includes/header.php';
 function fmt_date(string $d): string {
     return date('M j, Y', strtotime($d));
 }
-function badge_result(string $r): string {
-    switch ($r) {
-        case 'pass': return '<span class="badge bg-success">Pass</span>';
-        case 'fail': return '<span class="badge bg-danger">Fail</span>';
-        default:     return '<span class="badge bg-secondary">Pending</span>';
-    }
+function badge_result(string $r, ?int $score): string {
+    if ($score === null) return '<span class="badge bg-secondary">Pending</span>';
+    $label = $score . '%';
+    if ($r === 'pass') return '<span class="badge bg-success">' . $label . '</span>';
+    if ($r === 'fail') return '<span class="badge bg-danger">'  . $label . '</span>';
+    return '<span class="badge bg-secondary">' . $label . '</span>';
 }
 ?>
 
 <div class="d-flex align-items-center gap-3 mb-4">
-    <a href="index.php" class="btn btn-outline-secondary btn-sm">← Dashboard</a>
     <h4 class="mb-0">Belt Test History — <?= htmlspecialchars($student['first_name'] . ' ' . $student['last_name']) ?></h4>
 </div>
 
@@ -85,7 +84,7 @@ function badge_result(string $r): string {
                     <th>#</th>
                     <th>Date</th>
                     <th>Testing For</th>
-                    <th>Result</th>
+                    <th>Score</th>
                     <th>Fee</th>
                     <th>Belt Awarded</th>
                 </tr>
@@ -96,7 +95,7 @@ function badge_result(string $r): string {
                     <td class="text-muted small"><?= count($tests) - $i ?></td>
                     <td><?= fmt_date($t['test_date']) ?></td>
                     <td><?= htmlspecialchars($t['kyu_dan']) ?></td>
-                    <td><?= badge_result($t['result']) ?></td>
+                    <td><?= badge_result($t['result'], isset($t['score']) ? (int)$t['score'] : null) ?></td>
                     <td>
                         <?= $t['fee_paid']
                             ? '<span class="text-success">Paid</span>'

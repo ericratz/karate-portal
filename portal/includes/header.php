@@ -25,6 +25,9 @@
         [data-bs-theme="dark"] .nav-tabs .nav-link.active { color: #c89ef2 !important; }
         [data-bs-theme="dark"] .nav-tabs .nav-link:hover { color: #c89ef2 !important; }
 
+        /* Dark mode: make text-muted the same brightness as body text */
+        [data-bs-theme="dark"] { --bs-secondary-color: #dee2e6; }
+
         /* Dark mode card fixes */
         [data-bs-theme="dark"] .card { border: 1px solid rgba(255,255,255,.15) !important; }
         [data-bs-theme="dark"] .card-header.bg-white {
@@ -52,8 +55,19 @@
             text-transform: uppercase;
             letter-spacing: .05em;
         }
-        body { background: #f8f9fa; }
+        body { background: #f8f9fa; padding-bottom: 57px; }
         [data-bs-theme="dark"] body { background: #212529; }
+        #site-footer {
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            z-index: 1030;
+            background: #6f42c1;
+            border-top: 1px solid #5a32a3;
+        }
+        [data-bs-theme="dark"] #site-footer {
+            background: #6f42c1;
+            border-top-color: #5a32a3;
+        }
         .form-check-input {
             border: 2px solid #555;
             width: 1.15em;
@@ -144,15 +158,17 @@
 <nav class="navbar navbar-expand-md">
     <div class="container-fluid">
         <?php
-        if (has_role('admin'))       $dashboard_url = '/karate/portal/admin/';
+        if (has_role('admin'))          $dashboard_url = '/karate/portal/admin/';
         elseif (has_role('instructor')) $dashboard_url = '/karate/portal/instructor/';
+        elseif (has_role('parent'))     $dashboard_url = '/karate/portal/parent/';
         else                            $dashboard_url = '/karate/portal/student/';
         ?>
         <a class="navbar-brand fw-semibold" href="<?= $dashboard_url ?>">
             &#9675; <?php
-                if (has_role('admin'))            echo 'Admin Dashboard';
-                elseif (has_role('instructor'))   echo 'Instructor Dashboard';
-                else                              echo 'My Dashboard';
+                if (has_role('admin'))          echo 'Admin Dashboard';
+                elseif (has_role('instructor')) echo 'Instructor Dashboard';
+                elseif (has_role('parent'))     echo 'My Dashboard';
+                else                            echo 'My Dashboard';
             ?>
         </a>
         <button class="navbar-toggler" type="button"
@@ -168,20 +184,21 @@
                        data-bs-toggle="dropdown" role="button">Admin</a>
                     <ul class="dropdown-menu">
                         <li><h6 class="dropdown-header">Instructor</h6></li>
-                        <li><a class="dropdown-item" href="/karate/portal/instructor/">Instructor Dashboard</a></li>
-                        <li><a class="dropdown-item" href="/karate/portal/admin/students.php">Roster</a></li>
                         <li><a class="dropdown-item" href="/karate/portal/instructor/attendance_sessions.php">Attendance</a></li>
                         <li><a class="dropdown-item" href="/karate/portal/instructor/belt_tests_all.php">Belt Tests</a></li>
+                        <li><a class="dropdown-item" href="/karate/portal/instructor/">Instructor Dashboard</a></li>
+                        <li><a class="dropdown-item" href="/karate/portal/admin/students.php">Roster</a></li>
                         <li><a class="dropdown-item" href="/karate/portal/admin/student_notes.php">Student Notes</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><h6 class="dropdown-header">Finances</h6></li>
-                        <li><a class="dropdown-item" href="/karate/portal/admin/payments.php">Payments</a></li>
-                        <li><a class="dropdown-item" href="/karate/portal/admin/waivers.php">Payment Waivers</a></li>
+                        <li><a class="dropdown-item" href="/karate/portal/admin/donations.php">Donations</a></li>
                         <li><a class="dropdown-item" href="/karate/portal/admin/expenses.php">Expenses</a></li>
+                        <li><a class="dropdown-item" href="/karate/portal/admin/waivers.php">Payment Waivers</a></li>
+                        <li><a class="dropdown-item" href="/karate/portal/admin/payments.php">Payments</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><h6 class="dropdown-header">Security</h6></li>
-                        <li><a class="dropdown-item" href="/karate/portal/admin/users.php">Users</a></li>
                         <li><a class="dropdown-item" href="/karate/portal/admin/audit_log.php">Audit Log</a></li>
+                        <li><a class="dropdown-item" href="/karate/portal/admin/users.php">Users</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><h6 class="dropdown-header">Communication</h6></li>
                         <li><a class="dropdown-item" href="/karate/portal/admin/general_notes.php">Class Notes</a></li>

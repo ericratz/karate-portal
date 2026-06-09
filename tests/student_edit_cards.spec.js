@@ -8,16 +8,14 @@
 //   - Payment History card: add form toggle
 //   - Add note round-trip on student_edit.php
 const { test, expect } = require('@playwright/test');
-const { login, logout, assertNoPhpErrors, BASE } = require('./helpers');
-
-const { ADMIN_USER, ADMIN_PASS } = require('./credentials');
+const { assertNoPhpErrors, BASE, AUTH } = require('./helpers');
 const STUDENT_ID = 2; // Sarah Johnson — a stable student in the test DB
 const TS = Date.now();
 
 test.describe('Student Edit Cards', () => {
+    test.use({ storageState: AUTH.admin });
 
     test.beforeEach(async ({ page }) => {
-        await login(page, ADMIN_USER, ADMIN_PASS);
         await page.goto(BASE + `/admin/student_edit.php?id=${STUDENT_ID}`);
         await assertNoPhpErrors(page, 'student edit loads');
     });
@@ -55,7 +53,6 @@ test.describe('Student Edit Cards', () => {
         await expect(page.locator('#bt-add-box')).toBeVisible();
         await expect(page.locator('#bt-add-box input[name="test_date"]')).toBeVisible();
         await expect(page.locator('#bt-add-box select[name="rank_testing_for"]')).toBeVisible();
-        await expect(page.locator('#bt-add-box select[name="result"]')).toBeVisible();
     });
 
     test('bt-add-box has Fee Paid and Belt Awarded checkboxes', async ({ page }) => {
@@ -71,13 +68,11 @@ test.describe('Student Edit Cards', () => {
         await expect(page.locator('#bt-add-box')).toBeHidden();
     });
 
-    test('result select in bt-add-box has pending/pass/fail options', async ({ page }) => {
+    test('bt-add-box score input controls result (no result select)', async ({ page }) => {
         await page.click('button:has-text("+ Record Test")');
-        const opts = await page.locator('#bt-add-box select[name="result"] option').allTextContents();
-        const vals = opts.map(o => o.trim().toLowerCase());
-        expect(vals).toContain('pending');
-        expect(vals).toContain('pass');
-        expect(vals).toContain('fail');
+        // bt-add-box uses a score number input (name="score"), not a result select
+        await expect(page.locator('#bt-add-box input[name="score"]')).toBeVisible();
+        expect(await page.locator('#bt-add-box select[name="result"]').count()).toBe(0);
     });
 
     // ── PAYMENT WAIVERS CARD ─────────────────────────────────────────────────────
@@ -112,9 +107,8 @@ test.describe('Student Edit Cards', () => {
 
     // ── INJURY WAIVER CARD ───────────────────────────────────────────────────────
 
-    test('Injury Waiver card is visible', async ({ page }) => {
-        // Use exact match to avoid matching "Payment Waivers" header
-        await expect(page.locator('.card-header').filter({ hasText: 'Injury Waiver' }).first()).toBeVisible();
+    test('Liability Waiver card is visible', async ({ page }) => {
+        await expect(page.locator('.card-header').filter({ hasText: 'Liability Waiver' }).first()).toBeVisible();
     });
 
     test('#injuryEditBtn is visible', async ({ page }) => {
@@ -163,45 +157,24 @@ test.describe('Student Edit Cards', () => {
         await expect(page.locator('.card-header').filter({ hasText: 'Student Notes' })).toBeVisible();
     });
 
-    test('+ Add Note button reveals textarea', async ({ page }) => {
-        await page.click('button:has-text("+ Add Note")');
-        await expect(page.locator('textarea[name="note_content"]')).toBeVisible();
+    test('note textarea is always visible in add-note box', async ({ page }) => {
+        await expect(page.locator('#addNoteText')).toBeVisible();
     });
 
-    test('Cancel in note add form hides the form', async ({ page }) => {
-        await page.click('button:has-text("+ Add Note")');
-        await page.locator('button:has-text("Cancel")').last().click();
-        await expect(page.locator('textarea[name="note_content"]')).toBeHidden();
+    test('Save Note button is present in add-note box', async ({ page }) => {
+        await expect(page.locator('button:has-text("Save Note")')).toBeVisible();
     });
 
     // ── NOTE ADD ROUND-TRIP ──────────────────────────────────────────────────────
 
     test('adding a note on student_edit.php saves and displays it', async ({ page }) => {
         const noteText = `StudentEdit note ${TS}`;
-        await page.click('button:has-text("+ Add Note")');
-        await page.fill('textarea[name="note_content"]', noteText);
-        await page.locator('form:has(textarea[name="note_content"]) button[type="submit"]').click();
+        await page.fill('#addNoteText', noteText);
+        await page.locator('form:has(#addNoteText) button[type="submit"]').click();
         await page.waitForLoadState('domcontentloaded');
         await assertNoPhpErrors(page, 'note saved');
         await expect(page.locator('body')).toContainText(noteText);
     });
 
-    test.afterAll(async ({ browser }) => {
-        // Clean up the note added in the round-trip test
-        test.setTimeout(30_000);
-        const page = await browser.newPage();
-        try {
-            await login(page, ADMIN_USER, ADMIN_PASS);
-            await page.goto(BASE + `/admin/student_notes.php?student_id=${STUDENT_ID}`);
-            // Enter edit mode and delete the note
-            await page.click('#editToggle');
-            const entry = page.locator('.border-bottom, .note-entry, li').filter({ hasText: `StudentEdit note ${TS}` });
-            if (await entry.isVisible()) {
-                page.once('dialog', d => d.accept());
-                await entry.locator('button.delete-btn, .delete-btn button, button:has-text("✕")').first().click();
-                await page.waitForLoadState('domcontentloaded');
-            }
-        } catch (e) { /* best-effort */ }
-        await page.close();
-    });
+    // No afterAll needed — global-teardown restores the DB after every run.
 });

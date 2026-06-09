@@ -77,13 +77,12 @@ if (!$signed && $_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$page_title = 'Injury Waiver';
+$page_title = 'Liability Waiver';
 include __DIR__ . '/../includes/header.php';
 ?>
 
 <div class="d-flex align-items-center gap-3 mb-4">
-    <a href="index.php" class="btn btn-success btn-sm">← Dashboard</a>
-    <h4 class="mb-0">Injury Waiver</h4>
+    <h4 class="mb-0">Liability Waiver</h4>
     <?php if ($signed): ?>
         <span class="badge bg-success ms-2">Signed <?= htmlspecialchars($student['injury_waiver_date']) ?></span>
     <?php endif; ?>
@@ -96,7 +95,7 @@ include __DIR__ . '/../includes/header.php';
 <?php if ($signed): ?>
 <!-- ── SIGNED CONFIRMATION ── -->
 <div class="alert alert-success">
-    You signed this waiver on <strong><?= htmlspecialchars($student['injury_waiver_date'] ?? 'file') ?></strong>.
+    You signed this liability waiver on <strong><?= htmlspecialchars($student['injury_waiver_date'] ?? 'file') ?></strong>.
     Your waiver is on file — no further action is needed.
 </div>
 <?php if ($submission): ?>
@@ -140,7 +139,7 @@ include __DIR__ . '/../includes/header.php';
     <div class="card border-0 shadow-sm mb-4">
         <div class="card-header bg-white text-center py-3">
             <h5 class="mb-1 fw-bold">Shotokan Karate Training Program</h5>
-            <div class="fw-semibold">Waiver of Legal Rights and Indemnification Agreement</div>
+            <div class="fw-semibold">Liability Waiver and Indemnification Agreement</div>
         </div>
         <div class="card-body" style="font-size:.92rem;line-height:1.75">
 

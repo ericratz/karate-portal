@@ -2,19 +2,14 @@
 // Tests for instructor/attendance.php UI features:
 // sort buttons, name filter, row click, section cards, waiver warnings.
 const { test, expect } = require('@playwright/test');
-const { login, logout, visit, assertNoPhpErrors, BASE } = require('./helpers');
-
-const { INST_USER, INST_PASS, ADMIN_USER, ADMIN_PASS } = require('./credentials');
+const { visit, assertNoPhpErrors, BASE, AUTH } = require('./helpers');
 
 // Use a fixed far-future date so this never lands on a real class session
 // and cleanup can always find and remove it.
 const today = '2099-01-15';
 
 test.describe('Attendance UI', () => {
-
-    test.beforeEach(async ({ page }) => {
-        await login(page, INST_USER, INST_PASS);
-    });
+    test.use({ storageState: AUTH.instructor });
 
     test('page loads without errors', async ({ page }) => {
         await visit(page, `/instructor/attendance.php?date=${today}`, 'attendance page');
@@ -122,12 +117,6 @@ test.describe('Attendance UI', () => {
         expect(warnBadges).toBeGreaterThanOrEqual(0);
     });
 
-    test('back button goes to instructor dashboard', async ({ page }) => {
-        await page.goto(BASE + `/instructor/attendance.php?date=${today}`);
-        const back = await page.locator('a:has-text("← Back")').getAttribute('href');
-        expect(back).toContain('index.php');
-    });
-
     test('count badge shows correct number of students', async ({ page }) => {
         await page.goto(BASE + `/instructor/attendance.php?date=${today}`);
         const badgeCount = parseInt(await page.textContent('#count-students') ?? '0', 10);
@@ -135,13 +124,11 @@ test.describe('Attendance UI', () => {
         expect(badgeCount).toBe(rowCount);
     });
 
-    test('Delete Session button appears after attendance is saved', async ({ page }) => {
-        // First save attendance to ensure a session record exists
+    test('Delete Class button appears after attendance is saved', async ({ page }) => {
         await page.goto(BASE + `/instructor/attendance.php?date=${today}`);
         await page.click('button:has-text("Save Attendance")');
         await page.waitForLoadState('domcontentloaded');
-        // Delete This Session button should now be visible
-        await expect(page.locator('button:has-text("Delete This Session")')).toBeVisible();
+        await expect(page.locator('button:has-text("Delete This Class")')).toBeVisible();
     });
 
     test('form hidden input session_date equals the URL date', async ({ page }) => {
@@ -150,20 +137,6 @@ test.describe('Attendance UI', () => {
         expect(val).toBe(today);
     });
 
-    test.afterAll(async ({ browser }) => {
-        test.setTimeout(30_000);
-        const page = await browser.newPage();
-        try {
-            await login(page, INST_USER, INST_PASS);
-            await page.goto(BASE + `/instructor/attendance.php?date=${today}`);
-            await page.waitForLoadState('domcontentloaded');
-            const delBtn = page.locator('button:has-text("Delete This Session")');
-            if (await delBtn.isVisible()) {
-                page.once('dialog', d => d.accept());
-                await delBtn.click();
-                await page.waitForLoadState('domcontentloaded');
-            }
-        } catch (e) { /* best-effort */ }
-        await page.close();
-    });
+    // No afterAll needed — global-teardown restores the DB after every run.
 });
+

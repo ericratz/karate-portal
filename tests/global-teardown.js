@@ -1,4 +1,5 @@
-// Playwright globalTeardown: restore the DB snapshot if any tests failed.
+// Playwright globalTeardown: always restore the DB snapshot after every run.
+// This ensures tests never leave behind junk (fake accounts, stale records, etc.).
 const { spawnSync } = require('child_process');
 const path = require('path');
 const fs   = require('fs');
@@ -20,19 +21,14 @@ module.exports = async function globalTeardown() {
         return;
     }
 
-    if (!failed) {
-        console.log('[global-teardown] Tests passed — skipping DB restore');
-        cleanup();
-        return;
-    }
-
     if (!snapshotOk || !fs.existsSync(SNAPSHOT)) {
-        console.warn('[global-teardown] Tests FAILED but no snapshot is available — DB not restored');
+        console.warn('[global-teardown] No snapshot available — DB not restored');
         cleanup();
         return;
     }
 
-    console.log('[global-teardown] Tests FAILED — restoring DB snapshot...');
+    const reason = failed ? 'Tests FAILED' : 'Tests passed';
+    console.log(`[global-teardown] ${reason} — restoring DB snapshot...`);
     const { host, name, user, pass } = getDbConfig();
     const mysql = findMysqlBin('mysql');
     const args  = ['-h', host, '-u', user];

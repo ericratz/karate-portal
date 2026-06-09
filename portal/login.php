@@ -16,22 +16,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($username === '' || $password === '') {
         $error = 'Please enter your username and password.';
-    } elseif (is_rate_limited($username, $_SERVER['REMOTE_ADDR'] ?? '')) {
-        $error = 'Too many failed attempts. Please wait 15 minutes and try again.';
-    } elseif (attempt_login($username, $password)) {
-        header('Location: ' . dashboard_url($_SESSION['role']));
-        exit;
     } else {
-        $error = 'Invalid username or password.';
+        switch (attempt_login($username, $password)) {
+            case 'ok':
+                header('Location: ' . dashboard_url($_SESSION['role']));
+                exit;
+            case 'inactive':
+                $error = 'Your account has been deactivated. Contact Noji for help.';
+                break;
+            case 'rate_limited':
+                $error = 'Too many failed attempts. Please wait 15 minutes and try again.';
+                break;
+            default:
+                $error = 'Invalid username or password.';
+        }
     }
 }
 
-function dashboard_url(string $role): string {
-    switch ($role) {
-        case 'admin':      return '/karate/portal/admin/';
-        case 'instructor': return '/karate/portal/instructor/';
-        default:           return '/karate/portal/student/';
-    }
+// Google OAuth error messages
+$google_errors = [
+    'google_failed' => 'Google sign-in failed. Please try again.',
+    'inactive'      => 'Your account is inactive. Contact Noji.',
+];
+if ($error === '' && isset($_GET['error']) && isset($google_errors[$_GET['error']])) {
+    $error = $google_errors[$_GET['error']];
+}
+
+// Build Google OAuth URL if credentials are configured
+$google_login_url = null;
+if (defined('GOOGLE_CLIENT_ID') && GOOGLE_CLIENT_ID !== '') {
+    require_once __DIR__ . '/vendor/autoload.php';
+    $google_client = new Google\Client();
+    $google_client->setClientId(GOOGLE_CLIENT_ID);
+    $google_client->setClientSecret(GOOGLE_CLIENT_SECRET);
+    $google_client->setRedirectUri(GOOGLE_REDIRECT_URI);
+    $google_client->addScope('email');
+    $google_client->addScope('profile');
+    $google_login_url = $google_client->createAuthUrl();
 }
 ?>
 <!DOCTYPE html>
@@ -56,6 +77,13 @@ function dashboard_url(string $role): string {
         }
         .login-card .card-header h4 { margin: 0; font-weight: 600; }
         .login-card .card-header small { opacity: .85; }
+        .btn-google {
+            background: #fff;
+            border: 1px solid #dadce0;
+            color: #3c4043;
+            font-weight: 500;
+        }
+        .btn-google:hover { background: #f8f8f8; border-color: #c6c6c6; }
     </style>
 </head>
 <body>
@@ -90,6 +118,21 @@ function dashboard_url(string $role): string {
                     <button type="submit" class="btn btn-primary btn-lg">Log In</button>
                 </div>
             </form>
+
+            <?php if ($google_login_url): ?>
+            <div class="d-flex align-items-center my-3">
+                <hr class="flex-grow-1">
+                <span class="px-2 text-muted small">or</span>
+                <hr class="flex-grow-1">
+            </div>
+            <div class="d-grid">
+                <a href="<?= htmlspecialchars($google_login_url) ?>" class="btn btn-google">
+                    <img src="https://developers.google.com/identity/images/g-logo.png"
+                         width="18" height="18" class="me-2" alt="">
+                    Sign in with Google
+                </a>
+            </div>
+            <?php endif; ?>
 
         </div>
         <div class="card-footer text-center text-muted small py-2">

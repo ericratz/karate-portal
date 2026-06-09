@@ -20,6 +20,7 @@ if (!$student_id) {
     $instructors = array_filter($all, fn($s) => in_array($s['student_type'], ['instructor','admin']));
     $students    = array_filter($all, fn($s) => $s['student_type'] === 'student');
     $guests      = array_filter($all, fn($s) => $s['student_type'] === 'guest');
+    $parents     = array_filter($all, fn($s) => $s['student_type'] === 'parent');
 
     $page_title = 'Student Notes';
     include __DIR__ . '/../includes/header.php';
@@ -68,6 +69,13 @@ if (!$student_id) {
             Instructors <span class="badge bg-primary ms-2"><?= count($instructors) ?></span>
         </div>
         <div class="card-body p-0"><?php notes_table($instructors, 'No instructors on roster.'); ?></div>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white fw-semibold">
+            Parents <span class="badge bg-primary ms-2"><?= count($parents) ?></span>
+        </div>
+        <div class="card-body p-0"><?php notes_table($parents, 'No parents on roster.'); ?></div>
     </div>
 
     <div class="card border-0 shadow-sm mb-4">

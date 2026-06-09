@@ -4,7 +4,7 @@ require_once __DIR__ . '/../includes/db.php';
 require_role('instructor', 'admin');
 
 $test_id = (int)($_GET['id'] ?? 0);
-$ref_pid = (int)($_GET['ref_pid'] ?? 0); // student profile to return to
+$ref_pid = (int)($_GET['ref_pid'] ?? 0);
 $msg = $error = '';
 
 // ── Delete ───────────────────────────────────────────────────
@@ -20,33 +20,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
 // ── Save ─────────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== 'delete') {
     verify_csrf();
-    $sid     = (int)($_POST['student_id']      ?? 0);
-    $date    = $_POST['test_date']             ?? '';
-    $rank_id = (int)($_POST['rank_id']         ?? 0);
-    $result  = $_POST['result']                ?? 'pending';
-    $fee     = isset($_POST['fee_paid'])        ? 1 : 0;
-    $awarded = isset($_POST['belt_awarded'])    ? 1 : 0;
-    $notes   = trim($_POST['notes']            ?? '');
-    $rpid    = (int)($_POST['ref_pid']         ?? 0);
+    $sid     = (int)($_POST['student_id']   ?? 0);
+    $date    = $_POST['test_date']          ?? '';
+    $rank_id = (int)($_POST['rank_id']      ?? 0);
+    $score   = $_POST['score'] !== '' ? (int)$_POST['score'] : null;
+    $fee     = isset($_POST['fee_paid'])    ? 1 : 0;
+    $awarded = isset($_POST['belt_awarded']) ? 1 : 0;
+    $notes   = trim($_POST['notes']         ?? '');
+    $rpid    = (int)($_POST['ref_pid']      ?? 0);
+
+    // Auto-compute result from score
+    if ($score === null) {
+        $result = 'pending';
+    } elseif ($score >= 80) {
+        $result = 'pass';
+    } else {
+        $result = 'fail';
+        $awarded = 0;
+    }
+    if ($awarded && $result !== 'pass') $awarded = 0;
 
     if (!$sid || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) || !$rank_id) {
         $error = 'Student, date, and rank are required.';
+    } elseif ($score !== null && ($score < 0 || $score > 100)) {
+        $error = 'Score must be between 0 and 100.';
     } else {
-        if ($awarded && $result !== 'pass') $awarded = 0;
-
         if ($test_id) {
             db()->prepare(
                 'UPDATE belt_tests
                  SET student_id=?, test_date=?, rank_testing_for=?,
-                     result=?, fee_paid=?, belt_awarded=?, notes=?
+                     result=?, score=?, fee_paid=?, belt_awarded=?, notes=?
                  WHERE id=?'
-            )->execute([$sid, $date, $rank_id, $result, $fee, $awarded, $notes ?: null, $test_id]);
+            )->execute([$sid, $date, $rank_id, $result, $score, $fee, $awarded, $notes ?: null, $test_id]);
         } else {
             db()->prepare(
                 'INSERT INTO belt_tests
-                 (student_id, test_date, rank_testing_for, result, fee_paid, belt_awarded, notes, created_by)
-                 VALUES (?,?,?,?,?,?,?,?)'
-            )->execute([$sid, $date, $rank_id, $result, $fee, $awarded, $notes ?: null, current_user_id()]);
+                 (student_id, test_date, rank_testing_for, result, score, fee_paid, belt_awarded, notes, created_by)
+                 VALUES (?,?,?,?,?,?,?,?,?)'
+            )->execute([$sid, $date, $rank_id, $result, $score, $fee, $awarded, $notes ?: null, current_user_id()]);
             $test_id = (int)db()->lastInsertId();
         }
 
@@ -71,7 +82,6 @@ if ($test_id) {
     $stmt->execute([$test_id]);
     $test = $stmt->fetch();
     if (!$test) { header('Location: belt_tests_all.php'); exit; }
-    if (!$ref_pid) $ref_pid = 0;
 }
 
 $prefill_student = $test ? $test['student_id'] : (int)($_GET['student_id'] ?? 0);
@@ -84,6 +94,34 @@ $all_ranks = db()->query(
     'SELECT id, kyu_dan, name FROM ranks ORDER BY rank_order'
 )->fetchAll();
 
+// Build student info map for JS (current rank + belt test history)
+$student_info = [];
+foreach ($all_students as $s) {
+    $rank_q = db()->prepare(
+        'SELECT r.name, r.kyu_dan FROM student_ranks sr
+         JOIN ranks r ON r.id = sr.rank_id
+         WHERE sr.student_id = ? ORDER BY r.rank_order DESC LIMIT 1'
+    );
+    $rank_q->execute([$s['id']]);
+    $rank_row = $rank_q->fetch();
+
+    $hist_q = db()->prepare(
+        'SELECT bt.test_date, r.kyu_dan, r.name AS rank_name,
+                bt.result, bt.score, bt.belt_awarded
+         FROM belt_tests bt
+         JOIN ranks r ON r.id = bt.rank_testing_for
+         WHERE bt.student_id = ?
+         ORDER BY bt.test_date DESC'
+    );
+    $hist_q->execute([$s['id']]);
+    $history = $hist_q->fetchAll(PDO::FETCH_ASSOC);
+
+    $student_info[$s['id']] = [
+        'rank'    => $rank_row ? $rank_row['kyu_dan'] . ' — ' . $rank_row['name'] : '—',
+        'history' => $history,
+    ];
+}
+
 if (isset($_GET['saved'])) $msg = 'Saved.';
 
 $page_title = $test_id ? 'Edit Belt Test' : 'New Belt Test';
@@ -94,7 +132,6 @@ $back_label = $ref_pid ? '← Profile' : '← All Belt Tests';
 ?>
 
 <div class="d-flex align-items-center gap-3 mb-4">
-    <a href="<?= $back ?>" class="btn btn-outline-secondary btn-sm"><?= $back_label ?></a>
     <h4 class="mb-0"><?= $test_id ? 'Edit Belt Test' : 'New Belt Test' ?></h4>
     <?php if ($test_id): ?>
     <form method="post" class="d-inline ms-auto"
@@ -111,7 +148,7 @@ $back_label = $ref_pid ? '← Profile' : '← All Belt Tests';
 
 <div class="alert alert-light border mb-4 small">
     <strong>Workflow:</strong>
-    Record the test → set <em>Pass / Fail</em> after evaluation →
+    Record the test → enter score after evaluation (80% or above = pass) →
     check <em>Belt Awarded</em> when the belt is physically given.
     Rank is only updated in the student's record when Belt Awarded is checked.
 </div>
@@ -124,8 +161,9 @@ $back_label = $ref_pid ? '← Profile' : '← All Belt Tests';
 
             <div class="mb-3">
                 <label class="form-label">Student *</label>
-                <select name="student_id" class="form-select" required
-                        <?= $prefill_student ? 'disabled' : '' ?>>
+                <select name="student_id" class="form-select" id="studentSelect" required
+                        <?= $prefill_student ? 'disabled' : '' ?>
+                        onchange="onStudentChange(this.value)">
                     <option value="">— select —</option>
                     <?php foreach ($all_students as $s): ?>
                     <option value="<?= $s['id'] ?>"
@@ -137,6 +175,16 @@ $back_label = $ref_pid ? '← Profile' : '← All Belt Tests';
                 <?php if ($prefill_student): ?>
                 <input type="hidden" name="student_id" value="<?= $prefill_student ?>">
                 <?php endif; ?>
+            </div>
+
+            <!-- Student info panel (populated via JS) -->
+            <div id="studentInfoPanel" class="border rounded small mb-3 p-3"
+                 style="<?= $prefill_student ? '' : 'display:none' ?>">
+                <div class="mb-2"><strong>Current Rank:</strong> <span id="studentCurrentRank">—</span></div>
+                <div id="studentHistoryWrap">
+                    <strong class="d-block mb-1">Belt Test History</strong>
+                    <div id="studentHistory"></div>
+                </div>
             </div>
 
             <div class="row g-3 mb-3">
@@ -159,14 +207,21 @@ $back_label = $ref_pid ? '← Profile' : '← All Belt Tests';
                 </div>
             </div>
 
-            <div class="mb-3">
-                <label class="form-label">Evaluation</label>
-                <select name="result" class="form-select" id="evalSelect"
-                        onchange="syncBeltAwarded()">
-                    <option value="pending" <?= (!$test || $test['result']==='pending') ? 'selected':'' ?>>— Pending —</option>
-                    <option value="pass"    <?= (isset($test) && $test['result']==='pass')    ? 'selected':'' ?>>✓ Pass</option>
-                    <option value="fail"    <?= (isset($test) && $test['result']==='fail')    ? 'selected':'' ?>>✗ Fail</option>
-                </select>
+            <div class="row g-3 mb-3">
+                <div class="col-md-4">
+                    <label class="form-label">
+                        Score (%)
+                        <span class="text-muted small">— leave blank if pending</span>
+                    </label>
+                    <div class="input-group">
+                        <input type="number" name="score" class="form-control" id="scoreInput"
+                               min="0" max="100" step="1"
+                               value="<?= isset($test['score']) && $test['score'] !== null ? (int)$test['score'] : '' ?>"
+                               oninput="updateResultPreview()">
+                        <span class="input-group-text">%</span>
+                    </div>
+                    <div id="resultPreview" class="mt-1 small"></div>
+                </div>
             </div>
 
             <div class="row g-3 mb-3">
@@ -180,8 +235,7 @@ $back_label = $ref_pid ? '← Profile' : '← All Belt Tests';
                 <div class="col-auto">
                     <div class="form-check">
                         <input type="checkbox" class="form-check-input" name="belt_awarded" id="beltAwarded" value="1"
-                               <?= (isset($test) && $test['belt_awarded']) ? 'checked' : '' ?>
-                               <?= (!isset($test) || $test['result'] !== 'pass') ? 'disabled' : '' ?>>
+                               <?= (isset($test) && $test['belt_awarded']) ? 'checked' : '' ?>>
                         <label class="form-check-label" for="beltAwarded">Belt Awarded</label>
                     </div>
                 </div>
@@ -201,12 +255,70 @@ $back_label = $ref_pid ? '← Profile' : '← All Belt Tests';
 </div>
 
 <script>
-function syncBeltAwarded() {
-    var cb = document.getElementById('beltAwarded');
-    var passing = document.getElementById('evalSelect').value === 'pass';
-    cb.disabled = !passing;
-    if (!passing) cb.checked = false;
+const STUDENT_INFO = <?= json_encode($student_info) ?>;
+
+function onStudentChange(sid) {
+    const panel   = document.getElementById('studentInfoPanel');
+    const rankEl  = document.getElementById('studentCurrentRank');
+    const histEl  = document.getElementById('studentHistory');
+    if (!sid || !STUDENT_INFO[sid]) {
+        panel.style.display = 'none';
+        return;
+    }
+    const info = STUDENT_INFO[sid];
+    rankEl.textContent = info.rank;
+
+    // Belt test history table
+    if (!info.history || info.history.length === 0) {
+        histEl.innerHTML = '<span class="text-muted">No belt tests on record.</span>';
+    } else {
+        let html = '<table class="table table-sm table-bordered mb-0 mt-1">'
+                 + '<thead class="table-light"><tr>'
+                 + '<th>Date</th><th>Testing For</th><th>Score</th><th>Result</th>'
+                 + '</tr></thead><tbody>';
+        info.history.forEach(function(row) {
+            const date   = row.test_date ? row.test_date.substring(0, 10) : '—';
+            const rank   = row.kyu_dan + ' — ' + row.rank_name;
+            const score  = row.score !== null && row.score !== '' ? row.score + '%' : '—';
+            let result   = '—';
+            if (row.result === 'pass') {
+                result = '<span class="badge bg-success">Pass</span>'
+                       + (row.belt_awarded == 1 ? ' <span class="badge bg-primary">Awarded</span>' : '');
+            } else if (row.result === 'fail') {
+                result = '<span class="badge bg-danger">Fail</span>';
+            } else if (row.result === 'pending') {
+                result = '<span class="badge bg-secondary">Pending</span>';
+            }
+            html += '<tr><td>' + date + '</td><td>' + rank + '</td><td>' + score + '</td><td>' + result + '</td></tr>';
+        });
+        html += '</tbody></table>';
+        histEl.innerHTML = html;
+    }
+
+    panel.style.display = '';
 }
+
+function updateResultPreview() {
+    const val = document.getElementById('scoreInput').value;
+    const el  = document.getElementById('resultPreview');
+    if (val === '') { el.textContent = ''; return; }
+    const score = parseInt(val, 10);
+    if (score >= 80) {
+        el.innerHTML = '<span class="badge bg-success">Pass</span>';
+    } else {
+        el.innerHTML = '<span class="badge bg-danger">Fail</span>';
+    }
+}
+
+// Initialise for prefilled student
+(function() {
+    const sel = document.getElementById('studentSelect');
+    if (sel && sel.value) onStudentChange(sel.value);
+    <?php if ($prefill_student): ?>
+    onStudentChange(<?= $prefill_student ?>);
+    <?php endif; ?>
+    updateResultPreview();
+})();
 </script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>

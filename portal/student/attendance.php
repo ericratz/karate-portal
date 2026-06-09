@@ -36,7 +36,6 @@ include __DIR__ . '/../includes/header.php';
 ?>
 
 <div class="d-flex align-items-center gap-3 mb-4">
-    <a href="index.php" class="btn btn-outline-secondary btn-sm">← Dashboard</a>
     <h4 class="mb-0">Attendance History — <?= htmlspecialchars($student['first_name'] . ' ' . $student['last_name']) ?></h4>
 </div>
 

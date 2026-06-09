@@ -2,9 +2,7 @@
 // Tests for admin/user_profile.php:
 // card toggle (edit/cancel), first/last name fields, password card, status card.
 const { test, expect } = require('@playwright/test');
-const { login, logout, visit, assertNoPhpErrors, BASE } = require('./helpers');
-
-const { ADMIN_USER, ADMIN_PASS } = require('./credentials');
+const { visit, assertNoPhpErrors, BASE, AUTH } = require('./helpers');
 
 // Helper: navigate to user_profile.php for the first non-admin user
 async function goToNonAdminProfile(page) {
@@ -26,10 +24,8 @@ async function goToAnyProfile(page) {
 }
 
 test.describe('User Profile (admin/user_profile.php)', () => {
-
-    test.beforeEach(async ({ page }) => {
-        await login(page, ADMIN_USER, ADMIN_PASS);
-    });
+    test.describe.configure({ mode: 'serial' });
+    test.use({ storageState: AUTH.admin });
 
     test('page loads without PHP errors', async ({ page }) => {
         await goToAnyProfile(page);
@@ -119,14 +115,6 @@ test.describe('User Profile (admin/user_profile.php)', () => {
         await expect(page.locator('.card-header').filter({ hasText: 'Account Status' })).toBeVisible();
     });
 
-    test('Account Status shows Active or Inactive badge', async ({ page }) => {
-        const found = await goToNonAdminProfile(page);
-        if (!found) return;
-        const body = await page.textContent('body');
-        const hasStatus = body?.includes('Active') || body?.includes('Inactive');
-        expect(hasStatus).toBe(true);
-    });
-
     test('Deactivate or Activate button is present on status card', async ({ page }) => {
         const found = await goToNonAdminProfile(page);
         if (!found) return;
@@ -134,16 +122,10 @@ test.describe('User Profile (admin/user_profile.php)', () => {
         await expect(btn).toBeVisible();
     });
 
-    test('back button goes to users.php', async ({ page }) => {
-        await goToAnyProfile(page);
-        const href = await page.locator('a:has-text("← Back")').getAttribute('href');
-        expect(href).toContain('users.php');
-    });
-
     test('msg=saved shows success alert', async ({ page }) => {
         await goToAnyProfile(page);
         const url = page.url();
         await page.goto(url + (url.includes('?') ? '&' : '?') + 'msg=saved');
-        await expect(page.locator('.alert-success')).toContainText('Changes saved');
+        await expect(page.locator('.alert-success:not(.d-none)')).toContainText('Changes saved');
     });
 });

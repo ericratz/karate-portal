@@ -64,7 +64,6 @@ include __DIR__ . '/../includes/header.php';
 ?>
 
 <div class="d-flex align-items-center gap-3 mb-4">
-    <a href="index.php" class="btn btn-success btn-sm">← Back</a>
     <h4 class="mb-0">Make a Payment</h4>
 </div>
 
@@ -123,6 +122,28 @@ include __DIR__ . '/../includes/header.php';
                     </tr>
                     <?php endif; ?>
                     <?php endforeach; ?>
+
+                    <!-- Donation row -->
+                    <tr id="row-donation" style="cursor:pointer">
+                        <td style="width:36px">
+                            <input type="checkbox" class="form-check-input fee-chk"
+                                   id="chk-donation" data-key="donation" data-amount="0">
+                        </td>
+                        <td>Donation</td>
+                        <td class="text-end fw-semibold text-muted" id="donation-amount-display">—</td>
+                    </tr>
+                    <tr id="row-donation-amount" style="display:none">
+                        <td></td>
+                        <td colspan="2">
+                            <div class="input-group input-group-sm mb-1" style="max-width:160px">
+                                <span class="input-group-text">$</span>
+                                <input type="number" id="donationAmountInput" class="form-control"
+                                       placeholder="0.00" step="0.01" min="1">
+                            </div>
+                            <div class="form-text">Donations support the dojo and are recorded separately.</div>
+                        </td>
+                    </tr>
+
                     </tbody>
                 </table>
 
@@ -171,9 +192,13 @@ include __DIR__ . '/../includes/header.php';
 
                 <!-- Success -->
                 <div id="successMsg" style="display:none" class="alert alert-success mt-3">
-                    <strong>Payment successful!</strong><br>
-                    Amount: $<span id="paidAmountDisplay"></span><br>
-                    Transaction ID: <code id="txnIdDisplay"></code><br>
+                    <strong>Payment successful!</strong>
+                    <div id="receiptLines" class="mt-2 mb-1 small"></div>
+                    <div class="d-flex justify-content-between fw-semibold border-top pt-1 mt-1">
+                        <span>Total</span>
+                        <span>$<span id="paidAmountDisplay"></span></span>
+                    </div>
+                    <div class="text-muted small mt-1">Transaction ID: <code id="txnIdDisplay"></code></div>
                     <a href="index.php" class="btn btn-sm btn-success mt-2">Back to Dashboard</a>
                 </div>
 
@@ -215,10 +240,6 @@ include __DIR__ . '/../includes/header.php';
         <div class="card border-0 shadow-sm">
             <div class="card-header bg-white fw-semibold">Other Payment Options</div>
             <div class="card-body">
-                <p class="mb-2">
-                    <strong>Venmo:</strong> Search <code>@ShotokanKarate-Noji</code>
-                    and include your name and what you're paying for.
-                </p>
                 <p class="mb-0">
                     <strong>Mail a check</strong> to:<br>
                     Shotokan Karate and Self-defense<br>
@@ -242,10 +263,16 @@ var total = 0;
 function show(id) { document.getElementById(id).style.display = ''; }
 function hide(id) { document.getElementById(id).style.display = 'none'; }
 
+function itemLabel(item) {
+    if (item.type === 'donation') return 'Donation';
+    if (item.type === 'other')    return item.reason || 'Other';
+    return FEES[item.type] ? FEES[item.type].label : item.type;
+}
+
 function recalculate() {
     var t = 0;
     document.querySelectorAll('.fee-chk').forEach(function(chk) {
-        if (chk.checked) t += parseFloat(chk.dataset.amount);
+        if (chk.checked) t += parseFloat(chk.dataset.amount) || 0;
     });
     var custom = parseFloat(document.getElementById('customAmount').value);
     if (document.getElementById('customCheck').checked && custom > 0) t += custom;
@@ -258,6 +285,11 @@ function buildItems() {
     var items = [];
     document.querySelectorAll('.fee-chk').forEach(function(chk) {
         if (!chk.checked) return;
+        if (chk.dataset.key === 'donation') {
+            var dAmt = parseFloat(document.getElementById('donationAmountInput').value) || 0;
+            if (dAmt > 0) items.push({ type: 'donation', amount: dAmt });
+            return;
+        }
         var item = { type: chk.dataset.key, amount: parseFloat(chk.dataset.amount) };
         if (chk.dataset.key === 'monthly_tuition') {
             item.month_covered = document.getElementById('tuitionMonth').value;
@@ -283,15 +315,18 @@ function renderButtons() {
     show('paypalSection');
     hide('noSelectionMsg');
 
+    var capturedItems = [];
+
     paypal.Buttons({
         style: { layout: 'vertical', shape: 'rect' },
 
         createOrder: function() {
+            capturedItems = buildItems();
             return fetch('/karate/portal/paypal_create.php', {
                 method:  'POST',
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
                 body:    JSON.stringify({
-                    items: buildItems(),
+                    items: capturedItems,
                     total: total,
                     note:  document.getElementById('noteInput').value,
                 }),
@@ -312,6 +347,14 @@ function renderButtons() {
             .then(function(r) { return r.json(); })
             .then(function(result) {
                 if (result.success) {
+                    // Build receipt lines from captured items
+                    var lines = capturedItems.map(function(item) {
+                        return '<div class="d-flex justify-content-between">'
+                             + '<span>' + itemLabel(item) + '</span>'
+                             + '<span>$' + parseFloat(item.amount).toFixed(2) + '</span>'
+                             + '</div>';
+                    }).join('');
+                    document.getElementById('receiptLines').innerHTML = lines;
                     document.getElementById('paidAmountDisplay').textContent = result.amount.toFixed(2);
                     document.getElementById('txnIdDisplay').textContent      = result.transaction_id;
                     show('successMsg');
@@ -337,12 +380,11 @@ function renderButtons() {
 
 // ── Wire up events ────────────────────────────────────────────
 
-// Row click toggles the checkbox in that row
 document.querySelectorAll('.fee-chk').forEach(function(chk) {
     var row = document.getElementById('row-' + chk.dataset.key);
 
     row.addEventListener('click', function(e) {
-        if (e.target === chk) return; // let the checkbox handle its own click
+        if (e.target === chk) return;
         chk.checked = !chk.checked;
         updateRow(chk);
         recalculate();
@@ -365,7 +407,23 @@ function updateRow(chk) {
         var regRow = document.getElementById('row-reg-extra');
         if (regRow) regRow.style.display = chk.checked ? '' : 'none';
     }
+    if (chk.dataset.key === 'donation') {
+        document.getElementById('row-donation-amount').style.display = chk.checked ? '' : 'none';
+        if (!chk.checked) {
+            document.getElementById('donationAmountInput').value = '';
+            chk.dataset.amount = '0';
+            document.getElementById('donation-amount-display').textContent = '—';
+        }
+    }
 }
+
+// Donation amount input updates data-amount on the checkbox so recalculate() picks it up
+document.getElementById('donationAmountInput').addEventListener('input', function() {
+    var amt = parseFloat(this.value) || 0;
+    document.getElementById('chk-donation').dataset.amount = amt;
+    document.getElementById('donation-amount-display').textContent = amt > 0 ? '$' + amt.toFixed(2) : '—';
+    recalculate();
+});
 
 document.getElementById('customCheck').addEventListener('change', function() {
     document.getElementById('customSection').style.display = this.checked ? '' : 'none';

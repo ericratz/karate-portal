@@ -80,24 +80,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['change_password'])) 
     }
 } // end profile POST
 
-$feedback_sent  = false;
-$feedback_error = '';
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['feedback_message'])) {
-    $message = trim($_POST['feedback_message'] ?? '');
-    if ($message === '') {
-        $feedback_error = 'Please enter a message before sending.';
-    } else {
-        $user_q = db()->prepare('SELECT username FROM users WHERE id = ?');
-        $user_q->execute([current_user_id()]);
-        $name    = $user_q->fetchColumn() ?: 'Unknown';
-        $subject = "Portal Message from $name";
-        $body    = "Message from: $name\n\n" . $message;
-        $headers = "From: " . DOJO_EMAIL . "\r\nReply-To: " . DOJO_EMAIL . "\r\nContent-Type: text/plain; charset=UTF-8\r\n";
-        $feedback_sent = mail(DOJO_EMAIL, $subject, $body, $headers);
-        if (!$feedback_sent) $feedback_error = 'Something went wrong. Please try again.';
-    }
-}
-
 // Auto-pay status
 $sub_stmt = db()->prepare(
     "SELECT paypal_subscription_id FROM subscriptions WHERE student_id=? AND status='active' LIMIT 1"
@@ -116,7 +98,6 @@ include __DIR__ . '/../includes/header.php';
 ?>
 
 <div class="d-flex align-items-center gap-3 mb-4">
-    <a href="index.php" class="btn btn-success btn-sm">← Dashboard</a>
     <h4 class="mb-0">My Profile</h4>
 </div>
 
@@ -214,37 +195,6 @@ include __DIR__ . '/../includes/header.php';
     </div><!-- /collapse -->
 </div>
 
-<!-- Questions or Issues -->
-<div class="card border-0 shadow-sm">
-    <div class="card-header bg-white d-flex justify-content-between align-items-center">
-        <span class="fw-semibold">Questions or Issues?</span>
-        <button class="btn btn-sm btn-warning"
-                type="button"
-                data-bs-toggle="collapse"
-                data-bs-target="#feedbackForm">
-            Contact Noji
-        </button>
-    </div>
-    <div class="collapse <?= $feedback_sent || $feedback_error ? 'show' : '' ?>" id="feedbackForm">
-    <div class="card-body">
-        <?php if ($feedback_sent): ?>
-            <div class="alert alert-success mb-0">Message sent! Noji will get back to you soon.</div>
-        <?php else: ?>
-            <?php if ($feedback_error): ?>
-                <div class="alert alert-danger"><?= htmlspecialchars($feedback_error) ?></div>
-            <?php endif; ?>
-            <p class="text-muted small mb-3">Have a question or running into an issue? Send Noji a message below.</p>
-            <form method="post">
-                <div class="mb-3">
-                    <textarea name="feedback_message" class="form-control" rows="4"
-                              placeholder="Type your message here…" required></textarea>
-                </div>
-                <button type="submit" class="btn btn-primary">Send Message</button>
-            </form>
-        <?php endif; ?>
-    </div>
-    </div><!-- /collapse -->
-</div>
 
 <!-- Auto-Pay -->
 <div class="card border-0 shadow-sm">

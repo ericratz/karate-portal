@@ -26,53 +26,75 @@ if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
     $date = date('Y-m-d');
 }
 
-$sort = $_GET['sort'] ?? 'last_attended'; // 'last_attended' or 'last_name'
+$sort = $_GET['sort'] ?? 'last_attended';
 $msg  = '';
 
 // ── Save attendance ──────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf();
-    $post_date = $_POST['session_date'] ?? '';
+    $post_date      = $_POST['session_date']      ?? '';
+    $post_new_date  = trim($_POST['session_date_edit'] ?? '');
+    $post_class_type = in_array($_POST['class_type'] ?? '', ['class','seminar','private'])
+                       ? $_POST['class_type'] : 'class';
+
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $post_date)) {
         $msg = 'Invalid date.';
     } else {
         $db = db();
+
+        // Create or retrieve the session
         $db->prepare(
-            'INSERT INTO class_sessions (session_date, instructor_id)
-             VALUES (?, ?)
-             ON DUPLICATE KEY UPDATE instructor_id = VALUES(instructor_id)'
-        )->execute([$post_date, current_user_id()]);
+            'INSERT INTO class_sessions (session_date, class_type, instructor_id)
+             VALUES (?, ?, ?)
+             ON DUPLICATE KEY UPDATE instructor_id = VALUES(instructor_id), class_type = VALUES(class_type)'
+        )->execute([$post_date, $post_class_type, current_user_id()]);
 
         $session_id = $db->prepare('SELECT id FROM class_sessions WHERE session_date = ?');
         $session_id->execute([$post_date]);
         $session_id = $session_id->fetchColumn();
 
-        $all_ids     = $db->query('SELECT id FROM students')->fetchAll(PDO::FETCH_COLUMN);
-        $present_ids = array_map('intval', $_POST['present'] ?? []);
-
-        $upsert = $db->prepare(
-            'INSERT INTO attendance (student_id, session_id, present, recorded_by)
-             VALUES (?, ?, ?, ?)
-             ON DUPLICATE KEY UPDATE present = VALUES(present), recorded_by = VALUES(recorded_by)'
-        );
-        foreach ($all_ids as $sid) {
-            $upsert->execute([$sid, $session_id, in_array($sid, $present_ids) ? 1 : 0, current_user_id()]);
+        // Optionally move the session to a new date
+        if ($post_new_date && preg_match('/^\d{4}-\d{2}-\d{2}$/', $post_new_date) && $post_new_date !== $post_date) {
+            $conflict = $db->prepare('SELECT id FROM class_sessions WHERE session_date = ? AND id != ?');
+            $conflict->execute([$post_new_date, $session_id]);
+            if ($conflict->fetchColumn()) {
+                $msg = 'Cannot change date: a class already exists on ' . date('M j, Y', strtotime($post_new_date)) . '.';
+            } else {
+                $db->prepare('UPDATE class_sessions SET session_date = ? WHERE id = ?')
+                   ->execute([$post_new_date, $session_id]);
+                $post_date = $post_new_date;
+                $date      = $post_new_date;
+            }
         }
-        $msg  = 'Attendance saved for ' . date('M j, Y', strtotime($post_date)) . '.';
-        $date = $post_date;
+
+        // Save only present students — delete previous records then re-insert
+        $present_ids = array_map('intval', $_POST['present'] ?? []);
+        $db->prepare('DELETE FROM attendance WHERE session_id = ?')->execute([$session_id]);
+        $ins = $db->prepare(
+            'INSERT INTO attendance (student_id, session_id, present, recorded_by) VALUES (?,?,1,?)'
+        );
+        foreach ($present_ids as $sid) {
+            $ins->execute([$sid, $session_id, current_user_id()]);
+        }
+
+        if (!$msg) {
+            $msg  = 'Attendance saved for ' . date('M j, Y', strtotime($post_date)) . '.';
+            $date = $post_date;
+        }
     }
 }
 
 // ── Load session ─────────────────────────────────────────────
-$session = db()->prepare('SELECT id FROM class_sessions WHERE session_date = ?');
+$session = db()->prepare('SELECT id, class_type FROM class_sessions WHERE session_date = ?');
 $session->execute([$date]);
-$session_id = $session->fetchColumn();
+$session_row = $session->fetch();
+$session_id  = $session_row ? $session_row['id'] : false;
+$current_class_type = $session_row['class_type'] ?? 'class';
 
-// ── Build student query — sort by last_attended or last_name ─
-// last_attended = date of most recent attendance record where present=1
+// ── Build student query ──────────────────────────────────────
 $order_clause = $sort === 'last_name'
     ? 'ORDER BY s.last_name, s.first_name'
-    : 'ORDER BY last_attended ASC, s.last_name';   // nulls (never attended) sort first
+    : 'ORDER BY last_attended ASC, s.last_name';
 
 $base_query = "
     SELECT s.id, s.first_name, s.last_name, s.student_type, s.injury_waiver,
@@ -82,7 +104,7 @@ $base_query = "
             JOIN class_sessions cs2 ON cs2.id = a2.session_id
             WHERE a2.student_id = s.id AND a2.present = 1) AS last_attended
     FROM students s
-    LEFT JOIN attendance a ON a.session_id = ? AND a.student_id = s.id
+    LEFT JOIN attendance a ON a.session_id = ? AND a.student_id = s.id AND a.present = 1
     $order_clause
 ";
 
@@ -93,15 +115,13 @@ $all = $stmt->fetchAll();
 $instructors = array_filter($all, fn($r) => in_array($r['student_type'], ['instructor', 'admin']));
 $students    = array_filter($all, fn($r) => $r['student_type'] === 'student');
 $guests      = array_filter($all, fn($r) => $r['student_type'] === 'guest');
-
-$is_past = false;
+$parents     = array_filter($all, fn($r) => $r['student_type'] === 'parent');
 
 $page_title = 'Take Attendance';
 include __DIR__ . '/../includes/header.php';
 
-function row(array $s, bool $is_past): void { ?>
+function row(array $s): void { ?>
     <tr id="row-<?= $s['id'] ?>"
-        class="<?= ($is_past && !$s['present']) ? 'table-danger' : '' ?>"
         style="cursor:pointer"
         onclick="toggleRow(<?= $s['id'] ?>)">
         <td class="text-center">
@@ -114,7 +134,7 @@ function row(array $s, bool $is_past): void { ?>
         <td class="row-name">
             <?= htmlspecialchars($s['last_name'] . ', ' . $s['first_name']) ?>
         </td>
-        <td class="small text-muted">
+        <td class="small">
             <?= $s['last_attended'] ? date('M j, Y', strtotime($s['last_attended'])) : '<em>never</em>' ?>
         </td>
         <td>
@@ -129,7 +149,6 @@ function row(array $s, bool $is_past): void { ?>
 ?>
 
 <div class="d-flex align-items-center gap-3 mb-3">
-    <a href="index.php" class="btn btn-outline-secondary btn-sm">← Back</a>
     <h4 class="mb-0">Attendance — <?= date('l, F j, Y', strtotime($date)) ?></h4>
 </div>
 
@@ -157,6 +176,27 @@ function row(array $s, bool $is_past): void { ?>
     <?= csrf_input() ?>
     <input type="hidden" name="session_date" value="<?= htmlspecialchars($date) ?>">
 
+    <!-- Class settings row -->
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body py-2">
+            <div class="row g-3 align-items-end">
+                <div class="col-auto">
+                    <label class="form-label small mb-1">Class Date</label>
+                    <input type="date" name="session_date_edit" class="form-control form-control-sm"
+                           value="<?= htmlspecialchars($date) ?>" style="width:160px">
+                </div>
+                <div class="col-auto">
+                    <label class="form-label small mb-1">Class Type</label>
+                    <select name="class_type" class="form-select form-select-sm" style="width:140px">
+                        <option value="class"   <?= $current_class_type === 'class'   ? 'selected' : '' ?>>Class</option>
+                        <option value="seminar" <?= $current_class_type === 'seminar' ? 'selected' : '' ?>>Seminar</option>
+                        <option value="private" <?= $current_class_type === 'private' ? 'selected' : '' ?>>Private</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- ── INSTRUCTORS ── -->
     <div class="card border-0 shadow-sm mb-4">
         <div class="card-header bg-white fw-semibold">
@@ -172,11 +212,37 @@ function row(array $s, bool $is_past): void { ?>
                         <th style="width:44px" class="text-center">✓</th>
                         <th>Name</th>
                         <th>Last Attended</th>
-                        <th>Injury Waiver</th>
+                        <th>Liability Waiver</th>
                     </tr>
                 </thead>
                 <tbody id="instructors-body">
-                    <?php foreach ($instructors as $s) row($s, $is_past); ?>
+                    <?php foreach ($instructors as $s) row($s); ?>
+                </tbody>
+            </table>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <!-- ── PARENTS ── -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white fw-semibold">
+            Parents <span class="badge bg-primary" id="count-parents"><?= count($parents) ?></span>
+        </div>
+        <div class="card-body p-0">
+            <?php if (empty($parents)): ?>
+                <p class="p-3 text-muted">No parents.</p>
+            <?php else: ?>
+            <table class="table table-sm table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width:44px" class="text-center">✓</th>
+                        <th>Name</th>
+                        <th>Last Attended</th>
+                        <th>Liability Waiver</th>
+                    </tr>
+                </thead>
+                <tbody id="parents-body">
+                    <?php foreach ($parents as $s) row($s); ?>
                 </tbody>
             </table>
             <?php endif; ?>
@@ -198,11 +264,11 @@ function row(array $s, bool $is_past): void { ?>
                         <th style="width:44px" class="text-center">✓</th>
                         <th>Name</th>
                         <th>Last Attended</th>
-                        <th>Injury Waiver</th>
+                        <th>Liability Waiver</th>
                     </tr>
                 </thead>
                 <tbody id="students-body">
-                    <?php foreach ($students as $s) row($s, $is_past); ?>
+                    <?php foreach ($students as $s) row($s); ?>
                 </tbody>
             </table>
             <?php endif; ?>
@@ -225,11 +291,11 @@ function row(array $s, bool $is_past): void { ?>
                         <th style="width:44px" class="text-center">✓</th>
                         <th>Name</th>
                         <th>Last Attended</th>
-                        <th>Injury Waiver</th>
+                        <th>Liability Waiver</th>
                     </tr>
                 </thead>
                 <tbody id="guests-body">
-                    <?php foreach ($guests as $s) row($s, $is_past); ?>
+                    <?php foreach ($guests as $s) row($s); ?>
                 </tbody>
             </table>
             <?php endif; ?>
@@ -242,39 +308,34 @@ function row(array $s, bool $is_past): void { ?>
     <button type="submit" form="att-form" class="btn btn-primary px-4">Save Attendance</button>
     <?php if ($session_id): ?>
     <form method="post" action="attendance.php"
-          onsubmit="return confirm('Delete the session for <?= date('M j, Y', strtotime($date)) ?>?\n\nThis will remove all attendance records for this day and cannot be undone.')">
+          onsubmit="return confirm('Delete the class for <?= date('M j, Y', strtotime($date)) ?>?\n\nThis will remove all attendance records for this day and cannot be undone.')">
         <?= csrf_input() ?>
         <input type="hidden" name="action" value="delete_session">
         <input type="hidden" name="session_date" value="<?= htmlspecialchars($date) ?>">
-        <button type="submit" class="btn btn-outline-danger">Delete This Session</button>
+        <button type="submit" class="btn btn-outline-danger">Delete This Class</button>
     </form>
     <?php endif; ?>
 </div>
 
 <script>
-const IS_PAST = <?= $is_past ? 'true' : 'false' ?>;
-
 function toggleRow(id) {
-    const cb  = document.getElementById('cb-' + id);
-    const row = document.getElementById('row-' + id);
+    const cb = document.getElementById('cb-' + id);
     cb.checked = !cb.checked;
-    row.classList.toggle('table-danger', IS_PAST && !cb.checked);
 }
 
 document.querySelectorAll('.presence-cb').forEach(cb => {
-    cb.addEventListener('change', () => {
-        document.getElementById('row-' + cb.value).classList.toggle('table-danger', IS_PAST && !cb.checked);
-    });
+    cb.addEventListener('change', () => {/* no absent styling needed */});
 });
 
-// Name filter — searches all lists simultaneously and updates counts
+// Name filter
 document.getElementById('nameFilter').addEventListener('input', function () {
     const q = this.value.toLowerCase();
-    document.querySelectorAll('#instructors-body tr, #students-body tr, #guests-body tr').forEach(row => {
+    document.querySelectorAll('#instructors-body tr, #students-body tr, #guests-body tr, #parents-body tr').forEach(row => {
         const name = row.querySelector('.row-name');
         if (name) row.style.display = name.textContent.toLowerCase().includes(q) ? '' : 'none';
     });
-    [['instructors-body','count-instructors'],['students-body','count-students'],['guests-body','count-guests']].forEach(function([bodyId, badgeId]) {
+    [['instructors-body','count-instructors'],['students-body','count-students'],
+     ['guests-body','count-guests'],['parents-body','count-parents']].forEach(function([bodyId, badgeId]) {
         const badge = document.getElementById(badgeId);
         if (!badge) return;
         let count = 0;

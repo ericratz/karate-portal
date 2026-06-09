@@ -1,13 +1,20 @@
 // Shared helpers for all test files
+const path = require('path');
 
 const BASE = 'http://localhost/karate/portal';
+
+const AUTH = {
+    admin:      path.join(__dirname, '.auth', 'admin.json'),
+    instructor: path.join(__dirname, '.auth', 'instructor.json'),
+    student:    path.join(__dirname, '.auth', 'student.json'),
+};
 
 /**
  * Log in as a given role. Returns the page after landing on the dashboard.
  * Credentials must exist in your local DB.
  */
 async function login(page, username, password) {
-    await page.goto(BASE + '/login.php');
+    await page.goto(BASE + '/login.php', { waitUntil: 'domcontentloaded' });
     await page.fill('input[name="username"]', username);
     await page.fill('input[name="password"]', password);
     await page.click('button[type="submit"]');
@@ -40,12 +47,12 @@ async function assertNoPhpErrors(page, context) {
 /**
  * Visit a URL, assert HTTP 200 and no PHP errors.
  */
-async function visit(page, path, label) {
-    const res = await page.goto(BASE + path);
+async function visit(page, urlPath, label) {
+    const res = await page.goto(BASE + urlPath, { waitUntil: 'domcontentloaded' });
     if (res.status() >= 400) {
-        throw new Error(`HTTP ${res.status()} on ${path} [${label}]`);
+        throw new Error(`HTTP ${res.status()} on ${urlPath} [${label}]`);
     }
-    await assertNoPhpErrors(page, label || path);
+    await assertNoPhpErrors(page, label || urlPath);
 }
 
 async function logout(page) {
@@ -78,4 +85,28 @@ async function deleteTestStudent(page, nameFragment, adminUser, adminPass) {
     await page.waitForLoadState('domcontentloaded');
 }
 
-module.exports = { login, logout, assertNoPhpErrors, visit, deleteTestStudent, BASE };
+/** Get the CSRF token from the current page's first hidden csrf_token input. */
+async function getCsrfToken(page) {
+    return page.$eval('input[name="csrf_token"]', el => el.value).catch(() => '');
+}
+
+/**
+ * POST to a portal URL using the page's session cookie (includes CSRF token).
+ * page must already be logged in and on a page that has a csrf_token input.
+ * Returns { status, body }.
+ */
+async function apiPost(page, path, params) {
+    const token = await getCsrfToken(page);
+    const form = new URLSearchParams({ ...params, csrf_token: token }).toString();
+    const result = await page.evaluate(async ({ url, body }) => {
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body,
+        });
+        return { status: res.status, body: await res.text() };
+    }, { url: BASE + path, body: form });
+    return result;
+}
+
+module.exports = { login, logout, assertNoPhpErrors, visit, getCsrfToken, apiPost, deleteTestStudent, BASE, AUTH };

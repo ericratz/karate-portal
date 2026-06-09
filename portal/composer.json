@@ -1,0 +1,12 @@
+{
+    "config": {
+        "policy": {
+            "advisories": {
+                "block": false
+            }
+        }
+    },
+    "require": {
+        "google/apiclient": "^2.14"
+    }
+}

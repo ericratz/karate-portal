@@ -29,6 +29,16 @@ function db(): PDO {
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             PDO::ATTR_EMULATE_PREPARES   => false,
         ]);
+        $pdo->exec("CREATE TABLE IF NOT EXISTS link_requests (
+            id            INT AUTO_INCREMENT PRIMARY KEY,
+            user_id       INT NOT NULL,
+            request_type  ENUM('new_guest','existing_student','parent') NOT NULL,
+            notes         TEXT NULL,
+            created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            resolved      TINYINT(1) NOT NULL DEFAULT 0,
+            resolved_at   TIMESTAMP NULL,
+            resolved_by   INT NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
     }
     return $pdo;
 }
