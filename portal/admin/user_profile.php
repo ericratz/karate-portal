@@ -119,6 +119,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'unlin
     }
 }
 
+// ── Delete user account (preserves student record) ───────────
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delete_user') {
+    verify_csrf();
+    if ($id === current_user_id()) {
+        $error = 'You cannot delete your own account.';
+    } else {
+        $pdo = db();
+        $pdo->beginTransaction();
+        try {
+            $pdo->prepare('UPDATE students SET user_id = NULL WHERE user_id = ?')->execute([$id]);
+            $pdo->prepare('DELETE FROM parent_students WHERE parent_user_id = ?')->execute([$id]);
+            $pdo->prepare('DELETE FROM users WHERE id = ?')->execute([$id]);
+            $pdo->commit();
+            audit('delete_user', 'user', $id);
+        } catch (\Throwable $e) {
+            $pdo->rollBack();
+            $error = 'Delete failed — no changes were made.';
+        }
+        if (!$error) {
+            header('Location: users.php?msg=deleted');
+            exit;
+        }
+    }
+}
+
 // ── Flash messages ────────────────────────────────────────────
 if (isset($_GET['msg'])) {
     switch ($_GET['msg']) {
@@ -128,12 +153,13 @@ if (isset($_GET['msg'])) {
         case 'unlinked':      $msg = 'Account unlinked from roster.'; break;
         case 'child_linked':  $msg = 'Child linked to this parent account.'; break;
         case 'child_unlinked':$msg = 'Child unlinked from this parent account.'; break;
+        case 'deleted':       $msg = 'User account deleted.'; break;
     }
 }
 
 // ── Load user ─────────────────────────────────────────────────
 $user = db()->prepare(
-    'SELECT u.*, s.id AS student_id, s.first_name, s.last_name, s.student_type
+    'SELECT u.*, s.id AS student_id, s.first_name, s.last_name, s.student_type, s.date_of_birth
      FROM users u
      LEFT JOIN students s ON s.user_id = u.id
      WHERE u.id = ?'
@@ -171,6 +197,7 @@ $role_badges = [
     'admin'      => 'bg-danger',
     'instructor' => 'bg-warning text-dark',
     'student'    => 'bg-primary',
+    'parent'     => 'bg-info text-dark',
     'guest'      => 'bg-secondary',
 ];
 
@@ -215,6 +242,7 @@ include __DIR__ . '/../includes/header.php';
                         $av = [
                             'First Name'      => htmlspecialchars($user['first_name'] ?? '') ?: '—',
                             'Last Name'       => htmlspecialchars($user['last_name']  ?? '') ?: '—',
+                            'Date of Birth'   => !empty($user['date_of_birth']) ? date('M j, Y', strtotime($user['date_of_birth'])) : '—',
                             'Username'        => htmlspecialchars($user['username']),
                             'Email'           => htmlspecialchars($user['email'] ?? '') ?: '—',
                             'Role'            => ucfirst($user['role']),
@@ -289,9 +317,8 @@ include __DIR__ . '/../includes/header.php';
                     </div>
                 <?php elseif (!empty($unlinked)): ?>
                     <p class="text-muted small mb-2">This account is not linked to any roster entry.</p>
-                    <form method="post" class="d-flex gap-2 align-items-center flex-wrap">
-                        <?= csrf_input() ?>
-                        <input type="hidden" name="action" value="link_student">
+                    <form method="get" action="compare_account.php" class="d-flex gap-2 align-items-center flex-wrap">
+                        <input type="hidden" name="user_id" value="<?= $id ?>">
                         <select name="student_id" class="form-select form-select-sm" style="max-width:240px" required>
                             <option value="">— select roster entry —</option>
                             <?php foreach ($unlinked as $s): ?>
@@ -301,7 +328,7 @@ include __DIR__ . '/../includes/header.php';
                             </option>
                             <?php endforeach; ?>
                         </select>
-                        <button type="button" id="linkBtn" class="btn btn-sm btn-outline-primary">Link</button>
+                        <button type="submit" class="btn btn-sm btn-outline-primary">Compare</button>
                     </form>
                 <?php else: ?>
                     <p class="text-muted mb-0">No unlinked roster entries available.</p>
@@ -324,7 +351,7 @@ include __DIR__ . '/../includes/header.php';
                             <a href="student_edit.php?id=<?= $child['id'] ?>" class="text-decoration-none">
                                 <?= htmlspecialchars($child['first_name'].' '.$child['last_name']) ?>
                             </a>
-                            <span class="badge bg-secondary ms-2"><?= ucfirst($child['student_type']) ?></span>
+                            <span class="badge <?= $role_badges[$child['student_type']] ?? 'bg-secondary' ?> ms-2"><?= ucfirst($child['student_type']) ?></span>
                         </div>
                         <form method="post" class="d-inline"
                               onsubmit="return confirm('Unlink this child from the parent account?')">
@@ -409,22 +436,21 @@ include __DIR__ . '/../includes/header.php';
     </div>
     <?php endif; ?>
 
+    <!-- Delete Account -->
+    <?php if ($id !== current_user_id()): ?>
+    <div class="col-12">
+        <form method="post"
+              onsubmit="return confirm('Delete this login account?\n\nThe student roster entry and all their history (attendance, belt tests, payments) will be kept. Only the login account will be removed.')">
+            <?= csrf_input() ?>
+            <input type="hidden" name="action" value="delete_user">
+            <button class="btn btn-outline-danger">Delete Login Account</button>
+        </form>
+    </div>
+    <?php endif; ?>
+
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    var linkBtn = document.getElementById('linkBtn');
-    if (linkBtn) {
-        linkBtn.addEventListener('click', function () {
-            var form = this.closest('form');
-            if (!form.reportValidity()) return;
-            if (confirm('Link this account to the selected roster entry?')) {
-                form.submit();
-            }
-        });
-    }
-});
-
 function cardToggle(cardId) {
     var btn    = document.getElementById(cardId + 'EditBtn');
     var cancel = document.getElementById(cardId + 'CancelBtn');

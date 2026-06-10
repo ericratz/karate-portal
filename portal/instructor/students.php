@@ -7,7 +7,7 @@ apply_auto_inactive();
 
 $all = db()->query(
     'SELECT s.id, s.first_name, s.last_name, s.student_type, s.active,
-            s.active_override, s.injury_waiver, s.registration_date,
+            s.active_override, s.injury_waiver, s.registration_date, s.medical_note,
             r.kyu_dan, u.role AS user_role,
             (SELECT MAX(cs.session_date)
              FROM attendance a JOIN class_sessions cs ON cs.id = a.session_id
@@ -48,8 +48,11 @@ function student_row($s) {
        . ' data-waiver="'        . ($s['injury_waiver'] ? 'yes' : 'no')         . '"'
        . ' data-last-attended="' . htmlspecialchars($s['last_attended'] ?? '')   . '"'
        . '>';
+    $med = trim($s['medical_note'] ?? '');
     echo '<td class="fw-semibold"><a href="student_profile.php?id=' . $s['id'] . '" class="text-decoration-none">'
-        . htmlspecialchars($s['last_name'] . ', ' . $s['first_name']) . '</a></td>';
+        . htmlspecialchars($s['last_name'] . ', ' . $s['first_name']) . '</a>'
+        . ($med ? ' <span class="text-danger" style="font-size:.85em" data-bs-toggle="tooltip" data-bs-placement="right" title="' . htmlspecialchars($med) . '">⚕</span>' : '')
+        . '</td>';
     echo '<td class="text-muted small">' . htmlspecialchars($s['kyu_dan'] ?? '—') . '</td>';
     echo '<td>' . ($s['injury_waiver']
         ? '<span class="text-success">✓</span>'

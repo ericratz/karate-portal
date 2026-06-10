@@ -201,17 +201,6 @@ function badge_result(string $r): string {
 <div class="alert alert-success">✓ Monthly auto-pay is set up! PayPal will charge $<?= number_format(MONTHLY_FEE, 2) ?> automatically each month.</div>
 <?php endif; ?>
 
-<?php if (!empty($active_waivers)): ?>
-<div class="alert alert-success d-flex align-items-start gap-2 mb-4">
-    <span class="fw-semibold text-nowrap">Active Waivers:</span>
-    <span>
-        <?php foreach ($active_waivers as $i => $w): ?>
-            <?= $i > 0 ? ' &nbsp;·&nbsp; ' : '' ?>
-            <?= htmlspecialchars(ucwords(str_replace('_', ' ', $w['waiver_type']))) ?>
-        <?php endforeach; ?>
-    </span>
-</div>
-<?php endif; ?>
 
 <!-- ── Two-column layout ── -->
 <div class="row g-4">

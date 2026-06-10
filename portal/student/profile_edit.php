@@ -39,15 +39,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_password'])) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['change_password'])) {
-    $first    = trim($_POST['first_name']  ?? '');
-    $last     = trim($_POST['last_name']   ?? '');
-    $dob      = $_POST['date_of_birth']    ?? '';
-    $phone    = trim($_POST['phone']       ?? '');
-    $email    = trim($_POST['email']       ?? '');
-    $ec_name  = trim($_POST['ec_name']     ?? '');
-    $ec_phone = trim($_POST['ec_phone']    ?? '');
+    $first        = trim($_POST['first_name']   ?? '');
+    $last         = trim($_POST['last_name']    ?? '');
+    $dob          = $_POST['date_of_birth']     ?? '';
+    $phone        = trim($_POST['phone']        ?? '');
+    $email        = trim($_POST['email']        ?? '');
+    $ec_name      = trim($_POST['ec_name']      ?? '');
+    $ec_phone     = trim($_POST['ec_phone']     ?? '');
+    $medical_note = trim($_POST['medical_note'] ?? '');
 
-    $email = trim($_POST['email'] ?? '');
     if (!$first || !$last || !$dob || !$email) {
         $error = 'First name, last name, date of birth, and email are required.';
     } else {
@@ -56,9 +56,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['change_password'])) 
                 'UPDATE students SET
                     first_name=?, last_name=?, date_of_birth=?,
                     phone=?, email=?,
-                    emergency_contact_name=?, emergency_contact_phone=?
+                    emergency_contact_name=?, emergency_contact_phone=?,
+                    medical_note=?
                  WHERE user_id=?'
-            )->execute([$first,$last,$dob,$phone,$email,$ec_name,$ec_phone,$user_id]);
+            )->execute([$first,$last,$dob,$phone,$email,$ec_name,$ec_phone,$medical_note?:null,$user_id]);
         } else {
             db()->prepare(
                 'INSERT INTO students
@@ -148,6 +149,11 @@ include __DIR__ . '/../includes/header.php';
                 <label class="form-label">Emergency Phone</label>
                 <input type="tel" name="ec_phone" class="form-control"
                        value="<?= htmlspecialchars($student['emergency_contact_phone'] ?? '') ?>">
+            </div>
+            <div class="col-12">
+                <label class="form-label">Medical Note</label>
+                <textarea name="medical_note" class="form-control" rows="2"
+                          placeholder="Allergies, conditions, medications, etc."><?= htmlspecialchars($student['medical_note'] ?? '') ?></textarea>
             </div>
             <div class="col-12">
                 <button class="btn btn-success">Save Profile</button>

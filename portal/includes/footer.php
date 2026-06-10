@@ -57,6 +57,11 @@
     });
 })();
 
+// Reload on back-navigation to prevent stale bfcache data
+window.addEventListener('pageshow', function(e) {
+    if (e.persisted) window.location.reload();
+});
+
 // Unsaved-changes guard — warns before leaving any page with a dirty form
 (function() {
     var dirty = false;

@@ -26,6 +26,29 @@ $children_stmt = db()->prepare(
 $children_stmt->execute([$user_id]);
 $children = $children_stmt->fetchAll();
 
+// Per-child summary data for aggregate table
+$children_summary = [];
+foreach ($children as $ch) {
+    $cid = (int)$ch['id'];
+    $ca = db()->prepare(
+        'SELECT cs.session_date FROM attendance a
+         JOIN class_sessions cs ON cs.id = a.session_id
+         WHERE a.student_id = ? AND a.present = 1
+         ORDER BY cs.session_date DESC LIMIT 1'
+    );
+    $ca->execute([$cid]);
+    $cp = db()->prepare(
+        "SELECT payment_date, payment_type FROM payments
+         WHERE student_id = ?
+         ORDER BY payment_date DESC LIMIT 1"
+    );
+    $cp->execute([$cid]);
+    $children_summary[$cid] = [
+        'last_attendance' => $ca->fetchColumn() ?: null,
+        'last_payment'    => $cp->fetch() ?: null,
+    ];
+}
+
 // Determine which student to display — from ?student_id= tab param
 $tab_id = (int)($_GET['student_id'] ?? 0);
 if (!$tab_id) {
@@ -90,7 +113,7 @@ if ($tab_id) {
         $payments = $pay_q->fetchAll();
 
         $bt_q = db()->prepare(
-            'SELECT bt.test_date, r.kyu_dan, bt.result, bt.score, bt.fee_paid
+            'SELECT bt.test_date, r.kyu_dan, bt.result, bt.score, bt.fee_paid, bt.belt_awarded
              FROM belt_tests bt JOIN ranks r ON r.id = bt.rank_testing_for
              WHERE bt.student_id = ? ORDER BY bt.test_date DESC LIMIT 10'
         );
@@ -223,17 +246,6 @@ function score_badge(string $result, ?int $score): string {
 
 </div>
 
-<?php if (!empty($active_waivers)): ?>
-<div class="alert alert-success d-flex align-items-start gap-2 mb-4">
-    <span class="fw-semibold text-nowrap">Active Waivers:</span>
-    <span>
-        <?php foreach ($active_waivers as $i => $w): ?>
-            <?= $i > 0 ? ' &nbsp;·&nbsp; ' : '' ?>
-            <?= htmlspecialchars(ucwords(str_replace('_', ' ', $w['waiver_type']))) ?>
-        <?php endforeach; ?>
-    </span>
-</div>
-<?php endif; ?>
 
 <!-- ── Two-column layout ── -->
 <div class="row g-4">
@@ -247,41 +259,34 @@ function score_badge(string $result, ?int $score): string {
                 <span>Profile Info</span>
                 <a href="profile_edit.php?student_id=<?= $tab_id ?>" class="btn btn-sm btn-outline-secondary">Edit</a>
             </div>
-            <div class="card-body">
-                <div class="row g-2">
-                    <div class="col-6">
-                        <div class="text-muted small">First Name</div>
-                        <div><?= htmlspecialchars($student['first_name'] ?? '') ?: '—' ?></div>
-                    </div>
-                    <div class="col-6">
-                        <div class="text-muted small">Last Name</div>
-                        <div><?= htmlspecialchars($student['last_name'] ?? '') ?: '—' ?></div>
-                    </div>
-                    <div class="col-6">
-                        <div class="text-muted small">Date of Birth</div>
-                        <div><?= $student['date_of_birth'] ? fmt_date($student['date_of_birth']) : '—' ?></div>
-                    </div>
-                    <div class="col-6">
-                        <div class="text-muted small">Phone</div>
-                        <div><?= htmlspecialchars($student['phone'] ?? '') ?: '—' ?></div>
-                    </div>
-                    <div class="col-12">
-                        <div class="text-muted small">Email</div>
-                        <div><?= htmlspecialchars($student['email'] ?? '') ?: '—' ?></div>
-                    </div>
-                    <div class="col-6">
-                        <div class="text-muted small">Emergency Contact</div>
-                        <div><?= htmlspecialchars($student['emergency_contact_name'] ?? '') ?: '—' ?></div>
-                    </div>
-                    <div class="col-6">
-                        <div class="text-muted small">Emergency Phone</div>
-                        <div><?= htmlspecialchars($student['emergency_contact_phone'] ?? '') ?: '—' ?></div>
-                    </div>
-                    <div class="col-6">
-                        <div class="text-muted small">Member Since</div>
-                        <div><?= $student['registration_date'] ? fmt_date($student['registration_date']) : '—' ?></div>
-                    </div>
+            <div class="card-body py-2 px-3">
+                <?php
+                $type_colors = ['student' => 'bg-primary', 'parent' => 'bg-info text-dark', 'guest' => 'bg-secondary'];
+                $type_tips   = ['student' => 'Registration fee paid', 'parent' => 'Family account', 'guest' => 'Non-paying participant (registration fee not yet paid)'];
+                $_stype      = $student['student_type'] ?? '';
+                $_stip       = isset($type_tips[$_stype]) ? ' data-bs-toggle="tooltip" title="' . $type_tips[$_stype] . '"' : '';
+                $type_badge  = '<span class="badge ' . ($type_colors[$_stype] ?? 'bg-secondary') . '"' . $_stip . '>'
+                             . htmlspecialchars(ucfirst($_stype)) . '</span>';
+                $pv = [
+                    'First Name'        => htmlspecialchars($student['first_name'] ?? '') ?: '—',
+                    'Last Name'         => htmlspecialchars($student['last_name']  ?? '') ?: '—',
+                    'Account Type'      => $type_badge,
+                    'Date of Birth'     => $student['date_of_birth'] ? fmt_date($student['date_of_birth']) : '—',
+                    'Phone'             => htmlspecialchars($student['phone'] ?? '') ?: '—',
+                    'Email'             => htmlspecialchars($student['email'] ?? '') ?: '—',
+                    'Emergency Contact' => htmlspecialchars($student['emergency_contact_name']  ?? '') ?: '—',
+                    'Emergency Phone'   => htmlspecialchars($student['emergency_contact_phone'] ?? '') ?: '—',
+                    'Member Since'      => $student['registration_date'] ? fmt_date($student['registration_date']) : '—',
+                    'Medical Note'      => !empty($student['medical_note']) ? nl2br(htmlspecialchars($student['medical_note'])) : '—',
+                ];
+                $keys = array_keys($pv);
+                $last = end($keys);
+                foreach ($pv as $lbl => $val): ?>
+                <div class="d-flex py-1 <?= $lbl !== $last ? 'border-bottom' : '' ?>">
+                    <div class="text-muted small" style="min-width:160px"><?= $lbl ?></div>
+                    <div><?= $val ?></div>
                 </div>
+                <?php endforeach; ?>
             </div>
         </div>
 
@@ -361,7 +366,7 @@ function score_badge(string $result, ?int $score): string {
                 <?php else: ?>
                 <table class="table table-sm table-hover mb-0">
                     <thead class="table-light">
-                        <tr><th>Date</th><th>Testing For</th><th>Score</th></tr>
+                        <tr><th>Date</th><th>Testing For</th><th>Score</th><th>Fee</th><th>Awarded</th></tr>
                     </thead>
                     <tbody>
                     <?php foreach ($belt_tests as $t): ?>
@@ -369,6 +374,8 @@ function score_badge(string $result, ?int $score): string {
                             <td><?= fmt_date($t['test_date']) ?></td>
                             <td><?= htmlspecialchars($t['kyu_dan']) ?></td>
                             <td><?= score_badge($t['result'], isset($t['score']) ? (int)$t['score'] : null) ?></td>
+                            <td><?= $t['fee_paid'] ? '<span class="text-success">✓</span>' : '' ?></td>
+                            <td><?= $t['belt_awarded'] ? '<span class="text-success">✓</span>' : '<span class="text-danger">✗</span>' ?></td>
                         </tr>
                     <?php endforeach; ?>
                     </tbody>
@@ -376,6 +383,41 @@ function score_badge(string $result, ?int $score): string {
                 <?php endif; ?>
             </div>
         </div>
+
+        <?php if (!empty($children) && $own_student && $tab_id === (int)$own_student['id']): ?>
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white fw-semibold">Child Summary</div>
+            <div class="card-body p-0">
+                <table class="table table-sm table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Name</th>
+                            <th>Last Attendance</th>
+                            <th>Last Payment</th>
+                            <th>Waiver</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    <?php foreach ($children as $ch):
+                        $cs = $children_summary[(int)$ch['id']];
+                    ?>
+                    <tr>
+                        <td><?= htmlspecialchars($ch['first_name'] . ' ' . $ch['last_name']) ?></td>
+                        <td><?= $cs['last_attendance'] ? fmt_date($cs['last_attendance']) : '' ?></td>
+                        <td>
+                            <?php if ($cs['last_payment']): ?>
+                                <?= fmt_date($cs['last_payment']['payment_date']) ?>
+                                <span class="text-muted small ms-1"><?= fmt_type($cs['last_payment']['payment_type']) ?></span>
+                            <?php endif; ?>
+                        </td>
+                        <td><?= $ch['injury_waiver'] ? '<span class="text-success">✓</span>' : '' ?></td>
+                    </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <?php endif; ?>
 
     </div>
 </div><!-- /row -->

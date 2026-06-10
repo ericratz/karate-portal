@@ -1,0 +1,13 @@
+Upload instructions:
+1. Update:
+- portal/includes/config.php (site url, paypal credentials)
+- karate/.env (cPanel DB creds)
+
+2. WinSCP:
+- Upload portal/
+- Upload karate/.env, .htaccess
+
+3. cPanel:
+- MySQL Databases -> phpMyAdmin -> Import karate_schema.sql
+- Advanced -> Cron Jobs (portal/cron)
+

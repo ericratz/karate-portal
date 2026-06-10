@@ -1,4 +1,4 @@
-# Shotokan Karate Portal — V2.0
+# Shotokan Karate Portal — V2.1
 
 A private membership portal for Noji Ratzlaff's Shotokan Karate dojo. Students can track
 their attendance, belt tests, and payments; instructors can take attendance and manage belt
@@ -6,30 +6,22 @@ tests; and the admin can run the whole operation from one place.
 
 ---
 
-## What's New in V2.0
+## What's New in V2.1
 
-- **Parent role** — Family accounts that manage one or more linked children. Parents get their
-  own portal with tabbed views per child: dashboard, attendance, payments, belt tests, waiver,
-  and profile editing. One tuition payment covers the whole family.
-- **Notify Noji on registration** — After creating an account, new users can tap a button
-  describing who they are (new student / returning student / parent). A Link Requests card
-  appears on the admin dashboard so Noji can review and link accounts without waiting for an email.
-- **Compare & Link page** — New side-by-side view that shows a login account and a roster
-  entry together, highlights mismatched fields, and links them in one click. Replaces the old
-  blind-link button.
-- **Family-aware tuition alert** — The admin dashboard's "Tuition Unpaid" card now understands
-  family groups: if anyone in a parent/child group has paid, all members are cleared.
-- **Parent category on all roster views** — Instructors, Parents, Students, Guests — consistent
-  order on the roster, attendance, student notes, and email pages.
-- **Student profile family tabs** — Viewing a parent's or child's profile in the admin/instructor
-  view shows a tab row for the whole family group; each tab links to that person's full profile.
-- **Belt test student panel** — Selecting a student when recording a belt test now shows their
-  current rank and full test history inline.
-- **Attendance session type filter** — Sessions list can be filtered by class type (Class /
-  Seminar / Private) in addition to date range.
-- **Tooltips on status and role badges** — Active, Inactive, Override, role badges, and
-  Activated/Deactivated all have descriptive hover tooltips across roster and user views.
-- **Admin dropdown reorganised** — Each sublist is alphabetised; Donations moved into Finances.
+- **Medical notes** — students and parents can enter a medical note on their profile; a ⚕ symbol with tooltip appears next to the student's name on the admin and instructor rosters
+- **Account type tooltips** — role badges in the nav header and on profile cards now show a tooltip (student: "Registration fee paid", parent: "Family account", guest: "Non-paying participant")
+- **Account type in profile info** — student type badge now displayed in the Profile Info card on parent and instructor views
+- **Profile info layout** — profile fields converted to horizontal label/value rows across all views (parent, student, instructor, admin)
+- **Belt test columns** — Fee (✓ or blank) and Awarded (✓/✗) columns added to belt test tables across all views
+- **Parent payment notice** — when a parent selects themselves on the payment page and a child has already paid tuition that month, a notice appears: no pressure, just awareness
+- **Child Summary card** — parent dashboard shows a summary table of all linked children (last attendance, last payment, waiver status) on the parent's own tab
+- **User accounts split** — admin Users page now separates Linked and Unlinked accounts into two tables
+- **Delete user** — admin can delete a login account from the user profile page; student history (attendance, belt tests, payments) is preserved and the roster entry is detached
+- **Compare & Link flow** — selecting a student on the user profile page now opens the Compare page directly; student picker auto-populates on selection with no Compare button needed
+- **Date of birth on user profile** — birth date from account creation now displayed in the admin user profile view
+- **Parent badge color** — parent account type now displays as teal (bg-info) consistently across all views
+- **Back-forward cache fix** — navigating back to the Users page now always shows current data instead of a stale cached version
+
 
 ---
 

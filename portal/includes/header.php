@@ -220,7 +220,14 @@
                 </button>
                 <span class="navbar-text">
                     <?= htmlspecialchars($_SESSION['username'] ?? '') ?>
-                    <span class="role-badge"><?= htmlspecialchars($_SESSION['student_type'] ?? $_SESSION['role'] ?? '') ?></span>
+                    <?php
+                    $_rt = $_SESSION['student_type'] ?? $_SESSION['role'] ?? '';
+                    if ($_rt === 'student')     $_tip = 'Registration fee paid';
+                    elseif ($_rt === 'parent')  $_tip = 'Family account';
+                    elseif ($_rt === 'guest')   $_tip = 'Non-paying participant (registration fee not yet paid)';
+                    else                        $_tip = '';
+                    ?>
+                    <span class="role-badge"<?= $_tip ? ' data-bs-toggle="tooltip" title="' . htmlspecialchars($_tip) . '"' : '' ?>><?= htmlspecialchars($_rt) ?></span>
                     &nbsp;
                     <a href="/karate/portal/logout.php"
                        class="btn btn-sm btn-logout ms-2">Log out</a>

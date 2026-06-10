@@ -116,7 +116,7 @@ $type_labels = [
 $type_colours = [
     'new_guest'        => 'bg-success',
     'existing_student' => 'bg-primary',
-    'parent'           => 'bg-purple text-white',
+    'parent'           => 'bg-info text-dark',
 ];
 
 $page_title = 'Compare Account';
@@ -170,14 +170,14 @@ function cmp_class(string $a, string $b): string {
 <div class="card border-0 shadow-sm mb-4">
     <div class="card-header bg-white fw-semibold">Select a Student Record to Compare</div>
     <div class="card-body py-3">
-        <form method="get" action="compare_account.php" class="d-flex gap-2 align-items-end flex-wrap">
+        <form method="get" action="compare_account.php" id="studentPickerForm" class="d-flex gap-2 align-items-end flex-wrap">
             <input type="hidden" name="user_id" value="<?= $user_id ?>">
             <?php if ($link_request_id): ?>
             <input type="hidden" name="link_request_id" value="<?= $link_request_id ?>">
             <?php endif; ?>
             <div>
                 <label class="form-label small mb-1">Student Record</label>
-                <select name="student_id" class="form-select form-select-sm" style="min-width:260px" required>
+                <select name="student_id" id="studentPicker" class="form-select form-select-sm" style="min-width:260px">
                     <option value="">— pick a student —</option>
                     <?php foreach ($all_students as $s): ?>
                     <option value="<?= $s['id'] ?>" <?= $s['id'] === $student_id ? 'selected' : '' ?>>
@@ -187,7 +187,6 @@ function cmp_class(string $a, string $b): string {
                     <?php endforeach; ?>
                 </select>
             </div>
-            <button type="submit" class="btn btn-primary btn-sm">Compare</button>
             <a href="student_edit.php?prefill_first=<?= urlencode($user['first_name']) ?>&prefill_last=<?= urlencode($user['last_name']) ?>&prefill_email=<?= urlencode($user['email'] ?? '') ?>"
                class="btn btn-outline-secondary btn-sm">+ Create New Student Record</a>
         </form>
@@ -351,5 +350,17 @@ function cmp_class(string $a, string $b): string {
     <?php endif; ?>
 </div>
 <?php endif; ?>
+
+<script>
+document.getElementById('studentPicker').addEventListener('change', function() {
+    if (!this.value) return;
+    window.setFormClean();
+    var params = new URLSearchParams();
+    params.set('user_id', '<?= $user_id ?>');
+    <?php if ($link_request_id): ?>params.set('link_request_id', '<?= $link_request_id ?>');<?php endif; ?>
+    params.set('student_id', this.value);
+    window.location.href = 'compare_account.php?' + params.toString();
+});
+</script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>

@@ -7,14 +7,17 @@ require_role('parent');
 $user_id = current_user_id();
 
 // ── Build the family list (own record + linked children) ─────────
-$family = [];
+$family   = [];
+$own_id   = 0;
+$child_ids = [];
 
 $own_stmt = db()->prepare('SELECT id, first_name, last_name FROM students WHERE user_id = ?');
 $own_stmt->execute([$user_id]);
 if ($own = $own_stmt->fetch()) {
+    $own_id = (int)$own['id'];
     $family[] = [
-        'id'    => (int)$own['id'],
-        'label' => htmlspecialchars($own['first_name']) . ' (Me)',
+        'id'    => $own_id,
+        'label' => htmlspecialchars($own['first_name'] . ' ' . $own['last_name']),
         'name'  => htmlspecialchars($own['first_name'] . ' ' . $own['last_name']),
     ];
 }
@@ -28,9 +31,10 @@ $ch_stmt = db()->prepare(
 );
 $ch_stmt->execute([$user_id]);
 foreach ($ch_stmt->fetchAll() as $c) {
+    $child_ids[] = (int)$c['id'];
     $family[] = [
         'id'    => (int)$c['id'],
-        'label' => htmlspecialchars($c['first_name']),
+        'label' => htmlspecialchars($c['first_name'] . ' ' . $c['last_name']),
         'name'  => htmlspecialchars($c['first_name'] . ' ' . $c['last_name']),
     ];
 }
@@ -68,6 +72,15 @@ $tuition_paid_names = [];
 foreach ($family as $f) {
     if (in_array($f['id'], $tuition_paid_ids, true)) {
         $tuition_paid_names[] = $f['label'];
+    }
+}
+
+// Child IDs (not parent's own record) who have paid tuition this month — for parent-free notice
+$child_tuition_paid_ids = array_values(array_intersect($tuition_paid_ids, $child_ids));
+$child_paid_names = [];
+foreach ($family as $f) {
+    if (in_array($f['id'], $child_tuition_paid_ids, true)) {
+        $child_paid_names[] = $f['label'];
     }
 }
 
@@ -126,11 +139,17 @@ include __DIR__ . '/../includes/header.php';
                     </select>
                 </div>
 
-                <!-- Family tuition warning (shown only when tuition is checked + any family member paid) -->
-                <div id="tuitionFamilyWarning" class="alert alert-warning d-none mb-3">
-                    ⚠️ Monthly tuition for <?= date('F Y') ?> has already been paid for your family
-                    (<?= implode(', ', $tuition_paid_names) ?>). You can still select it if you need to pay an additional month.
+                <!-- Shown when parent selects themselves and a child has paid tuition this month -->
+                <?php if ($own_id && !empty($child_paid_names)): ?>
+                <div id="tuitionFamilyWarning" class="alert alert-info d-none mb-3 small">
+                    <?php
+                    $n = count($child_paid_names);
+                    if ($n === 1) echo htmlspecialchars($child_paid_names[0]) . ' has';
+                    elseif ($n === 2) echo htmlspecialchars($child_paid_names[0]) . ' and ' . htmlspecialchars($child_paid_names[1]) . ' have';
+                    else echo htmlspecialchars(implode(', ', array_slice($child_paid_names, 0, -1))) . ', and ' . htmlspecialchars(end($child_paid_names)) . ' have';
+                    ?> already paid tuition this month. As a parent of a paid child, you do not need to pay tuition.
                 </div>
+                <?php endif; ?>
 
                 <!-- Checkbox fee list -->
                 <table class="table table-hover mb-3">
@@ -276,14 +295,15 @@ include __DIR__ . '/../includes/header.php';
 <script src="https://www.paypal.com/sdk/js?client-id=<?= htmlspecialchars(PAYPAL_CLIENT_ID) ?>&currency=USD&enable-funding=venmo"></script>
 
 <script>
-const FEES             = <?= json_encode($fees) ?>;
-const CSRF             = document.querySelector('meta[name="csrf-token"]').content;
-const TUITION_PAID_IDS = <?= json_encode($tuition_paid_ids) ?>;   // student IDs that paid tuition this month
-const REG_PAID_IDS     = <?= json_encode($reg_paid_ids) ?>;        // student IDs that ever paid registration
-const FAMILY_PAID      = <?= json_encode($family_tuition_paid) ?>;  // any family member paid tuition this month
-const MONTH_OPTIONS    = <?= json_encode($month_options) ?>;
-// Map student_id → display label for receipt
-const STUDENT_LABELS   = <?= json_encode(array_column($family, 'label', 'id')) ?>;
+const FEES                   = <?= json_encode($fees) ?>;
+const CSRF                   = document.querySelector('meta[name="csrf-token"]').content;
+const TUITION_PAID_IDS       = <?= json_encode($tuition_paid_ids) ?>;
+const REG_PAID_IDS           = <?= json_encode($reg_paid_ids) ?>;
+const FAMILY_PAID            = <?= json_encode($family_tuition_paid) ?>;
+const MONTH_OPTIONS          = <?= json_encode($month_options) ?>;
+const OWN_ID                 = <?= json_encode($own_id) ?>;
+const CHILD_TUITION_PAID_IDS = <?= json_encode($child_tuition_paid_ids) ?>;
+const STUDENT_LABELS         = <?= json_encode(array_column($family, 'label', 'id')) ?>;
 
 var total = 0;
 
@@ -300,12 +320,12 @@ function itemLabel(item) {
     return FEES[item.type] ? FEES[item.type].label : item.type;
 }
 
-// ── Tuition warning ──────────────────────────────────────────────
+// ── Tuition notice ───────────────────────────────────────────────
 function updateTuitionWarning() {
-    var el  = document.getElementById('tuitionFamilyWarning');
-    var chk = document.getElementById('chk-monthly_tuition');
+    var el = document.getElementById('tuitionFamilyWarning');
     if (!el) return;
-    el.classList.toggle('d-none', !(FAMILY_PAID && chk && chk.checked));
+    var show = OWN_ID > 0 && getSelectedStudentId() === OWN_ID && CHILD_TUITION_PAID_IDS.length > 0;
+    el.classList.toggle('d-none', !show);
 }
 
 // ── Recalculate total ────────────────────────────────────────────
@@ -498,12 +518,13 @@ document.getElementById('customCheck').addEventListener('change', function() {
 
 document.getElementById('customAmount').addEventListener('input', recalculate);
 
-// ── Initialize month default for pre-selected student ────────────
+// ── Initialize month default + notices for pre-selected student ──
 (function() {
     var sid = getSelectedStudentId();
     var alreadyPaid = TUITION_PAID_IDS.indexOf(sid) !== -1;
     document.getElementById('tuitionMonth').value =
         alreadyPaid ? MONTH_OPTIONS[1].value : MONTH_OPTIONS[0].value;
+    updateTuitionWarning();
 })();
 </script>
 

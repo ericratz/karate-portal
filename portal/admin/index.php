@@ -211,7 +211,7 @@ include __DIR__ . '/../includes/header.php';
         <div class="card border-0 shadow-sm">
             <div class="card-header bg-white fw-semibold d-flex justify-content-between">
                 <span>Link Requests</span>
-                <span class="badge bg-warning text-dark"><?= count($link_requests) ?></span>
+                <span class="badge" style="background-color:#fd7e14;color:#fff"><?= count($link_requests) ?></span>
             </div>
             <div class="card-body p-0">
                 <table class="table table-sm table-hover mb-0">
@@ -229,7 +229,7 @@ include __DIR__ . '/../includes/header.php';
                     $lr_type_labels = [
                         'new_guest'        => ['New Student',       'bg-success'],
                         'existing_student' => ['Existing Student',  'bg-primary'],
-                        'parent'           => ['Parent',            'bg-purple text-white'],
+                        'parent'           => ['Parent',            'bg-info text-dark'],
                     ];
                     foreach ($link_requests as $lr):
                         [$lr_label, $lr_cls] = $lr_type_labels[$lr['request_type']] ?? [ucfirst($lr['request_type']), 'bg-secondary'];

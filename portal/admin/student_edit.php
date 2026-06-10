@@ -190,17 +190,19 @@ if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ===
     $ec_name  = trim($_POST['ec_name']    ?? '');
     $ec_phone = trim($_POST['ec_phone']   ?? '');
     $reg_date = $_POST['registration_date'] ?? date('Y-m-d');
-    $s_type   = in_array($_POST['account_type'] ?? '', ['guest','student','parent','instructor','admin'])
-                ? $_POST['account_type'] : 'guest';
-    $user_role = in_array($s_type, ['parent','instructor','admin']) ? $s_type : 'student';
+    $s_type      = in_array($_POST['account_type'] ?? '', ['guest','student','parent','instructor','admin'])
+                   ? $_POST['account_type'] : 'guest';
+    $user_role   = in_array($s_type, ['parent','instructor','admin']) ? $s_type : 'student';
+    $medical_note = trim($_POST['medical_note'] ?? '');
     if (!$first || !$last) {
         $error = 'First and last name are required.';
     } else {
         db()->prepare(
             'UPDATE students SET first_name=?, last_name=?, date_of_birth=?, phone=?, email=?,
-             emergency_contact_name=?, emergency_contact_phone=?, registration_date=?, student_type=?
+             emergency_contact_name=?, emergency_contact_phone=?, registration_date=?, student_type=?,
+             medical_note=?
              WHERE id=?'
-        )->execute([$first,$last,$dob?:null,$phone,$email,$ec_name,$ec_phone,$reg_date,$s_type,$id]);
+        )->execute([$first,$last,$dob?:null,$phone,$email,$ec_name,$ec_phone,$reg_date,$s_type,$medical_note?:null,$id]);
         $uid_q = db()->prepare('SELECT user_id FROM students WHERE id=?');
         $uid_q->execute([$id]);
         if ($lu = $uid_q->fetchColumn()) {
@@ -375,8 +377,9 @@ if (!$id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ==
     $ec_name  = trim($_POST['ec_name']    ?? '');
     $ec_phone = trim($_POST['ec_phone']   ?? '');
     $reg_date = $_POST['registration_date'] ?? date('Y-m-d');
-    $s_type   = in_array($_POST['account_type'] ?? '', ['guest','student','parent','instructor','admin'])
-                ? $_POST['account_type'] : 'guest';
+    $s_type      = in_array($_POST['account_type'] ?? '', ['guest','student','parent','instructor','admin'])
+                   ? $_POST['account_type'] : 'guest';
+    $medical_note = trim($_POST['medical_note'] ?? '');
     if (!$first || !$last) {
         $error = 'First and last name are required.';
     } else {
@@ -384,9 +387,9 @@ if (!$id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ==
             'INSERT INTO students
              (first_name,last_name,date_of_birth,phone,email,
               emergency_contact_name,emergency_contact_phone,
-              registration_date,student_type,active,active_override)
-             VALUES (?,?,?,?,?,?,?,?,?,1,NULL)'
-        )->execute([$first,$last,$dob?:null,$phone,$email,$ec_name,$ec_phone,$reg_date,$s_type]);
+              registration_date,student_type,medical_note,active,active_override)
+             VALUES (?,?,?,?,?,?,?,?,?,?,1,NULL)'
+        )->execute([$first,$last,$dob?:null,$phone,$email,$ec_name,$ec_phone,$reg_date,$s_type,$medical_note?:null]);
         $id = (int)db()->lastInsertId();
         header("Location: student_edit.php?id=$id");
         exit;
@@ -530,39 +533,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                 </div>
                 <div class="card-body">
                     <!-- View mode -->
-                    <div id="profile-view" class="row g-2">
-                        <div class="col-6">
-                            <div class="text-muted small">First Name</div>
-                            <div><?= htmlspecialchars($student['first_name'] ?? '') ?: '—' ?></div>
-                        </div>
-                        <div class="col-6">
-                            <div class="text-muted small">Last Name</div>
-                            <div><?= htmlspecialchars($student['last_name'] ?? '') ?: '—' ?></div>
-                        </div>
-                        <div class="col-6">
-                            <div class="text-muted small">Date of Birth</div>
-                            <div><?= $student['date_of_birth'] ? date('M j, Y', strtotime($student['date_of_birth'])) : '—' ?></div>
-                        </div>
-                        <div class="col-6">
-                            <div class="text-muted small">Phone</div>
-                            <div><?= htmlspecialchars($student['phone'] ?? '') ?: '—' ?></div>
-                        </div>
-                        <div class="col-12">
-                            <div class="text-muted small">Email</div>
-                            <div><?= htmlspecialchars($student['email'] ?? '') ?: '—' ?></div>
-                        </div>
-                        <div class="col-6">
-                            <div class="text-muted small">Emergency Contact</div>
-                            <div><?= htmlspecialchars($student['emergency_contact_name'] ?? '') ?: '—' ?></div>
-                        </div>
-                        <div class="col-6">
-                            <div class="text-muted small">Emergency Phone</div>
-                            <div><?= htmlspecialchars($student['emergency_contact_phone'] ?? '') ?: '—' ?></div>
-                        </div>
-                        <div class="col-6">
-                            <div class="text-muted small">Member Since</div>
-                            <div><?= $student['registration_date'] ? date('M j, Y', strtotime($student['registration_date'])) : '—' ?></div>
-                        </div>
+                    <div id="profile-view">
                         <?php
                         $acct_tips = [
                             'student'    => 'Paying participant ($30/month tuition)',
@@ -571,20 +542,34 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                             'instructor' => 'Teaches or assists with classes',
                             'admin'      => 'Full administrative access',
                         ];
-                        ?>
-                        <div class="col-6">
-                            <div class="text-muted small">Account Type</div>
+                        $pv = [
+                            'First Name'        => htmlspecialchars($student['first_name'] ?? '') ?: '—',
+                            'Last Name'         => htmlspecialchars($student['last_name']  ?? '') ?: '—',
+                            'Date of Birth'     => $student['date_of_birth'] ? date('M j, Y', strtotime($student['date_of_birth'])) : '—',
+                            'Phone'             => htmlspecialchars($student['phone'] ?? '') ?: '—',
+                            'Email'             => htmlspecialchars($student['email'] ?? '') ?: '—',
+                            'Emergency Contact' => htmlspecialchars($student['emergency_contact_name']  ?? '') ?: '—',
+                            'Emergency Phone'   => htmlspecialchars($student['emergency_contact_phone'] ?? '') ?: '—',
+                            'Member Since'      => $student['registration_date'] ? date('M j, Y', strtotime($student['registration_date'])) : '—',
+                        ];
+                        foreach ($pv as $lbl => $val): ?>
+                        <div class="d-flex py-1 border-bottom">
+                            <div class="text-muted small" style="min-width:160px"><?= $lbl ?></div>
+                            <div><?= $val ?></div>
+                        </div>
+                        <?php endforeach; ?>
+                        <div class="d-flex py-1 border-bottom">
+                            <div class="text-muted small" style="min-width:160px">Account Type</div>
                             <div>
                                 <?= ucfirst($acct_val) ?>
                                 <?php if (isset($acct_tips[$acct_val])): ?>
-                                <span class="text-muted small ms-1"
-                                      data-bs-toggle="tooltip"
+                                <span class="text-muted ms-1" data-bs-toggle="tooltip"
                                       title="<?= htmlspecialchars($acct_tips[$acct_val]) ?>">ⓘ</span>
                                 <?php endif; ?>
                             </div>
                         </div>
-                        <div class="col-6">
-                            <div class="text-muted small">Active Status</div>
+                        <div class="d-flex py-1 border-bottom">
+                            <div class="text-muted small" style="min-width:160px">Active Status</div>
                             <div>
                                 <?php if ($is_active): ?>
                                     <span class="badge bg-success" data-bs-toggle="tooltip"
@@ -598,6 +583,10 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                                           title="Override: active/inactive status manually set by admin">Override</span>
                                 <?php endif; ?>
                             </div>
+                        </div>
+                        <div class="d-flex py-1">
+                            <div class="text-muted small" style="min-width:160px">Medical Note</div>
+                            <div><?= !empty($student['medical_note']) ? nl2br(htmlspecialchars($student['medical_note'])) : '—' ?></div>
                         </div>
                     </div>
                     <!-- Edit mode (hidden) -->
@@ -651,6 +640,11 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                                 <option value="instructor"  <?= $acct_val==='instructor'  ? 'selected':'' ?>>Instructor</option>
                                 <option value="admin"       <?= $acct_val==='admin'       ? 'selected':'' ?>>Admin</option>
                             </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Medical Note</label>
+                            <textarea name="medical_note" class="form-control" rows="2"
+                                      placeholder="Allergies, conditions, medications, etc."><?= htmlspecialchars($student['medical_note'] ?? '') ?></textarea>
                         </div>
                     </div>
                 </div>
@@ -708,6 +702,11 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                                 <option value="instructor">Instructor</option>
                                 <option value="admin">Admin</option>
                             </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Medical Note</label>
+                            <textarea name="medical_note" class="form-control" rows="2"
+                                      placeholder="Allergies, conditions, medications, etc."></textarea>
                         </div>
                         <div class="col-12">
                             <button type="submit" class="btn btn-primary">Add to Roster</button>
@@ -1157,8 +1156,8 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                         <?php else: ?>
                             <span class="badge bg-secondary">Pending</span>
                         <?php endif; ?>
-                        <span>Fee <?= $bt['fee_paid']     ? '✓' : '<span class="text-danger">✗</span>' ?></span>
-                        <span>Awarded <?= $bt['belt_awarded'] ? '✓' : '<span class="text-danger">✗</span>' ?></span>
+                        <span>Fee <?= $bt['fee_paid'] ? '<span class="text-success">✓</span>' : '' ?></span>
+                        <span>Awarded <?= $bt['belt_awarded'] ? '<span class="text-success">✓</span>' : '<span class="text-danger">✗</span>' ?></span>
                         <div class="d-flex gap-2 ms-auto">
                             <button type="button" onclick="btRowEdit(<?= $bt['id'] ?>)"
                                     class="btn btn-sm btn-success py-0">Edit</button>

@@ -105,16 +105,8 @@ function badge_result(string $r, ?int $score): string {
                     <td><?= fmt_date($t['test_date']) ?></td>
                     <td><?= htmlspecialchars($t['kyu_dan']) ?></td>
                     <td><?= badge_result($t['result'], isset($t['score']) ? (int)$t['score'] : null) ?></td>
-                    <td>
-                        <?= $t['fee_paid']
-                            ? '<span class="text-success">Paid</span>'
-                            : '<span class="text-danger">Unpaid</span>' ?>
-                    </td>
-                    <td>
-                        <?= $t['belt_awarded']
-                            ? '<span class="badge bg-success">Awarded</span>'
-                            : '<span class="text-muted">—</span>' ?>
-                    </td>
+                    <td><?= $t['fee_paid'] ? '<span class="text-success">✓</span>' : '' ?></td>
+                    <td><?= $t['belt_awarded'] ? '<span class="text-success">✓</span>' : '<span class="text-danger">✗</span>' ?></td>
                 </tr>
             <?php endforeach; ?>
             </tbody>

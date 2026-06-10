@@ -46,6 +46,7 @@ CREATE TABLE IF NOT EXISTS students (
     injury_waiver           TINYINT(1) NOT NULL DEFAULT 0,
     injury_waiver_date      DATE,
     notes                   TEXT,
+    medical_note            TEXT,
     active                  TINYINT(1) NOT NULL DEFAULT 1,
     active_override         TINYINT(1) DEFAULT NULL,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE

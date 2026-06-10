@@ -242,7 +242,7 @@ include __DIR__ . '/../includes/header.php';
            href="student_profile.php?id=<?= $tab['id'] ?>">
             <?= htmlspecialchars($tab['name']) ?>
             <?php if ($tab['role'] === 'parent'): ?>
-                <span class="badge bg-secondary ms-1" style="font-size:.6rem;vertical-align:middle">Parent</span>
+                <span class="badge bg-info text-dark ms-1" style="font-size:.6rem;vertical-align:middle">Parent</span>
             <?php endif; ?>
         </a>
     </li>
@@ -258,81 +258,64 @@ include __DIR__ . '/../includes/header.php';
         <!-- Profile Info -->
         <div class="card border-0 shadow-sm">
             <div class="card-header bg-white fw-semibold">Profile Info</div>
-            <div class="card-body">
-                <div class="row g-3">
-                    <div class="col-6">
-                        <div class="small text-muted mb-1">Date of Birth</div>
-                        <div><?= $student['date_of_birth'] ? date('M j, Y', strtotime($student['date_of_birth'])) : '—' ?></div>
-                    </div>
-                    <div class="col-6">
-                        <div class="small text-muted mb-1">Phone</div>
-                        <div><?= htmlspecialchars($student['phone'] ?? '—') ?></div>
-                    </div>
-                    <div class="col-12">
-                        <div class="small text-muted mb-1">Email</div>
-                        <div><?= htmlspecialchars($student['email'] ?? '—') ?></div>
-                    </div>
-                    <div class="col-6">
-                        <div class="small text-muted mb-1">Emergency Contact</div>
-                        <div><?= htmlspecialchars($student['emergency_contact_name'] ?? '—') ?></div>
-                    </div>
-                    <div class="col-6">
-                        <div class="small text-muted mb-1">Emergency Phone</div>
-                        <div><?= htmlspecialchars($student['emergency_contact_phone'] ?? '—') ?></div>
-                    </div>
-                    <div class="col-6">
-                        <div class="small text-muted mb-1">Member Since</div>
-                        <div><?= date('M j, Y', strtotime($student['registration_date'])) ?></div>
-                    </div>
-                    <div class="col-6">
-                        <div class="small text-muted mb-1">Account Type</div>
-                        <div>
-                            <?php
-                            $acct_tips = [
-                                'student'    => 'Paying participant ($30/month tuition)',
-                                'guest'      => 'Non-paying participant (registration fee not yet paid)',
-                                'parent'     => 'Family account — one tuition payment covers the whole family',
-                                'instructor' => 'Teaches or assists with classes',
-                                'admin'      => 'Full administrative access',
-                            ];
-                            $type_badges = [
-                                'admin'      => '<span class="badge bg-danger">Admin</span>',
-                                'instructor' => '<span class="badge bg-warning text-dark">Instructor</span>',
-                                'student'    => '<span class="badge bg-primary">Student</span>',
-                                'parent'     => '<span class="badge bg-info text-dark">Parent</span>',
-                                'guest'      => '<span class="badge bg-secondary">Guest</span>',
-                            ];
-                            echo $type_badges[$student['student_type']] ?? '<span class="badge bg-secondary">Guest</span>';
-                            $tip = $acct_tips[$student['student_type']] ?? '';
-                            if ($tip): ?>
-                            <span class="text-muted small ms-1" data-bs-toggle="tooltip" title="<?= htmlspecialchars($tip) ?>">ⓘ</span>
+            <div class="card-body py-2 px-3">
+                <?php
+                $acct_tips = [
+                    'student'    => 'Registration fee paid',
+                    'guest'      => 'Non-paying participant (registration fee not yet paid)',
+                    'parent'     => 'Family account',
+                    'instructor' => 'Teaches or assists with classes',
+                    'admin'      => 'Full administrative access',
+                ];
+                $type_badges = [
+                    'admin'      => '<span class="badge bg-danger">Admin</span>',
+                    'instructor' => '<span class="badge bg-warning text-dark">Instructor</span>',
+                    'student'    => '<span class="badge bg-primary">Student</span>',
+                    'parent'     => '<span class="badge bg-info text-dark">Parent</span>',
+                    'guest'      => '<span class="badge bg-secondary">Guest</span>',
+                ];
+                $tip = $acct_tips[$student['student_type']] ?? '';
+                $waiver_val = $student['injury_waiver']
+                    ? '<span class="text-success">✓</span> ' . ($student['injury_waiver_date'] ? date('M j, Y', strtotime($student['injury_waiver_date'])) : '')
+                    : '<span class="text-danger">✗</span> Not signed';
+                $pv = [
+                    'Date of Birth'     => $student['date_of_birth'] ? date('M j, Y', strtotime($student['date_of_birth'])) : '—',
+                    'Phone'             => htmlspecialchars($student['phone'] ?? '') ?: '—',
+                    'Email'             => htmlspecialchars($student['email'] ?? '') ?: '—',
+                    'Emergency Contact' => htmlspecialchars($student['emergency_contact_name']  ?? '') ?: '—',
+                    'Emergency Phone'   => htmlspecialchars($student['emergency_contact_phone'] ?? '') ?: '—',
+                    'Member Since'      => date('M j, Y', strtotime($student['registration_date'])),
+                ];
+                foreach ($pv as $lbl => $val): ?>
+                <div class="d-flex py-1 border-bottom">
+                    <div class="text-muted small" style="min-width:160px"><?= $lbl ?></div>
+                    <div><?= $val ?></div>
+                </div>
+                <?php endforeach; ?>
+                <div class="d-flex py-1 border-bottom">
+                    <div class="text-muted small" style="min-width:160px">Account Type</div>
+                    <div>
+                        <?= $type_badges[$student['student_type']] ?? '<span class="badge bg-secondary">Guest</span>' ?>
+                        <?php if ($tip): ?>
+                        <span class="text-muted ms-1" data-bs-toggle="tooltip" title="<?= htmlspecialchars($tip) ?>">ⓘ</span>
                         <?php endif; ?>
-                        </div>
                     </div>
-                    <div class="col-6">
-                        <div class="small text-muted mb-1">Liability Waiver</div>
-                        <div>
-                            <?php if ($student['injury_waiver']): ?>
-                                <span class="text-success">✓ <?= $student['injury_waiver_date'] ? date('M j, Y', strtotime($student['injury_waiver_date'])) : '' ?></span>
-                            <?php else: ?>
-                                <span class="text-danger">✗ Not signed</span>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="small text-muted mb-1">Account</div>
-                        <div>
-                            <?php if ($student['username']): ?>
-                                <?= htmlspecialchars($student['username']) ?>
-                            <?php else: ?>
-                                <span class="text-muted">No login</span>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="small text-muted mb-1">Last Login</div>
-                        <div><?= $student['last_login'] ? date('M j, Y', strtotime($student['last_login'])) : '—' ?></div>
-                    </div>
+                </div>
+                <div class="d-flex py-1 border-bottom">
+                    <div class="text-muted small" style="min-width:160px">Liability Waiver</div>
+                    <div><?= $waiver_val ?></div>
+                </div>
+                <div class="d-flex py-1 border-bottom">
+                    <div class="text-muted small" style="min-width:160px">Account</div>
+                    <div><?= $student['username'] ? htmlspecialchars($student['username']) : '<span class="text-muted">No login</span>' ?></div>
+                </div>
+                <div class="d-flex py-1 border-bottom">
+                    <div class="text-muted small" style="min-width:160px">Last Login</div>
+                    <div><?= $student['last_login'] ? date('M j, Y', strtotime($student['last_login'])) : '—' ?></div>
+                </div>
+                <div class="d-flex py-1">
+                    <div class="text-muted small" style="min-width:160px">Medical Note</div>
+                    <div><?= !empty($student['medical_note']) ? nl2br(htmlspecialchars($student['medical_note'])) : '—' ?></div>
                 </div>
             </div>
         </div>
