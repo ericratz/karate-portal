@@ -67,14 +67,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_password'])) {
     // Already handled above — skip profile save block below
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-    $first        = trim($_POST['first_name']   ?? '');
-    $last         = trim($_POST['last_name']    ?? '');
-    $dob          = $_POST['date_of_birth']     ?? '';
-    $phone        = trim($_POST['phone']        ?? '');
-    $email        = trim($_POST['email']        ?? '');
-    $ec_name      = trim($_POST['ec_name']      ?? '');
-    $ec_phone     = trim($_POST['ec_phone']     ?? '');
-    $medical_note = trim($_POST['medical_note'] ?? '');
+    $first        = trim($_POST['first_name']    ?? '');
+    $last         = trim($_POST['last_name']     ?? '');
+    $dob          = $_POST['date_of_birth']      ?? '';
+    $phone        = trim($_POST['phone']         ?? '');
+    $email        = trim($_POST['email']         ?? '');
+    $ec_name      = trim($_POST['ec_name']       ?? '');
+    $ec_phone     = trim($_POST['ec_phone']      ?? '');
+    $street       = trim($_POST['street_address'] ?? '');
+    $csz          = trim($_POST['city_state_zip'] ?? '');
+    $medical_note = trim($_POST['medical_note']  ?? '');
 
     if (!$first || !$last || !$dob) {
         $error = 'First name, last name, and date of birth are required.';
@@ -84,9 +86,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_password'])) {
                 first_name=?, last_name=?, date_of_birth=?,
                 phone=?, email=?,
                 emergency_contact_name=?, emergency_contact_phone=?,
+                street_address=?, city_state_zip=?,
                 medical_note=?
              WHERE id=?'
-        )->execute([$first, $last, $dob, $phone, $email, $ec_name, $ec_phone, $medical_note ?: null, $student_id]);
+        )->execute([$first, $last, $dob, $phone, $email, $ec_name, $ec_phone, $street?:null, $csz?:null, $medical_note ?: null, $student_id]);
 
         // Keep linked user record in sync
         $lu_stmt = db()->prepare('SELECT user_id FROM students WHERE id=?');
@@ -167,6 +170,16 @@ include __DIR__ . '/../includes/header.php';
                        value="<?= htmlspecialchars($student['emergency_contact_phone'] ?? '') ?>">
             </div>
             <div class="col-12">
+                <label class="form-label">Street Address</label>
+                <input type="text" name="street_address" class="form-control"
+                       value="<?= htmlspecialchars($student['street_address'] ?? '') ?>">
+            </div>
+            <div class="col-12">
+                <label class="form-label">City, State, ZIP</label>
+                <input type="text" name="city_state_zip" class="form-control"
+                       value="<?= htmlspecialchars($student['city_state_zip'] ?? '') ?>">
+            </div>
+            <div class="col-12">
                 <label class="form-label">Medical Note</label>
                 <textarea name="medical_note" class="form-control" rows="2"
                           placeholder="Allergies, conditions, medications, etc."><?= htmlspecialchars($student['medical_note'] ?? '') ?></textarea>
@@ -227,3 +240,4 @@ include __DIR__ . '/../includes/header.php';
 </div><!-- /row -->
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>
+

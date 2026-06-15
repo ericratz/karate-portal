@@ -63,7 +63,7 @@ $total_paid = (float)$tp->fetchColumn();
 $page_title = 'Payment History';
 include __DIR__ . '/../includes/header.php';
 
-function fmt_date(string $d): string { return date('M j, Y', strtotime($d)); }
+function fmt_date(string $d): string { return date('j M Y', strtotime($d)); }
 function fmt_type(string $t): string { return ucwords(str_replace('_', ' ', $t)); }
 ?>
 
@@ -152,3 +152,4 @@ function fmt_type(string $t): string { return ucwords(str_replace('_', ' ', $t))
 </div>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>
+

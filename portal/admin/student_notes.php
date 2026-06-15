@@ -14,7 +14,7 @@ if (!$student_id) {
                  FROM attendance a JOIN class_sessions cs ON cs.id = a.session_id
                  WHERE a.student_id = s.id AND a.present = 1) AS last_attended
          FROM students s
-         ORDER BY s.last_name, s.first_name'
+         ORDER BY s.first_name, s.last_name'
     )->fetchAll();
 
     $instructors = array_filter($all, fn($s) => in_array($s['student_type'], ['instructor','admin']));
@@ -42,9 +42,9 @@ if (!$student_id) {
                 <th>Name</th><th>Last Attended</th><th>Status</th><th>Notes</th><th></th>
               </tr></thead><tbody>';
         foreach ($rows as $s) {
-            $att = $s['last_attended'] ? date('M j, Y', strtotime($s['last_attended'])) : 'Never';
+            $att = $s['last_attended'] ? date('j M Y', strtotime($s['last_attended'])) : 'Never';
             echo '<tr>';
-            echo '<td class="fw-semibold">' . htmlspecialchars($s['last_name'].', '.$s['first_name']) . '</td>';
+            echo '<td class="fw-semibold">' . htmlspecialchars($s['first_name'].' '.$s['last_name']) . '</td>';
             echo '<td>' . $att . '</td>';
             echo '<td>';
             echo $s['active'] ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-secondary">Inactive</span>';
@@ -194,7 +194,7 @@ include __DIR__ . '/../includes/header.php';
                 <div class="border-bottom p-3">
                     <div class="d-flex justify-content-between align-items-start">
                         <span>
-                            <?= date('M j, Y g:i a', strtotime($n['created_at'])) ?>
+                            <?= date('j M Y g:i a', strtotime($n['created_at'])) ?>
                             by <strong><?= htmlspecialchars($n['username'] ?? 'unknown') ?></strong>
                         </span>
                         <form method="post" class="d-inline delete-btn"
@@ -230,3 +230,4 @@ function toggleEdit() {
 </script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>
+

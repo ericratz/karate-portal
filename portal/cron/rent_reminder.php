@@ -40,3 +40,4 @@ mail(
         . "If rent has already been paid, please mark it as paid in the expenses log.",
     'From: ' . DOJO_EMAIL
 );
+

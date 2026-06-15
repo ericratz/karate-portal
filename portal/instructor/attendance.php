@@ -21,19 +21,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
     exit;
 }
 
-$date = $_GET['date'] ?? date('Y-m-d');
+$date      = $_GET['date'] ?? date('Y-m-d');
 if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
     $date = date('Y-m-d');
 }
+$highlight = (int)($_GET['highlight'] ?? 0);
 
-$sort = $_GET['sort'] ?? 'last_attended';
+$sort = in_array($_GET['sort'] ?? '', ['last_name','last_attended']) ? $_GET['sort'] : 'first_name';
 $msg  = '';
 
 // ── Save attendance ──────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf();
-    $post_date      = $_POST['session_date']      ?? '';
-    $post_new_date  = trim($_POST['session_date_edit'] ?? '');
+    $post_date       = $_POST['session_date'] ?? '';
     $post_class_type = in_array($_POST['class_type'] ?? '', ['class','seminar','private'])
                        ? $_POST['class_type'] : 'class';
 
@@ -42,7 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         $db = db();
 
-        // Create or retrieve the session
+        // Create or retrieve the session for this date
         $db->prepare(
             'INSERT INTO class_sessions (session_date, class_type, instructor_id)
              VALUES (?, ?, ?)
@@ -52,20 +52,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $session_id = $db->prepare('SELECT id FROM class_sessions WHERE session_date = ?');
         $session_id->execute([$post_date]);
         $session_id = $session_id->fetchColumn();
-
-        // Optionally move the session to a new date
-        if ($post_new_date && preg_match('/^\d{4}-\d{2}-\d{2}$/', $post_new_date) && $post_new_date !== $post_date) {
-            $conflict = $db->prepare('SELECT id FROM class_sessions WHERE session_date = ? AND id != ?');
-            $conflict->execute([$post_new_date, $session_id]);
-            if ($conflict->fetchColumn()) {
-                $msg = 'Cannot change date: a class already exists on ' . date('M j, Y', strtotime($post_new_date)) . '.';
-            } else {
-                $db->prepare('UPDATE class_sessions SET session_date = ? WHERE id = ?')
-                   ->execute([$post_new_date, $session_id]);
-                $post_date = $post_new_date;
-                $date      = $post_new_date;
-            }
-        }
 
         // Save only present students — delete previous records then re-insert
         $present_ids = array_map('intval', $_POST['present'] ?? []);
@@ -77,10 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $ins->execute([$sid, $session_id, current_user_id()]);
         }
 
-        if (!$msg) {
-            $msg  = 'Attendance saved for ' . date('M j, Y', strtotime($post_date)) . '.';
-            $date = $post_date;
-        }
+        $msg = 'Attendance saved for ' . date('j M Y', strtotime($post_date)) . '.';
     }
 }
 
@@ -92,9 +75,13 @@ $session_id  = $session_row ? $session_row['id'] : false;
 $current_class_type = $session_row['class_type'] ?? 'class';
 
 // ── Build student query ──────────────────────────────────────
-$order_clause = $sort === 'last_name'
-    ? 'ORDER BY s.last_name, s.first_name'
-    : 'ORDER BY last_attended ASC, s.last_name';
+if ($sort === 'last_name') {
+    $order_clause = 'ORDER BY s.last_name, s.first_name';
+} elseif ($sort === 'last_attended') {
+    $order_clause = 'ORDER BY last_attended ASC, s.first_name, s.last_name';
+} else {
+    $order_clause = 'ORDER BY s.first_name, s.last_name';
+}
 
 $base_query = "
     SELECT s.id, s.first_name, s.last_name, s.student_type, s.injury_waiver,
@@ -120,8 +107,9 @@ $parents     = array_filter($all, fn($r) => $r['student_type'] === 'parent');
 $page_title = 'Take Attendance';
 include __DIR__ . '/../includes/header.php';
 
-function row(array $s): void { ?>
-    <tr id="row-<?= $s['id'] ?>"
+function row(array $s): void {
+    global $sort;
+    ?><tr id="row-<?= $s['id'] ?>"
         style="cursor:pointer"
         onclick="toggleRow(<?= $s['id'] ?>)">
         <td class="text-center">
@@ -132,10 +120,12 @@ function row(array $s): void { ?>
                    onclick="event.stopPropagation()">
         </td>
         <td class="row-name">
-            <?= htmlspecialchars($s['last_name'] . ', ' . $s['first_name']) ?>
+            <?= htmlspecialchars($sort === 'last_name'
+                ? $s['last_name'] . ', ' . $s['first_name']
+                : $s['first_name'] . ' ' . $s['last_name']) ?>
         </td>
         <td class="small">
-            <?= $s['last_attended'] ? date('M j, Y', strtotime($s['last_attended'])) : '<em>never</em>' ?>
+            <?= $s['last_attended'] ? date('j M Y', strtotime($s['last_attended'])) : '<em>never</em>' ?>
         </td>
         <td>
             <?php if ($s['injury_waiver']): ?>
@@ -149,7 +139,7 @@ function row(array $s): void { ?>
 ?>
 
 <div class="d-flex align-items-center gap-3 mb-3">
-    <h4 class="mb-0">Attendance — <?= date('l, F j, Y', strtotime($date)) ?></h4>
+    <h4 class="mb-0" id="att-heading">Attendance — <?= date('l, j F Y', strtotime($date)) ?></h4>
 </div>
 
 <?php if ($msg): ?>
@@ -159,13 +149,17 @@ function row(array $s): void { ?>
 <!-- Sort toggle -->
 <div class="d-flex gap-2 mb-3 align-items-center">
     <span class="text-muted small">Sort by:</span>
-    <a href="?date=<?= $date ?>&sort=last_attended"
-       class="btn btn-sm btn-filter <?= $sort === 'last_attended' ? 'active' : '' ?>">
-        Last Attended
+    <a href="?date=<?= $date ?>&sort=first_name"
+       class="btn btn-sm btn-filter <?= $sort === 'first_name' ? 'active' : '' ?>">
+        First Name
     </a>
     <a href="?date=<?= $date ?>&sort=last_name"
        class="btn btn-sm btn-filter <?= $sort === 'last_name' ? 'active' : '' ?>">
         Last Name
+    </a>
+    <a href="?date=<?= $date ?>&sort=last_attended"
+       class="btn btn-sm btn-filter <?= $sort === 'last_attended' ? 'active' : '' ?>">
+        Last Attended
     </a>
 
     <input type="text" id="nameFilter" class="form-control form-control-sm ms-3"
@@ -212,7 +206,7 @@ function row(array $s): void { ?>
                         <th style="width:44px" class="text-center">✓</th>
                         <th>Name</th>
                         <th>Last Attended</th>
-                        <th>Liability Waiver</th>
+                        <th>Waiver</th>
                     </tr>
                 </thead>
                 <tbody id="instructors-body">
@@ -238,7 +232,7 @@ function row(array $s): void { ?>
                         <th style="width:44px" class="text-center">✓</th>
                         <th>Name</th>
                         <th>Last Attended</th>
-                        <th>Liability Waiver</th>
+                        <th>Waiver</th>
                     </tr>
                 </thead>
                 <tbody id="parents-body">
@@ -264,7 +258,7 @@ function row(array $s): void { ?>
                         <th style="width:44px" class="text-center">✓</th>
                         <th>Name</th>
                         <th>Last Attended</th>
-                        <th>Liability Waiver</th>
+                        <th>Waiver</th>
                     </tr>
                 </thead>
                 <tbody id="students-body">
@@ -291,7 +285,7 @@ function row(array $s): void { ?>
                         <th style="width:44px" class="text-center">✓</th>
                         <th>Name</th>
                         <th>Last Attended</th>
-                        <th>Liability Waiver</th>
+                        <th>Waiver</th>
                     </tr>
                 </thead>
                 <tbody id="guests-body">
@@ -308,7 +302,7 @@ function row(array $s): void { ?>
     <button type="submit" form="att-form" class="btn btn-primary px-4">Save Attendance</button>
     <?php if ($session_id): ?>
     <form method="post" action="attendance.php"
-          onsubmit="return confirm('Delete the class for <?= date('M j, Y', strtotime($date)) ?>?\n\nThis will remove all attendance records for this day and cannot be undone.')">
+          onsubmit="return confirm('Delete the class for <?= date('j M Y', strtotime($date)) ?>?\n\nThis will remove all attendance records for this day and cannot be undone.')">
         <?= csrf_input() ?>
         <input type="hidden" name="action" value="delete_session">
         <input type="hidden" name="session_date" value="<?= htmlspecialchars($date) ?>">
@@ -326,6 +320,35 @@ function toggleRow(id) {
 document.querySelectorAll('.presence-cb').forEach(cb => {
     cb.addEventListener('change', () => {/* no absent styling needed */});
 });
+
+// Navigate to selected date when date field changes
+(function () {
+    const input = document.querySelector('input[name="session_date_edit"]');
+    if (input) {
+        input.addEventListener('change', function () {
+            if (this.value) {
+                const params = new URLSearchParams(window.location.search);
+                params.set('date', this.value);
+                params.delete('highlight');
+                window.location.href = 'attendance.php?' + params.toString();
+            }
+        });
+    }
+})();
+
+// Auto-highlight a student arriving from their profile page
+(function () {
+    const hlId = <?= $highlight ?: 'null' ?>;
+    if (!hlId) return;
+    const cb  = document.getElementById('cb-'  + hlId);
+    const row = document.getElementById('row-' + hlId);
+    if (!cb || !row) return;
+    cb.checked = true;
+    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    row.style.transition = 'background 0.3s';
+    row.style.background = 'var(--bs-warning-bg-subtle, #fff3cd)';
+    setTimeout(() => row.style.background = '', 2500);
+})();
 
 // Name filter
 document.getElementById('nameFilter').addEventListener('input', function () {
@@ -346,3 +369,4 @@ document.getElementById('nameFilter').addEventListener('input', function () {
 </script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>
+

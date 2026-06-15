@@ -123,3 +123,4 @@ try {
     http_response_code(500);
     echo json_encode(['success' => false, 'error' => 'Payment capture failed — contact the instructor']);
 }
+

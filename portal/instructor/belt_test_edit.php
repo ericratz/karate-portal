@@ -38,6 +38,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== 'delet
         $result = 'fail';
         $awarded = 0;
     }
+    // Auto-award belt on pass — no separate checkbox needed
+    if ($result === 'pass') $awarded = 1;
     if ($awarded && $result !== 'pass') $awarded = 0;
 
     if (!$sid || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) || !$rank_id) {
@@ -87,7 +89,7 @@ if ($test_id) {
 $prefill_student = $test ? $test['student_id'] : (int)($_GET['student_id'] ?? 0);
 
 $all_students = db()->query(
-    'SELECT id, first_name, last_name FROM students WHERE active=1 ORDER BY last_name, first_name'
+    'SELECT id, first_name, last_name FROM students WHERE active=1 ORDER BY first_name, last_name'
 )->fetchAll();
 
 $all_ranks = db()->query(
@@ -148,9 +150,8 @@ $back_label = $ref_pid ? '← Profile' : '← All Belt Tests';
 
 <div class="alert alert-light border mb-4 small">
     <strong>Workflow:</strong>
-    Record the test → enter score after evaluation (80% or above = pass) →
-    check <em>Belt Awarded</em> when the belt is physically given.
-    Rank is only updated in the student's record when Belt Awarded is checked.
+    Record the test → enter score after evaluation (80% or above = pass).
+    A passing score automatically records the rank in the student's Rank History and marks the belt as awarded.
 </div>
 
 <div class="card border-0 shadow-sm" style="max-width:640px">
@@ -168,7 +169,7 @@ $back_label = $ref_pid ? '← Profile' : '← All Belt Tests';
                     <?php foreach ($all_students as $s): ?>
                     <option value="<?= $s['id'] ?>"
                         <?= $s['id'] === $prefill_student ? 'selected' : '' ?>>
-                        <?= htmlspecialchars($s['last_name'].', '.$s['first_name']) ?>
+                        <?= htmlspecialchars($s['first_name'].' '.$s['last_name']) ?>
                     </option>
                     <?php endforeach; ?>
                 </select>
@@ -236,7 +237,7 @@ $back_label = $ref_pid ? '← Profile' : '← All Belt Tests';
                     <div class="form-check">
                         <input type="checkbox" class="form-check-input" name="belt_awarded" id="beltAwarded" value="1"
                                <?= (isset($test) && $test['belt_awarded']) ? 'checked' : '' ?>>
-                        <label class="form-check-label" for="beltAwarded">Belt Awarded</label>
+                        <label class="form-check-label" for="beltAwarded">Test Passed</label>
                     </div>
                 </div>
             </div>
@@ -283,7 +284,7 @@ function onStudentChange(sid) {
             let result   = '—';
             if (row.result === 'pass') {
                 result = '<span class="badge bg-success">Pass</span>'
-                       + (row.belt_awarded == 1 ? ' <span class="badge bg-primary">Awarded</span>' : '');
+                       + (row.belt_awarded == 1 ? ' <span class="badge bg-primary">Passed</span>' : '');
             } else if (row.result === 'fail') {
                 result = '<span class="badge bg-danger">Fail</span>';
             } else if (row.result === 'pending') {
@@ -322,3 +323,4 @@ function updateResultPreview() {
 </script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>
+

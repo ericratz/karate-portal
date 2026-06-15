@@ -35,3 +35,4 @@ if ($deactivated > 0 || $reactivated > 0) {
         'From: ' . DOJO_EMAIL
     );
 }
+

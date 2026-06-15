@@ -5,6 +5,9 @@ require_once __DIR__ . '/../includes/auto_inactive.php';
 require_role('instructor', 'admin');
 apply_auto_inactive();
 
+$sort = ($_GET['sort'] ?? 'first_name') === 'last_name' ? 'last_name' : 'first_name';
+$order_sql = $sort === 'last_name' ? 's.last_name, s.first_name' : 's.first_name, s.last_name';
+
 $all = db()->query(
     'SELECT s.id, s.first_name, s.last_name, s.student_type, s.active,
             s.active_override, s.injury_waiver, s.registration_date, s.medical_note,
@@ -22,7 +25,7 @@ $all = db()->query(
          WHERE sr2.student_id = s.id
          ORDER BY r2.rank_order DESC LIMIT 1
      ))
-     ORDER BY s.last_name, s.first_name'
+     ORDER BY ' . $order_sql
 )->fetchAll();
 
 $instructors = array_filter($all, fn($s) => in_array($s['student_type'], ['instructor', 'admin']));
@@ -36,8 +39,12 @@ $page_title = 'Roster';
 include __DIR__ . '/../includes/header.php';
 
 function student_row($s) {
-    $att_txt     = $s['last_attended'] ? date('M j, Y', strtotime($s['last_attended'])) : 'Never';
-    $search_name = strtolower($s['last_name'] . ' ' . $s['first_name'] . ' ' . $s['first_name'] . ' ' . $s['last_name']);
+    global $sort;
+    $att_txt      = $s['last_attended'] ? date('j M Y', strtotime($s['last_attended'])) : 'Never';
+    $search_name  = strtolower($s['last_name'] . ' ' . $s['first_name'] . ' ' . $s['first_name'] . ' ' . $s['last_name']);
+    $display_name = $sort === 'last_name'
+        ? $s['last_name'] . ', ' . $s['first_name']
+        : $s['first_name'] . ' ' . $s['last_name'];
     $status = $s['active'] ? 'active' : 'inactive';
     $login  = $s['user_role'] ? 'yes' : 'no';
     echo '<tr'
@@ -50,7 +57,7 @@ function student_row($s) {
        . '>';
     $med = trim($s['medical_note'] ?? '');
     echo '<td class="fw-semibold"><a href="student_profile.php?id=' . $s['id'] . '" class="text-decoration-none">'
-        . htmlspecialchars($s['last_name'] . ', ' . $s['first_name']) . '</a>'
+        . htmlspecialchars($display_name) . '</a>'
         . ($med ? ' <span class="text-danger" style="font-size:.85em" data-bs-toggle="tooltip" data-bs-placement="right" title="' . htmlspecialchars($med) . '">⚕</span>' : '')
         . '</td>';
     echo '<td class="text-muted small">' . htmlspecialchars($s['kyu_dan'] ?? '—') . '</td>';
@@ -94,7 +101,7 @@ function student_table($rows, $empty_msg) {
             <col style="width:16%">
           </colgroup>';
     echo '<thead class="table-light"><tr>
-            <th>Name</th><th>Rank</th><th>Liability Waiver</th>
+            <th>Name</th><th>Rank</th><th>Waiver</th>
             <th>Last Attended</th><th>Status</th>
           </tr></thead><tbody>';
     foreach ($rows as $s) student_row($s);
@@ -106,6 +113,10 @@ function student_table($rows, $empty_msg) {
     <h3 class="mb-0">Roster</h3>
 </div>
 <div class="d-flex gap-2 align-items-center mb-4 flex-wrap">
+    <span class="text-muted small">Sort:</span>
+    <a href="?sort=first_name" class="btn btn-sm btn-filter <?= $sort === 'first_name' ? 'active' : '' ?>">First Name</a>
+    <a href="?sort=last_name"  class="btn btn-sm btn-filter <?= $sort === 'last_name'  ? 'active' : '' ?>">Last Name</a>
+    <span class="text-muted small ms-2">|</span>
     <input type="text" id="rosterSearch" class="form-control form-control-sm"
            placeholder="Search name…" style="width:180px" oninput="filterRoster()">
     <select id="filterStatus" class="form-select form-select-sm" style="width:130px" onchange="filterRoster()">
@@ -226,3 +237,4 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
 </script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>
+

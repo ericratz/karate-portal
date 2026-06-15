@@ -155,7 +155,7 @@
 </head>
 <body>
 
-<nav class="navbar navbar-expand-md">
+<nav class="navbar navbar-expand-md sticky-top">
     <div class="container-fluid">
         <?php
         if (has_role('admin'))          $dashboard_url = '/karate/portal/admin/';
@@ -193,7 +193,7 @@
                         <li><h6 class="dropdown-header">Finances</h6></li>
                         <li><a class="dropdown-item" href="/karate/portal/admin/donations.php">Donations</a></li>
                         <li><a class="dropdown-item" href="/karate/portal/admin/expenses.php">Expenses</a></li>
-                        <li><a class="dropdown-item" href="/karate/portal/admin/waivers.php">Payment Waivers</a></li>
+                        <li><a class="dropdown-item" href="/karate/portal/admin/waivers.php">Exempt</a></li>
                         <li><a class="dropdown-item" href="/karate/portal/admin/payments.php">Payments</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><h6 class="dropdown-header">Security</h6></li>
@@ -238,3 +238,4 @@
 </nav>
 
 <div class="container-fluid py-4 px-4">
+

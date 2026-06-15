@@ -70,3 +70,4 @@ $_SESSION['google_pending'] = [
 
 header('Location: /karate/portal/google-register.php');
 exit;
+

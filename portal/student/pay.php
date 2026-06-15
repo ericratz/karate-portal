@@ -435,3 +435,4 @@ document.getElementById('customAmount').addEventListener('input', recalculate);
 </script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>
+

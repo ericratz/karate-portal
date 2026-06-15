@@ -86,7 +86,7 @@ $unlinked_students = db()->query(
      FROM students
      WHERE user_id IS NULL
        AND id NOT IN (SELECT student_id FROM parent_students)
-     ORDER BY last_name, first_name'
+     ORDER BY first_name, last_name'
 )->fetchAll();
 
 $linked_users   = array_values(array_filter($users, fn($u) =>  $u['student_id']));
@@ -139,7 +139,7 @@ function user_row(array $u, bool $show_roster = true): void {
         ? '<span class="badge bg-secondary" data-bs-toggle="tooltip" title="Activated: this login is enabled and can sign in">Activated</span>'
         : '<span class="badge bg-danger"    data-bs-toggle="tooltip" title="Deactivated: this login has been disabled — cannot sign in">Deactivated</span>';
     echo '</td>';
-    echo '<td>' . ($u['last_login'] ? date('M j, Y', strtotime($u['last_login'])) : 'Never') . '</td>';
+    echo '<td>' . ($u['last_login'] ? date('j M Y', strtotime($u['last_login'])) : 'Never') . '</td>';
     echo '<td><a href="user_profile.php?id=' . $u['id'] . '" class="btn btn-sm btn-outline-secondary">View</a></td>';
     echo '</tr>';
 }
@@ -242,3 +242,4 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
 </script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>
+

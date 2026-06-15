@@ -183,3 +183,4 @@ function fee_for_type(string $type): float {
         default:                return 0.0;
     }
 }
+

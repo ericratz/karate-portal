@@ -39,8 +39,10 @@ CREATE TABLE IF NOT EXISTS students (
     email                   VARCHAR(100) NOT NULL,
     emergency_contact_name  VARCHAR(100),
     emergency_contact_phone VARCHAR(20),
+    street_address          VARCHAR(300) DEFAULT NULL,
+    city_state_zip          VARCHAR(200) DEFAULT NULL,
     registration_date       DATE NOT NULL,
-    student_type            ENUM('guest','student','instructor','admin') NOT NULL DEFAULT 'guest',
+    student_type            ENUM('guest','student','parent','instructor','admin') NOT NULL DEFAULT 'guest',
     waiver_signed           TINYINT(1) NOT NULL DEFAULT 0,
     waiver_date             DATE,
     injury_waiver           TINYINT(1) NOT NULL DEFAULT 0,
@@ -294,6 +296,19 @@ CREATE TABLE IF NOT EXISTS donations (
     recorded_by    INT,
     created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (recorded_by) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ------------------------------------------------------------
+-- SUBSCRIPTIONS  (PayPal auto-pay)
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS subscriptions (
+    id                     INT AUTO_INCREMENT PRIMARY KEY,
+    student_id             INT NOT NULL,
+    paypal_subscription_id VARCHAR(100) NOT NULL,
+    status                 ENUM('pending','active','cancelled','suspended','expired') NOT NULL DEFAULT 'pending',
+    created_at             DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at             DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ------------------------------------------------------------

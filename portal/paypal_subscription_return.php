@@ -30,3 +30,4 @@ if ($stmt->rowCount() === 0) {
 audit('subscription_activated', 'student', 0, 'sub=' . $sub_id);
 header('Location: student/index.php?autopay=success');
 exit;
+

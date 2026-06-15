@@ -174,7 +174,7 @@ $unlinked = db()->query(
      FROM students
      WHERE user_id IS NULL
        AND id NOT IN (SELECT student_id FROM parent_students)
-     ORDER BY last_name, first_name'
+     ORDER BY first_name, last_name'
 )->fetchAll();
 
 // Children linked to this parent
@@ -182,7 +182,7 @@ $linked_children = db()->prepare(
     'SELECT s.id, s.first_name, s.last_name, s.student_type
      FROM parent_students ps JOIN students s ON s.id = ps.student_id
      WHERE ps.parent_user_id = ?
-     ORDER BY s.last_name, s.first_name'
+     ORDER BY s.first_name, s.last_name'
 );
 $linked_children->execute([$id]);
 $linked_children = $linked_children->fetchAll();
@@ -190,7 +190,7 @@ $linked_children = $linked_children->fetchAll();
 // All students available to link as children (excluding already linked)
 $linked_child_ids = array_column($linked_children, 'id');
 $all_students_for_parent = db()->query(
-    'SELECT id, first_name, last_name FROM students ORDER BY last_name, first_name'
+    'SELECT id, first_name, last_name FROM students ORDER BY first_name, last_name'
 )->fetchAll();
 
 $role_badges = [
@@ -242,12 +242,12 @@ include __DIR__ . '/../includes/header.php';
                         $av = [
                             'First Name'      => htmlspecialchars($user['first_name'] ?? '') ?: '—',
                             'Last Name'       => htmlspecialchars($user['last_name']  ?? '') ?: '—',
-                            'Date of Birth'   => !empty($user['date_of_birth']) ? date('M j, Y', strtotime($user['date_of_birth'])) : '—',
+                            'Date of Birth'   => !empty($user['date_of_birth']) ? date('j M Y', strtotime($user['date_of_birth'])) : '—',
                             'Username'        => htmlspecialchars($user['username']),
                             'Email'           => htmlspecialchars($user['email'] ?? '') ?: '—',
                             'Role'            => ucfirst($user['role']),
-                            'Account Created' => date('M j, Y', strtotime($user['created_at'])),
-                            'Last Login'      => $user['last_login'] ? date('M j, Y g:i a', strtotime($user['last_login'])) : 'Never',
+                            'Account Created' => date('j M Y', strtotime($user['created_at'])),
+                            'Last Login'      => $user['last_login'] ? date('j M Y g:i a', strtotime($user['last_login'])) : 'Never',
                         ];
                         foreach ($av as $lbl => $val): ?>
                         <div class="col-6">
@@ -323,7 +323,7 @@ include __DIR__ . '/../includes/header.php';
                             <option value="">— select roster entry —</option>
                             <?php foreach ($unlinked as $s): ?>
                             <option value="<?= $s['id'] ?>">
-                                <?= htmlspecialchars($s['last_name'].', '.$s['first_name']) ?>
+                                <?= htmlspecialchars($s['first_name'].' '.$s['last_name']) ?>
                                 (<?= ucfirst($s['student_type']) ?>)
                             </option>
                             <?php endforeach; ?>
@@ -376,7 +376,7 @@ include __DIR__ . '/../includes/header.php';
                         <option value="">— select child to link —</option>
                         <?php foreach ($available as $s): ?>
                         <option value="<?= $s['id'] ?>">
-                            <?= htmlspecialchars($s['last_name'].', '.$s['first_name']) ?>
+                            <?= htmlspecialchars($s['first_name'].' '.$s['last_name']) ?>
                         </option>
                         <?php endforeach; ?>
                     </select>
@@ -486,3 +486,4 @@ function cardCancel(cardId) {
 </script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>
+

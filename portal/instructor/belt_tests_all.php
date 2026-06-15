@@ -34,13 +34,13 @@ $stmt = db()->prepare(
      JOIN students s ON s.id = bt.student_id
      JOIN ranks r    ON r.id = bt.rank_testing_for
      WHERE ' . implode(' AND ', $where) . '
-     ORDER BY bt.test_date DESC, s.last_name, s.first_name'
+     ORDER BY bt.test_date DESC, s.first_name, s.last_name'
 );
 $stmt->execute($params);
 $belt_tests = $stmt->fetchAll();
 
 $all_students = db()->query(
-    'SELECT id, first_name, last_name FROM students ORDER BY last_name, first_name'
+    'SELECT id, first_name, last_name FROM students ORDER BY first_name, last_name'
 )->fetchAll();
 
 $page_title = 'All Belt Tests';
@@ -62,7 +62,7 @@ include __DIR__ . '/../includes/header.php';
                     <option value="">All Students</option>
                     <?php foreach ($all_students as $s): ?>
                         <option value="<?= $s['id'] ?>" <?= $s['id'] === $f_student ? 'selected' : '' ?>>
-                            <?= htmlspecialchars($s['last_name'].', '.$s['first_name']) ?>
+                            <?= htmlspecialchars($s['first_name'].' '.$s['last_name']) ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
@@ -116,7 +116,7 @@ include __DIR__ . '/../includes/header.php';
                     <th>Testing For</th>
                     <th>Score</th>
                     <th class="text-center">Fee Paid</th>
-                    <th class="text-center">Belt Awarded</th>
+                    <th class="text-center">Test Passed</th>
                     <th>Notes</th>
                     <th></th>
                     <th class="delete-col"></th>
@@ -125,10 +125,10 @@ include __DIR__ . '/../includes/header.php';
             <tbody>
             <?php foreach ($belt_tests as $t): ?>
                 <tr>
-                    <td class="text-nowrap"><?= date('M j, Y', strtotime($t['test_date'])) ?></td>
+                    <td class="text-nowrap"><?= date('j M Y', strtotime($t['test_date'])) ?></td>
                     <td>
                         <a href="student_profile.php?id=<?= $t['student_id'] ?>">
-                            <?= htmlspecialchars($t['last_name'].', '.$t['first_name']) ?>
+                            <?= htmlspecialchars($t['first_name'].' '.$t['last_name']) ?>
                         </a>
                     </td>
                     <td><?= htmlspecialchars($t['kyu_dan']) ?></td>
@@ -147,7 +147,7 @@ include __DIR__ . '/../includes/header.php';
                         <?= $t['fee_paid'] ? '<span class="text-success">✓</span>' : '<span class="text-muted">—</span>' ?>
                     </td>
                     <td class="text-center">
-                        <?= $t['belt_awarded'] ? '<span class="badge bg-success">Awarded</span>' : '<span class="text-muted">—</span>' ?>
+                        <?= $t['belt_awarded'] ? '<span class="badge bg-success">Passed</span>' : '<span class="text-muted">—</span>' ?>
                     </td>
                     <td class="text-muted small"><?= htmlspecialchars($t['notes'] ?? '') ?></td>
                     <td>
@@ -187,3 +187,4 @@ function toggleEdit() {
 </script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>
+

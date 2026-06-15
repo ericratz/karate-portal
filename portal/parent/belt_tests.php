@@ -42,7 +42,7 @@ $pending = count(array_filter($tests, fn($t) => $t['result'] === 'pending'));
 $page_title = 'Belt Test History';
 include __DIR__ . '/../includes/header.php';
 
-function fmt_date(string $d): string { return date('M j, Y', strtotime($d)); }
+function fmt_date(string $d): string { return date('j M Y', strtotime($d)); }
 function badge_result(string $r, ?int $score): string {
     if ($score === null) return '<span class="badge bg-secondary">Pending</span>';
     $label = $score . '%';
@@ -95,7 +95,7 @@ function badge_result(string $r, ?int $score): string {
             <thead class="table-light">
                 <tr>
                     <th>#</th><th>Date</th><th>Testing For</th><th>Score</th>
-                    <th>Fee</th><th>Belt Awarded</th>
+                    <th>Fee</th><th>Test Passed</th>
                 </tr>
             </thead>
             <tbody>
@@ -106,7 +106,15 @@ function badge_result(string $r, ?int $score): string {
                     <td><?= htmlspecialchars($t['kyu_dan']) ?></td>
                     <td><?= badge_result($t['result'], isset($t['score']) ? (int)$t['score'] : null) ?></td>
                     <td><?= $t['fee_paid'] ? '<span class="text-success">✓</span>' : '' ?></td>
-                    <td><?= $t['belt_awarded'] ? '<span class="text-success">✓</span>' : '<span class="text-danger">✗</span>' ?></td>
+                    <td>
+                        <?php if ($t['result'] === 'pass'): ?>
+                            <span class="badge bg-success">Passed</span>
+                        <?php elseif ($t['result'] === 'fail'): ?>
+                            <span class="badge bg-danger">Failed</span>
+                        <?php else: ?>
+                            <span class="text-muted">—</span>
+                        <?php endif; ?>
+                    </td>
                 </tr>
             <?php endforeach; ?>
             </tbody>
@@ -116,3 +124,4 @@ function badge_result(string $r, ?int $score): string {
 </div>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>
+

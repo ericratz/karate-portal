@@ -49,3 +49,4 @@ try {
     header('Location: student/pay.php?autopay=error');
     exit;
 }
+

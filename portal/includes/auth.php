@@ -191,3 +191,4 @@ function logout(): void {
     header('Location: /karate/portal/login.php');
     exit;
 }
+

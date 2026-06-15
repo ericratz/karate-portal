@@ -34,3 +34,4 @@ if ($row) {
 
 header('Location: profile_edit.php?autopay=cancelled');
 exit;
+

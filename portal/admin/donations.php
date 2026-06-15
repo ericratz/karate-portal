@@ -208,7 +208,7 @@ include __DIR__ . '/../includes/header.php';
             <tbody>
             <?php foreach ($donations as $d): ?>
                 <tr>
-                    <td class="text-nowrap"><?= date('M j, Y', strtotime($d['payment_date'])) ?></td>
+                    <td class="text-nowrap"><?= date('j M Y', strtotime($d['payment_date'])) ?></td>
                     <td><?= htmlspecialchars($d['donor_name'] ?? '—') ?></td>
                     <td><?= ['paypal'=>'PayPal','cash'=>'Cash','check'=>'Check','mail'=>'Mail'][$d['payment_method']] ?? ucfirst($d['payment_method']) ?></td>
                     <td class="text-muted small"><?= htmlspecialchars($d['notes'] ?? '') ?></td>
@@ -247,3 +247,4 @@ function toggleEdit() {
 </script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>
+

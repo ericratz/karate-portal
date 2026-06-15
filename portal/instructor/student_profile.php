@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/db.php';
 require_role('student', 'instructor', 'admin');
+function fmt_phone(string $p): string { $d = preg_replace('/\D/', '', $p); return strlen($d) === 10 ? substr($d,0,3).'-'.substr($d,3,3).'-'.substr($d,6) : $p; }
 
 $id = (int)($_GET['id'] ?? 0);
 if (!$id) { header('Location: index.php'); exit; }
@@ -275,16 +276,28 @@ include __DIR__ . '/../includes/header.php';
                     'guest'      => '<span class="badge bg-secondary">Guest</span>',
                 ];
                 $tip = $acct_tips[$student['student_type']] ?? '';
-                $waiver_val = $student['injury_waiver']
-                    ? '<span class="text-success">✓</span> ' . ($student['injury_waiver_date'] ? date('M j, Y', strtotime($student['injury_waiver_date'])) : '')
-                    : '<span class="text-danger">✗</span> Not signed';
+                if ($student['injury_waiver']) {
+                    $waiver_url = has_role('instructor', 'admin')
+                        ? '../admin/waiver_view.php?student_id=' . $student['id']
+                        : '../student/waiver.php';
+                    $waiver_val = '<span class="text-success">✓</span> '
+                        . ($student['injury_waiver_date'] ? date('j M Y', strtotime($student['injury_waiver_date'])) : '')
+                        . ' <a href="' . $waiver_url . '" class="btn btn-sm btn-outline-secondary ms-2">View</a>';
+                } else {
+                    $waiver_val = '—';
+                }
+                $addr_parts = array_filter([
+                    htmlspecialchars($student['street_address'] ?? ''),
+                    htmlspecialchars($student['city_state_zip'] ?? ''),
+                ]);
                 $pv = [
-                    'Date of Birth'     => $student['date_of_birth'] ? date('M j, Y', strtotime($student['date_of_birth'])) : '—',
-                    'Phone'             => htmlspecialchars($student['phone'] ?? '') ?: '—',
+                    'Date of Birth'     => $student['date_of_birth'] ? date('j M Y', strtotime($student['date_of_birth'])) : '—',
+                    'Phone'             => ($student['phone'] ?? '') ? fmt_phone($student['phone']) : '—',
                     'Email'             => htmlspecialchars($student['email'] ?? '') ?: '—',
                     'Emergency Contact' => htmlspecialchars($student['emergency_contact_name']  ?? '') ?: '—',
-                    'Emergency Phone'   => htmlspecialchars($student['emergency_contact_phone'] ?? '') ?: '—',
-                    'Member Since'      => date('M j, Y', strtotime($student['registration_date'])),
+                    'Emergency Phone'   => ($student['emergency_contact_phone'] ?? '') ? fmt_phone($student['emergency_contact_phone']) : '—',
+                    'Address'           => $addr_parts ? implode('<br>', $addr_parts) : '—',
+                    'Member Since'      => date('j M Y', strtotime($student['registration_date'])),
                 ];
                 foreach ($pv as $lbl => $val): ?>
                 <div class="d-flex py-1 border-bottom">
@@ -302,7 +315,7 @@ include __DIR__ . '/../includes/header.php';
                     </div>
                 </div>
                 <div class="d-flex py-1 border-bottom">
-                    <div class="text-muted small" style="min-width:160px">Liability Waiver</div>
+                    <div class="text-muted small" style="min-width:160px">Waiver</div>
                     <div><?= $waiver_val ?></div>
                 </div>
                 <div class="d-flex py-1 border-bottom">
@@ -311,7 +324,7 @@ include __DIR__ . '/../includes/header.php';
                 </div>
                 <div class="d-flex py-1 border-bottom">
                     <div class="text-muted small" style="min-width:160px">Last Login</div>
-                    <div><?= $student['last_login'] ? date('M j, Y', strtotime($student['last_login'])) : '—' ?></div>
+                    <div><?= $student['last_login'] ? date('j M Y', strtotime($student['last_login'])) : '—' ?></div>
                 </div>
                 <div class="d-flex py-1">
                     <div class="text-muted small" style="min-width:160px">Medical Note</div>
@@ -326,14 +339,18 @@ include __DIR__ . '/../includes/header.php';
                 <span>
                     Recent Attendance
                 </span>
-                <?php if (has_role('instructor') && !has_role('admin') && !empty($attendance)): ?>
                 <div class="d-flex gap-2">
+                    <?php if (has_role('instructor', 'admin')): ?>
+                    <a href="attendance.php?date=<?= date('Y-m-d') ?>&highlight=<?= $id ?>"
+                       class="btn btn-sm btn-success">+ Record Attendance</a>
+                    <?php endif; ?>
+                    <?php if (has_role('instructor') && !has_role('admin') && !empty($attendance)): ?>
                     <button type="button" class="btn btn-sm btn-outline-secondary" id="attEditBtn"
                             onclick="toggleAttEdit()">Edit</button>
                     <button type="submit" form="att-form" class="btn btn-sm btn-success" id="attConfirmBtn"
                             style="display:none">Confirm</button>
+                    <?php endif; ?>
                 </div>
-                <?php endif; ?>
             </div>
             <form id="att-form" method="post">
                 <?= csrf_input() ?>
@@ -347,7 +364,7 @@ include __DIR__ . '/../includes/header.php';
                         <?php foreach ($attendance as $a): ?>
                             <?php if (!$a['present'] && !has_role('instructor', 'admin')): continue; endif; ?>
                             <tr>
-                                <td><?= date('D, M j, Y', strtotime($a['session_date'])) ?></td>
+                                <td><?= date('D, j M Y', strtotime($a['session_date'])) ?></td>
                                 <?php if (has_role('instructor', 'admin')): ?>
                                 <td>
                                     <?php if ($a['present']): ?>
@@ -396,7 +413,7 @@ include __DIR__ . '/../includes/header.php';
                     <tbody>
                     <?php foreach ($payments as $p): ?>
                         <tr>
-                            <td><?= date('M j, Y', strtotime($p['payment_date'])) ?></td>
+                            <td><?= date('j M Y', strtotime($p['payment_date'])) ?></td>
                             <td><?= ucwords(str_replace('_', ' ', $p['payment_type'])) ?></td>
                             <td><?= ucfirst($p['payment_method']) ?></td>
                             <td class="text-end">$<?= number_format($p['amount'], 2) ?></td>
@@ -452,7 +469,7 @@ include __DIR__ . '/../includes/header.php';
                     <tbody>
                     <?php foreach ($belt_tests as $bt): ?>
                         <tr>
-                            <td class="text-nowrap"><?= date('M j, Y', strtotime($bt['test_date'])) ?></td>
+                            <td class="text-nowrap"><?= date('j M Y', strtotime($bt['test_date'])) ?></td>
                             <td><?= htmlspecialchars($bt['kyu_dan']) ?></td>
                             <td>
                                 <?php if (isset($bt['score']) && $bt['score'] !== null): ?>
@@ -496,7 +513,7 @@ include __DIR__ . '/../includes/header.php';
         <?php foreach ($notes as $n): ?>
         <div class="border-bottom p-3">
             <small class="text-muted d-block mb-1">
-                <?= date('M j, Y g:i a', strtotime($n['created_at'])) ?>
+                <?= date('j M Y g:i a', strtotime($n['created_at'])) ?>
                 · <strong><?= htmlspecialchars($n['username'] ?? 'unknown') ?></strong>
             </small>
             <p class="mb-0 small"><?= nl2br(htmlspecialchars($n['content'])) ?></p>
@@ -544,3 +561,4 @@ function toggleAttEdit() {
 <?php endif; ?>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>
+

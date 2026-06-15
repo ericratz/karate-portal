@@ -123,7 +123,7 @@ $page_title = 'My Dashboard';
 include __DIR__ . '/../includes/header.php';
 
 function fmt_date(string $d): string {
-    return date('M j, Y', strtotime($d));
+    return date('j M Y', strtotime($d));
 }
 function fmt_type(string $t): string {
     return ucwords(str_replace('_', ' ', $t));
@@ -179,21 +179,17 @@ function badge_result(string $r): string {
         </div>
     </div>
 
+    <?php if (!$student['injury_waiver']): ?>
     <div class="col-sm-6 col-lg-3">
         <div class="card text-center h-100 border-0 shadow-sm">
             <div class="card-body d-flex flex-column align-items-center justify-content-center">
-                <div class="display-6 fw-bold <?= $student['injury_waiver'] ? 'text-success' : 'text-danger' ?>">
-                    <?= $student['injury_waiver'] ? '✓' : '✗' ?>
-                </div>
-                <div class="text-muted small mb-2">Liability Waiver</div>
-                <?php if (!$student['injury_waiver']): ?>
+                <div class="display-6 fw-bold text-danger">✗</div>
+                <div class="text-muted small mb-2">Waiver</div>
                 <a href="waiver.php" class="btn btn-sm btn-warning mt-1">Complete Waiver</a>
-                <?php else: ?>
-                <a href="waiver.php" class="btn btn-sm btn-success mt-1">View Liability Waiver</a>
-                <?php endif; ?>
             </div>
         </div>
     </div>
+    <?php endif; ?>
 
 </div>
 
@@ -322,3 +318,4 @@ function badge_result(string $r): string {
 
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>
+

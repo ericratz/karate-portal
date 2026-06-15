@@ -45,7 +45,7 @@ if (!empty($sessions)) {
          FROM attendance a
          JOIN students s ON s.id = a.student_id
          WHERE a.session_id IN ($placeholders) AND a.present = 1
-         ORDER BY s.last_name, s.first_name"
+         ORDER BY s.first_name, s.last_name"
     );
     $att_stmt->execute($ids);
     foreach ($att_stmt->fetchAll() as $r) {
@@ -125,8 +125,8 @@ include __DIR__ . '/../includes/header.php';
         <?= count($sessions) ?> class<?= count($sessions) !== 1 ? 'es' : '' ?>
         <?php if ($filtering): ?>
         <span class="text-muted fw-normal small ms-2">
-            <?= ($date_from ? date('M j, Y', strtotime($date_from)) : 'beginning') ?>
-            — <?= ($date_to ? date('M j, Y', strtotime($date_to)) : 'today') ?>
+            <?= ($date_from ? date('j M Y', strtotime($date_from)) : 'beginning') ?>
+            — <?= ($date_to ? date('j M Y', strtotime($date_to)) : 'today') ?>
         </span>
         <?php endif; ?>
     </div>
@@ -147,7 +147,7 @@ include __DIR__ . '/../includes/header.php';
                         <a href="attendance.php?date=<?= $sess['session_date'] ?>"
                            class="text-decoration-none"
                            onclick="event.stopPropagation()">
-                            <?= date('D, M j, Y', strtotime($sess['session_date'])) ?>
+                            <?= date('D, j M Y', strtotime($sess['session_date'])) ?>
                         </a>
                     </td>
                     <td class="text-muted small">
@@ -178,12 +178,25 @@ include __DIR__ . '/../includes/header.php';
 
 <script>
 function toggleSession(i) {
-    var row = document.getElementById('det-' + i);
-    var tog = document.getElementById('tog-' + i);
+    var row  = document.getElementById('det-' + i);
+    var tog  = document.getElementById('tog-' + i);
     var open = row.style.display !== 'none';
-    row.style.display = open ? 'none' : '';
-    tog.textContent   = open ? '▼' : '▲';
+
+    // Collapse all rows first
+    document.querySelectorAll('tr[id^="det-"]').forEach(function(r) {
+        r.style.display = 'none';
+    });
+    document.querySelectorAll('td[id^="tog-"]').forEach(function(t) {
+        t.textContent = '▼';
+    });
+
+    // If it was closed, open it
+    if (!open) {
+        row.style.display = '';
+        tog.textContent   = '▲';
+    }
 }
 </script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>
+

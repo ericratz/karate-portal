@@ -7,10 +7,10 @@ tests/.test-status.json
 tests/credentials.js
 tests/.auth/
 memory/
-changes.txt
-design.txt
+*.txt
 clear_rate_limit.php
 cleanup.config.js
 portal/vendor/
 portal/composer.phar
 portal/composer-setup.php
+migrations/

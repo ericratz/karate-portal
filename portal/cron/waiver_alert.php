@@ -39,7 +39,7 @@ $list = '';
 foreach ($no_waiver as $s) {
     $type = ucfirst($s['student_type']);
     $list .= "  - {$s['last_name']}, {$s['first_name']} ($type) — last attended "
-           . date('M j, Y', strtotime($s['last_attended'])) . "\n";
+           . date('j M Y', strtotime($s['last_attended'])) . "\n";
 }
 
 mail(
@@ -51,3 +51,4 @@ mail(
         . SITE_URL . "/admin/student_edit.php",
     'From: ' . DOJO_EMAIL
 );
+

@@ -1,4 +1,4 @@
-# Shotokan Karate Portal — V2.1
+# Shotokan Karate Portal — V2.2
 
 A private membership portal for Noji Ratzlaff's Shotokan Karate dojo. Students can track
 their attendance, belt tests, and payments; instructors can take attendance and manage belt
@@ -6,22 +6,25 @@ tests; and the admin can run the whole operation from one place.
 
 ---
 
-## What's New in V2.1
+## What's New in V2.2
 
-- **Medical notes** — students and parents can enter a medical note on their profile; a ⚕ symbol with tooltip appears next to the student's name on the admin and instructor rosters
-- **Account type tooltips** — role badges in the nav header and on profile cards now show a tooltip (student: "Registration fee paid", parent: "Family account", guest: "Non-paying participant")
-- **Account type in profile info** — student type badge now displayed in the Profile Info card on parent and instructor views
-- **Profile info layout** — profile fields converted to horizontal label/value rows across all views (parent, student, instructor, admin)
-- **Belt test columns** — Fee (✓ or blank) and Awarded (✓/✗) columns added to belt test tables across all views
-- **Parent payment notice** — when a parent selects themselves on the payment page and a child has already paid tuition that month, a notice appears: no pressure, just awareness
-- **Child Summary card** — parent dashboard shows a summary table of all linked children (last attendance, last payment, waiver status) on the parent's own tab
-- **User accounts split** — admin Users page now separates Linked and Unlinked accounts into two tables
-- **Delete user** — admin can delete a login account from the user profile page; student history (attendance, belt tests, payments) is preserved and the roster entry is detached
-- **Compare & Link flow** — selecting a student on the user profile page now opens the Compare page directly; student picker auto-populates on selection with no Compare button needed
-- **Date of birth on user profile** — birth date from account creation now displayed in the admin user profile view
-- **Parent badge color** — parent account type now displays as teal (bg-info) consistently across all views
-- **Back-forward cache fix** — navigating back to the Users page now always shows current data instead of a stale cached version
-
+- **Home address on profiles** — `street_address` and `city_state_zip` added to the student record; editable on the profile edit form and displayed in the Profile Info card across all views (migration: `migrations/add_student_address.sql`)
+- **Phone formatting** — phone numbers now display with hyphens (801-368-1865) in all profile and waiver views
+- **Waiver redesign** — student and parent waiver forms now match the physical PDF layout (paper-style underline fields, legal text, pre-filled and read-only when already signed); admin can digitize physical waivers via the waiver view page with full form entry
+- **Terminology cleanup** — "Liability Waiver" renamed to "Waiver" and "Payment Waiver" renamed to "Exempt" across all views to avoid confusion
+- **Parent ENUM fix** — `student_type = 'parent'` was missing from the DB ENUM, causing parent records to save as blank and be invisible on the roster (migration: `migrations/fix_student_type_enum_add_parent.sql`)
+- **Sticky navigation bar** — purple nav bar stays visible when scrolling on all pages
+- **Roster: name format & sort** — names display as "First Last" by default with a First Name / Last Name sort toggle on both admin and instructor rosters; applied consistently across all pages site-wide
+- **Roster: column rename** — "Injury Waiver" column renamed to "Waiver"
+- **Attendance: date navigation** — changing the date picker navigates to that date's attendance (page reloads with correct data); fixed a critical bug where saving attendance for a past date could move and overwrite a more recent session
+- **Attendance: name sort** — First Name / Last Name / Last Attended sort toggle added to the attendance page
+- **Belt tests: auto-rank** — a passing score (≥ 80%) automatically records the rank in the student's Rank History; no separate "Belt Awarded" step needed
+- **Belt tests: terminology** — "Belt Awarded" renamed to "Test Passed" across all views; pending tests now show "—" instead of ✗
+- **Profile save redirect** — after a student saves their profile, they are sent directly to their profile view
+- **Record Attendance button** — on the student profile page (instructor/admin view), a "+ Record Attendance" button links to the attendance page with that student pre-checked
+- **Session list accordion** — on the Classes page, expanding one session's attendance now collapses any previously open session
+- **PayPal default** — payment method field defaults to PayPal on the payments page
+- **Waiver dashboard card** — hidden for students and parents who have already signed; profile info card shows a View button and signed date instead
 
 ---
 
@@ -105,9 +108,9 @@ Full access to everything. Intended for the dojo owner only.
 - **Roster** — add, edit, and delete students; set student type, active override, and all
   profile fields
 - **Payments** — record manual payments, delete incorrect records, full filtering
-- **Payment waivers** — grant tuition exemptions
+- **Exempt** — grant tuition exemptions
 - **Expenses** — log and manage dojo expenses
-- **Injury waivers** — view signed waivers and mark manual (paper) waivers
+- **Waivers** — view signed waivers; digitize physical paper waivers with full field entry
 - **Email students** — compose and send to any combination of groups or individuals
 - **Class notes** — general notes visible in the class log
 - **Student notes** — private per-student notes

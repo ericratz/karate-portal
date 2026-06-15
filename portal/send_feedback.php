@@ -40,3 +40,4 @@ if (mail(DOJO_EMAIL, $subject, $body, $headers)) {
     http_response_code(500);
     echo json_encode(['ok' => false, 'error' => 'Something went wrong sending your message. Please try again.']);
 }
+

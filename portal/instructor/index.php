@@ -66,7 +66,7 @@ include __DIR__ . '/../includes/header.php';
                         <tr>
                             <td>
                                 <a href="attendance.php?date=<?= $s['session_date'] ?>" class="text-decoration-none">
-                                    <?= date('D, M j, Y', strtotime($s['session_date'])) ?>
+                                    <?= date('D, j M Y', strtotime($s['session_date'])) ?>
                                 </a>
                             </td>
                             <td><?= ucfirst($s['class_type']) ?></td>
@@ -111,10 +111,10 @@ include __DIR__ . '/../includes/header.php';
                     <tbody>
                     <?php foreach ($belt_tests as $t): ?>
                         <tr>
-                            <td class="text-nowrap"><?= date('M j, Y', strtotime($t['test_date'])) ?></td>
+                            <td class="text-nowrap"><?= date('j M Y', strtotime($t['test_date'])) ?></td>
                             <td>
                                 <a href="student_profile.php?id=<?= $t['student_id'] ?>" class="text-decoration-none">
-                                    <?= htmlspecialchars($t['last_name'].', '.$t['first_name']) ?>
+                                    <?= htmlspecialchars($t['first_name'].' '.$t['last_name']) ?>
                                 </a>
                             </td>
                             <td><?= htmlspecialchars($t['kyu_dan']) ?></td>
@@ -140,3 +140,4 @@ include __DIR__ . '/../includes/header.php';
 </div>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>
+

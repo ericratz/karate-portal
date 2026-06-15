@@ -104,7 +104,7 @@ $all_students = db()->query(
     'SELECT id, first_name, last_name, student_type
      FROM students
      WHERE id NOT IN (SELECT student_id FROM parent_students)
-     ORDER BY last_name, first_name'
+     ORDER BY first_name, last_name'
 )->fetchAll();
 
 // Type labels and badge colours
@@ -151,7 +151,7 @@ function cmp_class(string $a, string $b): string {
         </span>
         <strong><?= htmlspecialchars($user['first_name'] . ' ' . $user['last_name']) ?></strong>
         submitted a link request
-        <span class="text-muted small">(<?= date('M j, Y g:i a', strtotime($link_req['created_at'])) ?>)</span>
+        <span class="text-muted small">(<?= date('j M Y g:i a', strtotime($link_req['created_at'])) ?>)</span>
         <?php if ($link_req['notes']): ?>
             <div class="mt-1 small fst-italic">"<?= htmlspecialchars($link_req['notes']) ?>"</div>
         <?php endif; ?>
@@ -181,7 +181,7 @@ function cmp_class(string $a, string $b): string {
                     <option value="">— pick a student —</option>
                     <?php foreach ($all_students as $s): ?>
                     <option value="<?= $s['id'] ?>" <?= $s['id'] === $student_id ? 'selected' : '' ?>>
-                        <?= htmlspecialchars($s['last_name'].', '.$s['first_name']) ?>
+                        <?= htmlspecialchars($s['first_name'].' '.$s['last_name']) ?>
                         (<?= $s['student_type'] ?>)
                     </option>
                     <?php endforeach; ?>
@@ -288,17 +288,17 @@ function cmp_class(string $a, string $b): string {
                         <tr>
                             <td>Last Attended</td>
                             <td><?= $student['last_attended']
-                                ? date('M j, Y', strtotime($student['last_attended']))
+                                ? date('j M Y', strtotime($student['last_attended']))
                                 : '<span class="text-muted">Never</span>' ?></td>
                         </tr>
                         <tr>
                             <td>Registered</td>
                             <td><?= $student['registration_date']
-                                ? date('M j, Y', strtotime($student['registration_date']))
+                                ? date('j M Y', strtotime($student['registration_date']))
                                 : '—' ?></td>
                         </tr>
                         <tr>
-                            <td>Liability Waiver</td>
+                            <td>Waiver</td>
                             <td><?= $student['injury_waiver']
                                 ? '<span class="text-success">✓ Signed</span>'
                                 : '<span class="text-danger">✗ Not signed</span>' ?></td>
@@ -364,3 +364,4 @@ document.getElementById('studentPicker').addEventListener('change', function() {
 </script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>
+

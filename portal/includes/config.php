@@ -3,7 +3,7 @@
 // Edit these to match your setup
 
 define('SITE_NAME',     'Shotokan Karate Portal');
-define('SITE_URL',      'http://localhost/karate/portal');  // update to live URL when deployed
+define('SITE_URL',      'https://noji.com/karate/portal');
 // DOJO_EMAIL is loaded from .env — this fallback is used only if .env is missing
 if (!defined('DOJO_EMAIL')) define('DOJO_EMAIL', 'admin@example.com');
 define('MONTHLY_FEE',   30.00);
@@ -16,7 +16,7 @@ define('SEMINAR_FEE',   60.00);
 // Leave them out of .env to hide the button entirely
 if (!defined('GOOGLE_CLIENT_ID'))     define('GOOGLE_CLIENT_ID',     '');
 if (!defined('GOOGLE_CLIENT_SECRET')) define('GOOGLE_CLIENT_SECRET', '');
-define('GOOGLE_REDIRECT_URI', 'http://localhost/karate/portal/google-callback.php');
+define('GOOGLE_REDIRECT_URI', 'https://noji.com/karate/portal/google-callback.php');
 
 // PayPal — switch to live credentials when ready
 define('PAYPAL_MODE',        'sandbox');            // 'sandbox' or 'live'
@@ -35,3 +35,4 @@ define('PAYPAL_SECRET',      'YOUR_PAYPAL_SECRET');
 // 5. Copy the Webhook ID and paste below
 define('PAYPAL_PLAN_ID',     'YOUR_PAYPAL_PLAN_ID');   // P-XXXXXXXXXXXX
 define('PAYPAL_WEBHOOK_ID',  'YOUR_PAYPAL_WEBHOOK_ID'); // numeric webhook ID
+

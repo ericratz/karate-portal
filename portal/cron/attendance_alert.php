@@ -21,7 +21,7 @@ $session = $session->fetch();
 if (!$session) {
     mail(
         DOJO_EMAIL,
-        '[Karate Portal] Attendance not recorded — ' . date('M j, Y', strtotime($last_saturday)),
+        '[Karate Portal] Attendance not recorded — ' . date('j M Y', strtotime($last_saturday)),
         "No attendance was recorded for the class on "
             . date('l, F j, Y', strtotime($last_saturday)) . ".\n\n"
             . "Please log in and record attendance:\n"
@@ -29,3 +29,4 @@ if (!$session) {
         'From: ' . DOJO_EMAIL
     );
 }
+

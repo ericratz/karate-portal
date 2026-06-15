@@ -52,7 +52,7 @@ $unpaid = db()->query(
                  )
            )
        )
-     ORDER BY s.last_name, s.first_name'
+     ORDER BY s.first_name, s.last_name'
 )->fetchAll();
 
 // Students with no waiver
@@ -87,7 +87,7 @@ $possible_links = db()->query(
               AND LOWER(u.email) = LOWER(s.email))
          )
      WHERE NOT EXISTS (SELECT 1 FROM students s2 WHERE s2.user_id = u.id)
-     ORDER BY u.last_name, u.first_name'
+     ORDER BY u.first_name, u.last_name'
 )->fetchAll();
 
 // Recent payments (last 10)
@@ -164,7 +164,7 @@ include __DIR__ . '/../includes/header.php';
                         <tr>
                             <td>
                                 <a href="../instructor/student_profile.php?id=<?= $s['id'] ?>">
-                                    <?= htmlspecialchars($s['last_name'].', '.$s['first_name']) ?>
+                                    <?= htmlspecialchars($s['first_name'].' '.$s['last_name']) ?>
                                 </a>
                             </td>
                             <td>
@@ -195,7 +195,7 @@ include __DIR__ . '/../includes/header.php';
                         <tr>
                             <td>
                                 <a href="student_edit.php?id=<?= $s['id'] ?>">
-                                    <?= htmlspecialchars($s['last_name'].', '.$s['first_name']) ?>
+                                    <?= htmlspecialchars($s['first_name'].' '.$s['last_name']) ?>
                                 </a>
                             </td>
                         </tr>
@@ -244,7 +244,7 @@ include __DIR__ . '/../includes/header.php';
                                 <?= $lr['notes'] ? htmlspecialchars(mb_strimwidth($lr['notes'], 0, 60, '…')) : '—' ?>
                             </td>
                             <td class="small text-muted text-nowrap">
-                                <?= date('M j', strtotime($lr['created_at'])) ?>
+                                <?= date('j M Y', strtotime($lr['created_at'])) ?>
                             </td>
                             <td>
                                 <a href="compare_account.php?user_id=<?= $lr['user_id'] ?>&link_request_id=<?= $lr['id'] ?>"
@@ -330,8 +330,8 @@ include __DIR__ . '/../includes/header.php';
                     <tbody>
                     <?php foreach ($recent_payments as $p): ?>
                         <tr>
-                            <td><?= date('M j', strtotime($p['payment_date'])) ?></td>
-                            <td><?= htmlspecialchars($p['last_name'].', '.$p['first_name']) ?></td>
+                            <td><?= date('j M Y', strtotime($p['payment_date'])) ?></td>
+                            <td><?= htmlspecialchars($p['first_name'].' '.$p['last_name']) ?></td>
                             <td><?= ucwords(str_replace('_',' ',$p['payment_type'])) ?></td>
                             <td class="text-end">$<?= number_format($p['amount'],2) ?></td>
                         </tr>
@@ -348,3 +348,4 @@ include __DIR__ . '/../includes/header.php';
 <style>.bg-purple { background-color: #6f42c1 !important; }</style>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>
+

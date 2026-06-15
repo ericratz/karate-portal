@@ -78,7 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== 'delet
     $sid    = (int)($_POST['student_id']     ?? 0);
     $amount = (float)($_POST['amount']       ?? 0);
     $type   = $_POST['payment_type']         ?? '';
-    $method = $_POST['payment_method']       ?? '';
+    $method = $_POST['payment_method']       ?? 'paypal';
     $date   = $_POST['payment_date']         ?? date('Y-m-d H:i:s');
     $month  = $_POST['month_covered']        ?? null;
     $txn    = trim($_POST['transaction_id']  ?? '');
@@ -148,7 +148,7 @@ $payments = $stmt->fetchAll();
 $total_shown = array_sum(array_column($payments, 'amount'));
 
 $all_students = db()->query(
-    'SELECT id, first_name, last_name FROM students ORDER BY last_name, first_name'
+    'SELECT id, first_name, last_name FROM students ORDER BY first_name, last_name'
 )->fetchAll();
 
 // Pre-fill student_id from admin dashboard link
@@ -163,7 +163,7 @@ include __DIR__ . '/../includes/header.php';
 <div class="d-flex align-items-center justify-content-between mb-4">
     <h3 class="mb-0">Payments</h3>
     <div class="d-flex gap-2">
-        <a href="student_edit.php" class="btn btn-success btn-sm">+ New Student</a>
+        <a href="student_edit.php" class="btn btn-success btn-sm">+ New Participant</a>
         <button class="btn btn-success btn-sm" data-bs-toggle="collapse" data-bs-target="#addPaymentForm">
             + Record Payment
         </button>
@@ -188,7 +188,7 @@ include __DIR__ . '/../includes/header.php';
                         <?php foreach ($all_students as $s): ?>
                             <option value="<?= $s['id'] ?>"
                                 <?= $s['id'] === $prefill_student ? 'selected' : '' ?>>
-                                <?= htmlspecialchars($s['last_name'].', '.$s['first_name']) ?>
+                                <?= htmlspecialchars($s['first_name'].' '.$s['last_name']) ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
@@ -223,7 +223,7 @@ include __DIR__ . '/../includes/header.php';
                     <select name="payment_method" class="form-select" required>
                         <option value="cash">Cash</option>
                         <option value="check">Check</option>
-                        <option value="paypal">PayPal</option>
+                        <option value="paypal" selected>PayPal</option>
                         <option value="mail">Mail</option>
                     </select>
                 </div>
@@ -282,7 +282,7 @@ include __DIR__ . '/../includes/header.php';
                     <option value="">All Students</option>
                     <?php foreach ($all_students as $s): ?>
                         <option value="<?= $s['id'] ?>" <?= $s['id'] === $f_student ? 'selected' : '' ?>>
-                            <?= htmlspecialchars($s['last_name'].', '.$s['first_name']) ?>
+                            <?= htmlspecialchars($s['first_name'].' '.$s['last_name']) ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
@@ -375,13 +375,13 @@ include __DIR__ . '/../includes/header.php';
                 <tr>
                     <td>
                         <button type="button" class="btn btn-sm btn-outline-success py-0"
-                                onclick="prefillPayment(<?= $p['student_id'] ?>, '<?= addslashes($p['last_name'].', '.$p['first_name']) ?>')"
+                                onclick="prefillPayment(<?= $p['student_id'] ?>, '<?= addslashes($p['first_name'].' '.$p['last_name']) ?>')"
                                 title="Add payment for this student">+</button>
                     </td>
-                    <td class="text-nowrap"><?= date('M j, Y', strtotime($p['payment_date'])) ?></td>
+                    <td class="text-nowrap"><?= date('j M Y', strtotime($p['payment_date'])) ?></td>
                     <td>
                         <a href="../instructor/student_profile.php?id=<?= $p['student_id'] ?>" class="text-decoration-none">
-                            <?= htmlspecialchars($p['last_name'].', '.$p['first_name']) ?>
+                            <?= htmlspecialchars($p['first_name'].' '.$p['last_name']) ?>
                         </a>
                         <?php if ($p['payer_name']): ?>
                             <div class="text-muted small">paid by <?= htmlspecialchars($p['payer_name']) ?></div>
@@ -520,3 +520,4 @@ function prefillPayment(studentId, studentName) {
 </script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>
+

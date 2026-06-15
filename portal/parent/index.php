@@ -137,7 +137,8 @@ if ($tab_id) {
 $page_title = 'My Dashboard';
 include __DIR__ . '/../includes/header.php';
 
-function fmt_date(string $d): string { return date('M j, Y', strtotime($d)); }
+function fmt_date(string $d): string { return date('j M Y', strtotime($d)); }
+function fmt_phone(string $p): string { $d = preg_replace('/\D/', '', $p); return strlen($d) === 10 ? substr($d,0,3).'-'.substr($d,3,3).'-'.substr($d,6) : $p; }
 function fmt_type(string $t): string { return ucwords(str_replace('_', ' ', $t)); }
 function score_badge(string $result, ?int $score): string {
     if ($score === null) return '<span class="badge bg-secondary">Pending</span>';
@@ -217,21 +218,17 @@ function score_badge(string $result, ?int $score): string {
         </div>
     </div>
 
+    <?php if (!$student['injury_waiver']): ?>
     <div class="col-sm-6 col-lg-3">
         <div class="card text-center h-100 border-0 shadow-sm">
             <div class="card-body d-flex flex-column align-items-center justify-content-center">
-                <div class="display-6 fw-bold <?= $student['injury_waiver'] ? 'text-success' : 'text-danger' ?>">
-                    <?= $student['injury_waiver'] ? '✓' : '✗' ?>
-                </div>
-                <div class="text-muted small mb-2">Liability Waiver</div>
-                <?php if (!$student['injury_waiver']): ?>
+                <div class="display-6 fw-bold text-danger">✗</div>
+                <div class="text-muted small mb-2">Waiver</div>
                 <a href="waiver.php?student_id=<?= $tab_id ?>" class="btn btn-sm btn-warning mt-1">Complete Waiver</a>
-                <?php else: ?>
-                <a href="waiver.php?student_id=<?= $tab_id ?>" class="btn btn-sm btn-success mt-1">View Waiver</a>
-                <?php endif; ?>
             </div>
         </div>
     </div>
+    <?php endif; ?>
 
     <?php if ($has_autopay): ?>
     <div class="col-sm-6 col-lg-3">
@@ -267,16 +264,29 @@ function score_badge(string $result, ?int $score): string {
                 $_stip       = isset($type_tips[$_stype]) ? ' data-bs-toggle="tooltip" title="' . $type_tips[$_stype] . '"' : '';
                 $type_badge  = '<span class="badge ' . ($type_colors[$_stype] ?? 'bg-secondary') . '"' . $_stip . '>'
                              . htmlspecialchars(ucfirst($_stype)) . '</span>';
+                $addr_parts = array_filter([
+                    htmlspecialchars($student['street_address'] ?? ''),
+                    htmlspecialchars($student['city_state_zip'] ?? ''),
+                ]);
+                if ($student['injury_waiver']) {
+                    $waiver_row = '<span class="text-success">✓</span>'
+                        . (!empty($student['injury_waiver_date']) ? ' ' . fmt_date($student['injury_waiver_date']) : '')
+                        . ' <a href="waiver.php?student_id=' . $tab_id . '" class="btn btn-sm btn-outline-secondary ms-2">View</a>';
+                } else {
+                    $waiver_row = '—';
+                }
                 $pv = [
                     'First Name'        => htmlspecialchars($student['first_name'] ?? '') ?: '—',
                     'Last Name'         => htmlspecialchars($student['last_name']  ?? '') ?: '—',
                     'Account Type'      => $type_badge,
                     'Date of Birth'     => $student['date_of_birth'] ? fmt_date($student['date_of_birth']) : '—',
-                    'Phone'             => htmlspecialchars($student['phone'] ?? '') ?: '—',
+                    'Phone'             => ($student['phone'] ?? '') ? fmt_phone($student['phone']) : '—',
                     'Email'             => htmlspecialchars($student['email'] ?? '') ?: '—',
                     'Emergency Contact' => htmlspecialchars($student['emergency_contact_name']  ?? '') ?: '—',
-                    'Emergency Phone'   => htmlspecialchars($student['emergency_contact_phone'] ?? '') ?: '—',
+                    'Emergency Phone'   => ($student['emergency_contact_phone'] ?? '') ? fmt_phone($student['emergency_contact_phone']) : '—',
+                    'Address'           => $addr_parts ? implode('<br>', $addr_parts) : '—',
                     'Member Since'      => $student['registration_date'] ? fmt_date($student['registration_date']) : '—',
+                    'Waiver'  => $waiver_row,
                     'Medical Note'      => !empty($student['medical_note']) ? nl2br(htmlspecialchars($student['medical_note'])) : '—',
                 ];
                 $keys = array_keys($pv);
@@ -375,7 +385,7 @@ function score_badge(string $result, ?int $score): string {
                             <td><?= htmlspecialchars($t['kyu_dan']) ?></td>
                             <td><?= score_badge($t['result'], isset($t['score']) ? (int)$t['score'] : null) ?></td>
                             <td><?= $t['fee_paid'] ? '<span class="text-success">✓</span>' : '' ?></td>
-                            <td><?= $t['belt_awarded'] ? '<span class="text-success">✓</span>' : '<span class="text-danger">✗</span>' ?></td>
+                            <td><?= $t['result'] === 'pass' ? '<span class="text-success">✓</span>' : ($t['result'] === 'fail' ? '<span class="text-danger">✗</span>' : '<span class="text-muted">—</span>') ?></td>
                         </tr>
                     <?php endforeach; ?>
                     </tbody>
@@ -425,3 +435,4 @@ function score_badge(string $result, ?int $score): string {
 <?php endif; // $student ?>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>
+

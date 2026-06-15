@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/db.php';
 require_role('admin');
+function fmt_phone(string $p): string { $d = preg_replace('/\D/', '', $p); return strlen($d) === 10 ? substr($d,0,3).'-'.substr($d,3,3).'-'.substr($d,6) : $p; }
 
 // If no registration payment remains, revert student back to guest
 function sync_registration_status(int $student_id): void {
@@ -189,6 +190,8 @@ if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ===
     $email    = trim($_POST['email']      ?? '');
     $ec_name  = trim($_POST['ec_name']    ?? '');
     $ec_phone = trim($_POST['ec_phone']   ?? '');
+    $street   = trim($_POST['street_address'] ?? '');
+    $csz      = trim($_POST['city_state_zip'] ?? '');
     $reg_date = $_POST['registration_date'] ?? date('Y-m-d');
     $s_type      = in_array($_POST['account_type'] ?? '', ['guest','student','parent','instructor','admin'])
                    ? $_POST['account_type'] : 'guest';
@@ -199,10 +202,12 @@ if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ===
     } else {
         db()->prepare(
             'UPDATE students SET first_name=?, last_name=?, date_of_birth=?, phone=?, email=?,
-             emergency_contact_name=?, emergency_contact_phone=?, registration_date=?, student_type=?,
+             emergency_contact_name=?, emergency_contact_phone=?,
+             street_address=?, city_state_zip=?,
+             registration_date=?, student_type=?,
              medical_note=?
              WHERE id=?'
-        )->execute([$first,$last,$dob?:null,$phone,$email,$ec_name,$ec_phone,$reg_date,$s_type,$medical_note?:null,$id]);
+        )->execute([$first,$last,$dob?:null,$phone,$email,$ec_name,$ec_phone,$street?:null,$csz?:null,$reg_date,$s_type,$medical_note?:null,$id]);
         $uid_q = db()->prepare('SELECT user_id FROM students WHERE id=?');
         $uid_q->execute([$id]);
         if ($lu = $uid_q->fetchColumn()) {
@@ -236,23 +241,6 @@ if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ===
     audit('update_student', 'student', $id);
     header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
     exit;
-}
-
-// Update liability waiver
-if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'update_injury_waiver') {
-    verify_csrf();
-    $injury = isset($_POST['injury_waiver']) ? 1 : 0;
-    $i_date = trim($_POST['injury_waiver_date'] ?? '');
-    if ($injury && $i_date === '') {
-        $error = 'A date is required when marking the liability waiver as signed.';
-    } else {
-        $i_date = $injury ? $i_date : null;
-        db()->prepare('UPDATE students SET injury_waiver=?, injury_waiver_date=? WHERE id=?')
-             ->execute([$injury, $i_date, $id]);
-        audit('update_student', 'student', $id);
-        header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
-        exit;
-    }
 }
 
 // Update existing ranks (bulk)
@@ -376,6 +364,8 @@ if (!$id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ==
     $email    = trim($_POST['email']      ?? '');
     $ec_name  = trim($_POST['ec_name']    ?? '');
     $ec_phone = trim($_POST['ec_phone']   ?? '');
+    $street   = trim($_POST['street_address'] ?? '');
+    $csz      = trim($_POST['city_state_zip'] ?? '');
     $reg_date = $_POST['registration_date'] ?? date('Y-m-d');
     $s_type      = in_array($_POST['account_type'] ?? '', ['guest','student','parent','instructor','admin'])
                    ? $_POST['account_type'] : 'guest';
@@ -387,9 +377,10 @@ if (!$id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ==
             'INSERT INTO students
              (first_name,last_name,date_of_birth,phone,email,
               emergency_contact_name,emergency_contact_phone,
+              street_address,city_state_zip,
               registration_date,student_type,medical_note,active,active_override)
-             VALUES (?,?,?,?,?,?,?,?,?,?,1,NULL)'
-        )->execute([$first,$last,$dob?:null,$phone,$email,$ec_name,$ec_phone,$reg_date,$s_type,$medical_note?:null]);
+             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,1,NULL)'
+        )->execute([$first,$last,$dob?:null,$phone,$email,$ec_name,$ec_phone,$street?:null,$csz?:null,$reg_date,$s_type,$medical_note?:null]);
         $id = (int)db()->lastInsertId();
         header("Location: student_edit.php?id=$id");
         exit;
@@ -542,15 +533,20 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                             'instructor' => 'Teaches or assists with classes',
                             'admin'      => 'Full administrative access',
                         ];
+                        $addr_parts = array_filter([
+                            htmlspecialchars($student['street_address'] ?? ''),
+                            htmlspecialchars($student['city_state_zip'] ?? ''),
+                        ]);
                         $pv = [
                             'First Name'        => htmlspecialchars($student['first_name'] ?? '') ?: '—',
                             'Last Name'         => htmlspecialchars($student['last_name']  ?? '') ?: '—',
-                            'Date of Birth'     => $student['date_of_birth'] ? date('M j, Y', strtotime($student['date_of_birth'])) : '—',
-                            'Phone'             => htmlspecialchars($student['phone'] ?? '') ?: '—',
+                            'Date of Birth'     => $student['date_of_birth'] ? date('j M Y', strtotime($student['date_of_birth'])) : '—',
+                            'Phone'             => ($student['phone'] ?? '') ? fmt_phone($student['phone']) : '—',
                             'Email'             => htmlspecialchars($student['email'] ?? '') ?: '—',
                             'Emergency Contact' => htmlspecialchars($student['emergency_contact_name']  ?? '') ?: '—',
-                            'Emergency Phone'   => htmlspecialchars($student['emergency_contact_phone'] ?? '') ?: '—',
-                            'Member Since'      => $student['registration_date'] ? date('M j, Y', strtotime($student['registration_date'])) : '—',
+                            'Emergency Phone'   => ($student['emergency_contact_phone'] ?? '') ? fmt_phone($student['emergency_contact_phone']) : '—',
+                            'Address'           => $addr_parts ? implode('<br>', $addr_parts) : '—',
+                            'Member Since'      => $student['registration_date'] ? date('j M Y', strtotime($student['registration_date'])) : '—',
                         ];
                         foreach ($pv as $lbl => $val): ?>
                         <div class="d-flex py-1 border-bottom">
@@ -581,6 +577,18 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                                 <?php if ($ov_val !== 'auto'): ?>
                                     <span class="badge bg-warning text-dark ms-1" data-bs-toggle="tooltip"
                                           title="Override: active/inactive status manually set by admin">Override</span>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        <div class="d-flex py-1 border-bottom">
+                            <div class="text-muted small" style="min-width:160px">Waiver</div>
+                            <div>
+                                <?php if ($injury_done): ?>
+                                    <span class="text-success">✓</span>
+                                    <?php if ($injury_date): ?><span class="ms-1"><?= date('j M Y', strtotime($injury_date)) ?></span><?php endif; ?>
+                                    <a href="waiver_view.php?student_id=<?= $id ?>" class="btn btn-sm btn-outline-secondary ms-2">View</a>
+                                <?php else: ?>
+                                    —
                                 <?php endif; ?>
                             </div>
                         </div>
@@ -625,6 +633,16 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                             <label class="form-label">Emergency Phone</label>
                             <input type="tel" name="ec_phone" class="form-control"
                                    value="<?= htmlspecialchars($student['emergency_contact_phone'] ?? '') ?>">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Street Address</label>
+                            <input type="text" name="street_address" class="form-control"
+                                   value="<?= htmlspecialchars($student['street_address'] ?? '') ?>">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">City, State, ZIP</label>
+                            <input type="text" name="city_state_zip" class="form-control"
+                                   value="<?= htmlspecialchars($student['city_state_zip'] ?? '') ?>">
                         </div>
                         <div class="col-6">
                             <label class="form-label">Member Since</label>
@@ -688,6 +706,14 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                             <label class="form-label">Emergency Phone</label>
                             <input type="tel" name="ec_phone" class="form-control">
                         </div>
+                        <div class="col-12">
+                            <label class="form-label">Street Address</label>
+                            <input type="text" name="street_address" class="form-control">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">City, State, ZIP</label>
+                            <input type="text" name="city_state_zip" class="form-control">
+                        </div>
                         <div class="col-6">
                             <label class="form-label">Member Since</label>
                             <input type="date" name="registration_date" class="form-control"
@@ -747,7 +773,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                                 <td>
                                     <a href="../instructor/attendance.php?date=<?= $a['session_date'] ?>"
                                        class="text-primary text-decoration-none">
-                                        <?= date('D, M j, Y', strtotime($a['session_date'])) ?>
+                                        <?= date('D, j M Y', strtotime($a['session_date'])) ?>
                                     </a>
                                 </td>
                                 <td>
@@ -793,7 +819,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                         <span class="text-muted small"><?= $mode_labels[$ov_val] ?></span>
                         <?php if ($last_attended): ?>
                             <div class="form-text mt-1">
-                                Last attended: <strong><?= date('M j, Y', strtotime($last_attended)) ?></strong>
+                                Last attended: <strong><?= date('j M Y', strtotime($last_attended)) ?></strong>
                                 <?php
                                 $months_ago = (new DateTime($last_attended))->diff(new DateTime())->days / 30;
                                 echo $months_ago > 3
@@ -900,7 +926,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                     <tbody>
                     <?php foreach ($payments as $p): ?>
                         <tr class="pay-data-row">
-                            <td><?= date('M j, Y', strtotime($p['payment_date'])) ?></td>
+                            <td><?= date('j M Y', strtotime($p['payment_date'])) ?></td>
                             <td><?= ucwords(str_replace('_', ' ', $p['payment_type'])) ?></td>
                             <td><?= ['paypal'=>'PayPal','venmo'=>'Venmo','cash'=>'Cash','check'=>'Check','mail'=>'Mail'][$p['payment_method']] ?? ucfirst($p['payment_method']) ?></td>
                             <td class="text-end">$<?= number_format($p['amount'], 2) ?></td>
@@ -1047,7 +1073,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                                     </select>
                                 </td>
                                 <td>
-                                    <span class="rank-view-cell"><?= $r['achieved_date'] ? date('M j, Y', strtotime($r['achieved_date'])) : '—' ?></span>
+                                    <span class="rank-view-cell"><?= $r['achieved_date'] ? date('j M Y', strtotime($r['achieved_date'])) : '—' ?></span>
                                     <input type="date" name="rank_updates[<?= $r['sr_id'] ?>][achieved_date]"
                                            class="form-control form-control-sm rank-edit-cell" style="display:none;width:auto"
                                            value="<?= htmlspecialchars($r['achieved_date']) ?>">
@@ -1118,7 +1144,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                             <div class="col-6">
                                 <div class="form-check mt-1">
                                     <input type="checkbox" class="form-check-input" name="belt_awarded" id="bt_belt" value="1">
-                                    <label class="form-check-label small" for="bt_belt">Belt Awarded</label>
+                                    <label class="form-check-label small" for="bt_belt">Test Passed</label>
                                 </div>
                             </div>
                         </div>
@@ -1145,7 +1171,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                 <?php foreach ($belt_tests as $bt): ?>
                 <div class="border-bottom px-3 py-2">
                     <div class="bt-row-view-<?= $bt['id'] ?> d-flex align-items-center gap-3 flex-wrap">
-                        <span class="text-nowrap"><?= date('M j, Y', strtotime($bt['test_date'])) ?></span>
+                        <span class="text-nowrap"><?= date('j M Y', strtotime($bt['test_date'])) ?></span>
                         <span class="flex-grow-1"><?= htmlspecialchars($bt['kyu_dan']) ?></span>
                         <?php if (isset($bt['score']) && $bt['score'] !== null): ?>
                             <?php if ($bt['result']==='pass'): ?>
@@ -1157,7 +1183,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                             <span class="badge bg-secondary">Pending</span>
                         <?php endif; ?>
                         <span>Fee <?= $bt['fee_paid'] ? '<span class="text-success">✓</span>' : '' ?></span>
-                        <span>Awarded <?= $bt['belt_awarded'] ? '<span class="text-success">✓</span>' : '<span class="text-danger">✗</span>' ?></span>
+                        <span>Passed <?= $bt['result'] === 'pass' ? '<span class="text-success">✓</span>' : ($bt['result'] === 'fail' ? '<span class="text-danger">✗</span>' : '<span class="text-muted">—</span>') ?></span>
                         <div class="d-flex gap-2 ms-auto">
                             <button type="button" onclick="btRowEdit(<?= $bt['id'] ?>)"
                                     class="btn btn-sm btn-success py-0">Edit</button>
@@ -1210,7 +1236,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                                 <input type="checkbox" class="form-check-input" name="belt_awarded"
                                        form="btEditForm-<?= $bt['id'] ?>" value="1"
                                        id="belt_<?= $bt['id'] ?>" <?= $bt['belt_awarded'] ? 'checked' : '' ?>>
-                                <label class="form-check-label small" for="belt_<?= $bt['id'] ?>">Belt Awarded</label>
+                                <label class="form-check-label small" for="belt_<?= $bt['id'] ?>">Test Passed</label>
                             </div>
                             <div class="d-flex gap-2 ms-auto">
                                 <button type="button" class="btn btn-sm btn-secondary"
@@ -1230,14 +1256,14 @@ $injury_date = $student['injury_waiver_date'] ?? null;
         <!-- Payment Waiver -->
         <div class="card border-0 shadow-sm">
             <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
-                <span>Payment Waivers</span>
+                <span>Exempt</span>
                 <div class="d-flex gap-2">
                     <?php if (!empty($payment_waivers)): ?>
                     <button id="pwEditToggle" type="button" class="btn btn-sm btn-success"
                             onclick="togglePwEdit()">Edit</button>
                     <?php endif; ?>
                     <button type="button" class="btn btn-sm btn-success"
-                            onclick="toggleBox('pw-add-box')">+ Add Waiver</button>
+                            onclick="toggleBox('pw-add-box')">+ Add Exemption</button>
                 </div>
             </div>
             <!-- Add waiver form (collapsed) -->
@@ -1279,7 +1305,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
             </div>
             <div class="card-body<?= empty($payment_waivers) ? '' : ' p-0' ?>">
                 <?php if (empty($payment_waivers)): ?>
-                    <p class="text-muted mb-0">No payment waivers on record.</p>
+                    <p class="text-muted mb-0">No exemptions on record.</p>
                 <?php else: ?>
                 <table id="pwTable" class="table table-sm table-hover mb-0 align-middle">
                     <tbody>
@@ -1291,7 +1317,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                                     <div class="text-muted small"><?= htmlspecialchars($pw['reason']) ?></div>
                                 <?php endif; ?>
                             </td>
-                            <td class="text-nowrap"><?= date('M j, Y', strtotime($pw['granted_date'])) ?></td>
+                            <td class="text-nowrap"><?= date('j M Y', strtotime($pw['granted_date'])) ?></td>
                             <td class="pw-action-col text-end text-nowrap">
                                 <button type="button" class="btn btn-sm btn-outline-primary py-0 me-1"
                                         onclick="togglePwRow(<?= $pw['id'] ?>)">Edit</button>
@@ -1343,53 +1369,25 @@ $injury_date = $student['injury_waiver_date'] ?? null;
             </div>
         </div>
 
-        <!-- Liability Waiver -->
-        <form id="injury-form" method="post">
-            <?= csrf_input() ?>
-            <input type="hidden" name="action" value="update_injury_waiver">
-            <div class="card border-0 shadow-sm">
-                <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
-                    <span>Liability Waiver</span>
-                    <div class="d-flex gap-2">
-                        <button type="button" id="injuryCancelBtn" class="btn btn-sm btn-secondary" style="display:none"
-                                onclick="cardCancel('injury')">Cancel</button>
-                        <button type="button" id="injuryEditBtn" class="btn btn-sm btn-success"
-                                onclick="cardToggle('injury')">Edit</button>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <!-- View mode -->
-                    <div id="injury-view">
-                        <?php if ($injury_done): ?>
-                            <span class="badge bg-success">Completed</span>
-                            <?php if ($injury_date): ?>
-                                <span class="ms-1"><?= date('M j, Y', strtotime($injury_date)) ?></span>
-                            <?php endif; ?>
-                        <?php else: ?>
-                            <span class="text-muted">Not completed</span>
-                        <?php endif; ?>
-                    </div>
-                    <!-- Edit mode -->
-                    <div id="injury-edit" style="display:none" class="row g-3">
-                        <div class="col-6">
-                            <div class="form-check mt-1">
-                                <input type="checkbox" class="form-check-input" name="injury_waiver"
-                                       id="injury_waiver" value="1"
-                                       <?= $injury_done ? 'checked' : '' ?>>
-                                <label class="form-check-label" for="injury_waiver">Signed</label>
-                            </div>
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label small">Waiver Date <span class="text-danger" id="waiver-date-required" <?= $injury_done ? '' : 'style="display:none"' ?>>*</span></label>
-                            <input type="date" name="injury_waiver_date" id="injury_waiver_date"
-                                   class="form-control form-control-sm"
-                                   value="<?= htmlspecialchars($injury_date ?? '') ?>"
-                                   <?= $injury_done ? 'required' : '' ?>>
-                        </div>
-                    </div>
-                </div>
+        <!-- Waiver -->
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
+                <span>Waiver</span>
+                <a href="waiver_view.php?student_id=<?= $id ?>" class="btn btn-sm btn-success">
+                    <?= $injury_done ? 'View' : '+ Enter Waiver' ?>
+                </a>
             </div>
-        </form>
+            <div class="card-body">
+                <?php if ($injury_done): ?>
+                    <span class="badge bg-success">Completed</span>
+                    <?php if ($injury_date): ?>
+                        <span class="ms-1"><?= date('j M Y', strtotime($injury_date)) ?></span>
+                    <?php endif; ?>
+                <?php else: ?>
+                    <span class="text-muted">Not completed</span>
+                <?php endif; ?>
+            </div>
+        </div>
 
 
     <?php endif; /* $id */ ?>
@@ -1488,21 +1486,6 @@ document.querySelectorAll('.att-edit input[type="checkbox"]').forEach(function(c
         else               { badge.style.display = 'none'; }
     });
 });
-
-// Liability waiver — date required when signed is checked
-(function() {
-    var chk      = document.getElementById('injury_waiver');
-    var dateEl   = document.getElementById('injury_waiver_date');
-    var asterisk = document.getElementById('waiver-date-required');
-    if (!chk || !dateEl) return;
-    chk.addEventListener('change', function() {
-        dateEl.required = this.checked;
-        asterisk.style.display = this.checked ? '' : 'none';
-        if (this.checked && !dateEl.value) {
-            dateEl.value = new Date().toISOString().slice(0, 10);
-        }
-    });
-})();
 
 // Payment history — edit toggle reveals action column; per-row edit form
 function togglePayEdit() {
@@ -1649,7 +1632,7 @@ function rankEdit() {
         <div class="border-bottom p-3" id="note-wrap-<?= $n['id'] ?>">
             <div class="d-flex justify-content-between align-items-start gap-2">
                 <small class="text-muted">
-                    <?= date('M j, Y g:i a', strtotime($n['created_at'])) ?>
+                    <?= date('j M Y g:i a', strtotime($n['created_at'])) ?>
                     · <strong><?= htmlspecialchars($n['username'] ?? 'unknown') ?></strong>
                 </small>
                 <div class="d-flex gap-1 flex-shrink-0">
@@ -1734,3 +1717,4 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
 <?php endif; ?>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>
+

@@ -11,7 +11,7 @@ $all_students = db()->query(
             u.email AS login_email
      FROM students s
      LEFT JOIN users u ON u.id = s.user_id
-     ORDER BY s.last_name, s.first_name'
+     ORDER BY s.first_name, s.last_name'
 )->fetchAll();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -54,7 +54,7 @@ foreach ($all_students as $s) {
     $email = $s['email'] ?: $s['login_email'];
     $js_students[] = [
         'id'    => $s['id'],
-        'name'  => $s['last_name'] . ', ' . $s['first_name'],
+        'name'  => $s['first_name'] . ' ' . $s['last_name'],
         'email' => $email ?: '',
         'type'  => $s['student_type'],
     ];
@@ -149,7 +149,7 @@ foreach ($all_students as $s) {
                     </td>
                     <td class="small">
                         <label for="r<?= $s['id'] ?>" class="mb-0 cursor-pointer">
-                            <?= htmlspecialchars($s['last_name'] . ', ' . $s['first_name']) ?>
+                            <?= htmlspecialchars($s['first_name'] . ' ' . $s['last_name']) ?>
                         </label>
                     </td>
                     <td>
@@ -240,3 +240,4 @@ updateCount();
 </script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>
+

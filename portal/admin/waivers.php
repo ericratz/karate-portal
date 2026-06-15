@@ -39,7 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['grant'])) {
 
 
 $students = db()->query(
-    'SELECT id, first_name, last_name FROM students WHERE active=1 ORDER BY last_name, first_name'
+    'SELECT id, first_name, last_name FROM students WHERE active=1 ORDER BY first_name, last_name'
 )->fetchAll();
 
 // Filters
@@ -62,12 +62,12 @@ $stmt = db()->prepare(
 $stmt->execute($params);
 $waivers = $stmt->fetchAll();
 
-$page_title = 'Payment Waivers';
+$page_title = 'Exempt';
 include __DIR__ . '/../includes/header.php';
 ?>
 
 <div class="d-flex align-items-center justify-content-between mb-4">
-    <h3 class="mb-0">Payment Waivers</h3>
+    <h3 class="mb-0">Exempt</h3>
 </div>
 
 <?php if ($msg):   ?><div class="alert alert-success"><?= htmlspecialchars($msg) ?></div><?php endif; ?>
@@ -88,7 +88,7 @@ include __DIR__ . '/../includes/header.php';
                             <option value="">— select —</option>
                             <?php foreach ($students as $s): ?>
                             <option value="<?= $s['id'] ?>">
-                                <?= htmlspecialchars($s['last_name'].', '.$s['first_name']) ?>
+                                <?= htmlspecialchars($s['first_name'].' '.$s['last_name']) ?>
                             </option>
                             <?php endforeach; ?>
                         </select>
@@ -133,7 +133,7 @@ include __DIR__ . '/../includes/header.php';
                             <option value="">All Students</option>
                             <?php foreach ($students as $s): ?>
                                 <option value="<?= $s['id'] ?>" <?= $s['id'] === $f_student ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars($s['last_name'].', '.$s['first_name']) ?>
+                                    <?= htmlspecialchars($s['first_name'].' '.$s['last_name']) ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
@@ -181,12 +181,12 @@ include __DIR__ . '/../includes/header.php';
                         <tr>
                             <td>
                                 <a href="student_edit.php?id=<?= $w['student_id'] ?>" class="text-decoration-none">
-                                    <?= htmlspecialchars($w['last_name'].', '.$w['first_name']) ?>
+                                    <?= htmlspecialchars($w['first_name'].' '.$w['last_name']) ?>
                                 </a>
                             </td>
                             <td><?= ucwords(str_replace('_',' ',$w['waiver_type'])) ?></td>
                             <td><?= htmlspecialchars($w['reason'] ?? '—') ?></td>
-                            <td><?= date('M j, Y', strtotime($w['granted_date'])) ?></td>
+                            <td><?= date('j M Y', strtotime($w['granted_date'])) ?></td>
                             <td class="delete-col">
                                 <form method="post" class="d-inline"
                                       onsubmit="return confirm('Permanently delete this waiver? This cannot be undone.')">
@@ -222,3 +222,4 @@ function toggleEdit() {
 </script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>
+

@@ -35,3 +35,4 @@ function apply_auto_inactive(): void {
            )'
     );
 }
+
