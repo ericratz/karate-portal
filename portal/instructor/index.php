@@ -66,7 +66,7 @@ include __DIR__ . '/../includes/header.php';
                         <tr>
                             <td>
                                 <a href="attendance.php?date=<?= $s['session_date'] ?>" class="text-decoration-none">
-                                    <?= date('D, j M Y', strtotime($s['session_date'])) ?>
+                                    <?= date('D j M Y', strtotime($s['session_date'])) ?>
                                 </a>
                             </td>
                             <td><?= ucfirst($s['class_type']) ?></td>

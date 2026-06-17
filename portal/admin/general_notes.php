@@ -99,7 +99,7 @@ include __DIR__ . '/../includes/header.php';
                 <div class="note-entry border-bottom p-3" data-id="<?= $n['id'] ?>">
                     <div class="d-flex justify-content-between align-items-start mb-1">
                         <span>
-                            <strong><?= date('D, j M Y', strtotime($n['created_at'])) ?></strong>
+                            <strong><?= date('D j M Y', strtotime($n['created_at'])) ?></strong>
                             <?= date('g:i a', strtotime($n['created_at'])) ?>
                             — <?= htmlspecialchars($n['username'] ?? 'unknown') ?>
                         </span>

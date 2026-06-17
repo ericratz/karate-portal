@@ -104,7 +104,7 @@ include __DIR__ . '/../includes/header.php';
                     <select name="payment_method" class="form-select" required>
                         <option value="cash">Cash</option>
                         <option value="check">Check</option>
-                        <option value="paypal">PayPal</option>
+                        <option value="paypal" selected>PayPal</option>
                         <option value="mail">Mail</option>
                     </select>
                 </div>

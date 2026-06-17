@@ -1,4 +1,4 @@
-# Shotokan Karate Portal — V2.2
+# Shotokan Karate Portal — V2.21
 
 A private membership portal for Noji Ratzlaff's Shotokan Karate dojo. Students can track
 their attendance, belt tests, and payments; instructors can take attendance and manage belt
@@ -6,25 +6,12 @@ tests; and the admin can run the whole operation from one place.
 
 ---
 
-## What's New in V2.2
+## What's New in V2.21
 
-- **Home address on profiles** — `street_address` and `city_state_zip` added to the student record; editable on the profile edit form and displayed in the Profile Info card across all views (migration: `migrations/add_student_address.sql`)
-- **Phone formatting** — phone numbers now display with hyphens (801-368-1865) in all profile and waiver views
-- **Waiver redesign** — student and parent waiver forms now match the physical PDF layout (paper-style underline fields, legal text, pre-filled and read-only when already signed); admin can digitize physical waivers via the waiver view page with full form entry
-- **Terminology cleanup** — "Liability Waiver" renamed to "Waiver" and "Payment Waiver" renamed to "Exempt" across all views to avoid confusion
-- **Parent ENUM fix** — `student_type = 'parent'` was missing from the DB ENUM, causing parent records to save as blank and be invisible on the roster (migration: `migrations/fix_student_type_enum_add_parent.sql`)
-- **Sticky navigation bar** — purple nav bar stays visible when scrolling on all pages
-- **Roster: name format & sort** — names display as "First Last" by default with a First Name / Last Name sort toggle on both admin and instructor rosters; applied consistently across all pages site-wide
-- **Roster: column rename** — "Injury Waiver" column renamed to "Waiver"
-- **Attendance: date navigation** — changing the date picker navigates to that date's attendance (page reloads with correct data); fixed a critical bug where saving attendance for a past date could move and overwrite a more recent session
-- **Attendance: name sort** — First Name / Last Name / Last Attended sort toggle added to the attendance page
-- **Belt tests: auto-rank** — a passing score (≥ 80%) automatically records the rank in the student's Rank History; no separate "Belt Awarded" step needed
-- **Belt tests: terminology** — "Belt Awarded" renamed to "Test Passed" across all views; pending tests now show "—" instead of ✗
-- **Profile save redirect** — after a student saves their profile, they are sent directly to their profile view
-- **Record Attendance button** — on the student profile page (instructor/admin view), a "+ Record Attendance" button links to the attendance page with that student pre-checked
-- **Session list accordion** — on the Classes page, expanding one session's attendance now collapses any previously open session
-- **PayPal default** — payment method field defaults to PayPal on the payments page
-- **Waiver dashboard card** — hidden for students and parents who have already signed; profile info card shows a View button and signed date instead
+- fixed all tests and wrote new ones to cover latest features
+- Changed date format
+- Paypal is default payment method
+- manual database download button
 
 ---
 

@@ -773,7 +773,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                                 <td>
                                     <a href="../instructor/attendance.php?date=<?= $a['session_date'] ?>"
                                        class="text-primary text-decoration-none">
-                                        <?= date('D, j M Y', strtotime($a['session_date'])) ?>
+                                        <?= date('D j M Y', strtotime($a['session_date'])) ?>
                                     </a>
                                 </td>
                                 <td>
@@ -896,7 +896,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                                 <select name="payment_method" class="form-select form-select-sm">
                                     <option value="cash">Cash</option>
                                     <option value="check">Check</option>
-                                    <option value="paypal">PayPal</option>
+                                    <option value="paypal" selected>PayPal</option>
                                     <option value="mail">Mail</option>
                                 </select>
                             </div>

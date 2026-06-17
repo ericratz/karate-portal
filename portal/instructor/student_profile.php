@@ -364,7 +364,7 @@ include __DIR__ . '/../includes/header.php';
                         <?php foreach ($attendance as $a): ?>
                             <?php if (!$a['present'] && !has_role('instructor', 'admin')): continue; endif; ?>
                             <tr>
-                                <td><?= date('D, j M Y', strtotime($a['session_date'])) ?></td>
+                                <td><?= date('D j M Y', strtotime($a['session_date'])) ?></td>
                                 <?php if (has_role('instructor', 'admin')): ?>
                                 <td>
                                     <?php if ($a['present']): ?>

@@ -37,7 +37,12 @@ include __DIR__ . '/../includes/header.php';
 
 <div class="d-flex align-items-center justify-content-between mb-4">
     <h3 class="mb-0">Audit Log</h3>
-    <small class="text-muted">Last 500 matching entries</small>
+    <div class="d-flex align-items-center gap-3">
+        <small class="text-muted">Last 500 matching entries</small>
+        <a href="db_backup.php" class="btn btn-sm btn-outline-secondary">
+            ⬇ Download Database Backup
+        </a>
+    </div>
 </div>
 
 <!-- Filter bar -->

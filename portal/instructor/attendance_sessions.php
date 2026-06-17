@@ -147,7 +147,7 @@ include __DIR__ . '/../includes/header.php';
                         <a href="attendance.php?date=<?= $sess['session_date'] ?>"
                            class="text-decoration-none"
                            onclick="event.stopPropagation()">
-                            <?= date('D, j M Y', strtotime($sess['session_date'])) ?>
+                            <?= date('D j M Y', strtotime($sess['session_date'])) ?>
                         </a>
                     </td>
                     <td class="text-muted small">

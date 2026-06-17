@@ -81,7 +81,7 @@ include __DIR__ . '/../includes/header.php';
             <?php foreach ($attended as $i => $row): ?>
                 <tr>
                     <td class="text-muted small"><?= count($attended) - $i ?></td>
-                    <td><?= date('l, j M Y', strtotime($row['session_date'])) ?></td>
+                    <td><?= date('l j M Y', strtotime($row['session_date'])) ?></td>
                 </tr>
             <?php endforeach; ?>
             </tbody>
