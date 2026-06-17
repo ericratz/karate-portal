@@ -329,24 +329,22 @@ test.describe('Users page parent role filter', () => {
 
 });
 
-// ── LIABILITY WAIVER LABEL (RENAMED FROM INJURY WAIVER) ──────────────────────
+// ── WAIVER LABEL (renamed: Injury Waiver → Liability Waiver → Waiver) ────────
 
-test.describe('Liability Waiver label', () => {
+test.describe('Waiver label', () => {
     test.use({ storageState: AUTH.admin });
 
-    test('student profile shows "Liability Waiver" not "Injury Waiver"', async ({ page }) => {
-        // Check via instructor student profile view (no dependency on STU_USER session)
+    test('student profile shows "Waiver" not "Injury Waiver"', async ({ page }) => {
         await page.goto(BASE + '/instructor/student_profile.php?id=2');
-        await assertNoPhpErrors(page, 'student profile liability waiver');
+        await assertNoPhpErrors(page, 'student profile waiver label');
         const body = await page.textContent('body');
-        // The waiver section is called "Liability Waiver" since V0.2
-        expect(body).toContain('Liability Waiver');
+        expect(body).toContain('Waiver');
         expect(body).not.toContain('Injury Waiver');
     });
 
-    test('student_edit.php calls the waiver card "Liability Waiver"', async ({ page }) => {
+    test('student_edit.php calls the waiver card "Waiver"', async ({ page }) => {
         await page.goto(BASE + '/admin/student_edit.php?id=2');
-        await expect(page.locator('.card-header').filter({ hasText: 'Liability Waiver' }).first()).toBeVisible();
+        await expect(page.locator('.card-header').filter({ hasText: 'Waiver' }).first()).toBeVisible();
     });
 
 });

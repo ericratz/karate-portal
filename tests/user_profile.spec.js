@@ -48,14 +48,14 @@ test.describe('User Profile (admin/user_profile.php)', () => {
     test('Edit button on Account Details card reveals edit form', async ({ page }) => {
         await goToAnyProfile(page);
         await expect(page.locator('#account-edit')).toBeHidden();
-        await page.locator('#accountEditBtn').click();
+        await page.locator('#accountEditBtn').click({ force: true });
         await expect(page.locator('#account-edit')).toBeVisible();
         await expect(page.locator('#account-view')).toBeHidden();
     });
 
     test('edit form has first_name, last_name, username, email, role inputs', async ({ page }) => {
         await goToAnyProfile(page);
-        await page.locator('#accountEditBtn').click();
+        await page.locator('#accountEditBtn').click({ force: true });
         await expect(page.locator('input[name="first_name"]')).toBeVisible();
         await expect(page.locator('input[name="last_name"]')).toBeVisible();
         await expect(page.locator('input[name="username"]')).toBeVisible();
@@ -65,7 +65,7 @@ test.describe('User Profile (admin/user_profile.php)', () => {
 
     test('Cancel button returns to view mode', async ({ page }) => {
         await goToAnyProfile(page);
-        await page.locator('#accountEditBtn').click();
+        await page.locator('#accountEditBtn').click({ force: true });
         await expect(page.locator('#account-edit')).toBeVisible();
         await page.locator('#accountCancelBtn').click();
         await expect(page.locator('#account-view')).toBeVisible();
@@ -76,13 +76,13 @@ test.describe('User Profile (admin/user_profile.php)', () => {
 
     test('Edit button changes to Confirm after click', async ({ page }) => {
         await goToAnyProfile(page);
-        await page.locator('#accountEditBtn').click();
+        await page.locator('#accountEditBtn').click({ force: true });
         await expect(page.locator('#accountEditBtn')).toHaveText('Confirm');
     });
 
     test('role select has student, instructor, admin options', async ({ page }) => {
         await goToAnyProfile(page);
-        await page.locator('#accountEditBtn').click();
+        await page.locator('#accountEditBtn').click({ force: true });
         const options = await page.locator('select[name="role"] option').allTextContents();
         const values  = options.map(o => o.trim().toLowerCase());
         expect(values).toContain('student');

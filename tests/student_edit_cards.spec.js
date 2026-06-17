@@ -2,8 +2,8 @@
 // Tests for admin/student_edit.php card-level features:
 //   - Attendance date links navigate to attendance.php
 //   - Belt Test History card: add form toggle, form fields
-//   - Payment Waivers card: add form toggle, form fields
-//   - Injury Waiver card: edit toggle reveals checkbox + date input
+//   - Exempt card (formerly Payment Waivers): add form toggle, form fields
+//   - Waiver card: links to waiver_view.php
 //   - Student Notes card: add form toggle
 //   - Payment History card: add form toggle
 //   - Add note round-trip on student_edit.php
@@ -75,65 +75,45 @@ test.describe('Student Edit Cards', () => {
         expect(await page.locator('#bt-add-box select[name="result"]').count()).toBe(0);
     });
 
-    // ── PAYMENT WAIVERS CARD ─────────────────────────────────────────────────────
+    // ── EXEMPT CARD (formerly Payment Waivers) ───────────────────────────────────
 
-    test('Payment Waivers card is visible', async ({ page }) => {
-        await expect(page.locator('.card-header').filter({ hasText: 'Payment Waivers' })).toBeVisible();
+    test('Exempt card is visible', async ({ page }) => {
+        await expect(page.locator('.card-header').filter({ hasText: 'Exempt' })).toBeVisible();
     });
 
-    test('+ Add Waiver button is visible', async ({ page }) => {
-        await expect(page.locator('button:has-text("+ Add Waiver")')).toBeVisible();
+    test('+ Add Exemption button is visible', async ({ page }) => {
+        await expect(page.locator('button:has-text("+ Add Exemption")')).toBeVisible();
     });
 
-    test('+ Add Waiver reveals add form with type and date fields', async ({ page }) => {
-        await page.click('button:has-text("+ Add Waiver")');
+    test('+ Add Exemption reveals add form with type and date fields', async ({ page }) => {
+        await page.click('button:has-text("+ Add Exemption")');
         await expect(page.locator('#pw-add-box')).toBeVisible();
         await expect(page.locator('#pw-add-box select[name="waiver_type"]')).toBeVisible();
         await expect(page.locator('#pw-add-box input[name="granted_date"]')).toBeVisible();
     });
 
     test('waiver_type select has monthly_tuition option', async ({ page }) => {
-        await page.click('button:has-text("+ Add Waiver")');
+        await page.click('button:has-text("+ Add Exemption")');
         const opts = await page.locator('#pw-add-box select[name="waiver_type"] option').allTextContents();
         const vals = opts.map(o => o.trim().toLowerCase());
         expect(vals.some(v => v.includes('tuition'))).toBe(true);
     });
 
     test('Cancel in pw-add-box hides the form', async ({ page }) => {
-        await page.click('button:has-text("+ Add Waiver")');
+        await page.click('button:has-text("+ Add Exemption")');
         await page.locator('#pw-add-box button:has-text("Cancel")').click();
         await expect(page.locator('#pw-add-box')).toBeHidden();
     });
 
-    // ── INJURY WAIVER CARD ───────────────────────────────────────────────────────
+    // ── WAIVER CARD (redesigned — now links to waiver_view.php) ──────────────────
 
-    test('Liability Waiver card is visible', async ({ page }) => {
-        await expect(page.locator('.card-header').filter({ hasText: 'Liability Waiver' }).first()).toBeVisible();
+    test('Waiver card is visible', async ({ page }) => {
+        await expect(page.locator('.card-header').filter({ hasText: 'Waiver' }).first()).toBeVisible();
     });
 
-    test('#injuryEditBtn is visible', async ({ page }) => {
-        await expect(page.locator('#injuryEditBtn')).toBeVisible();
-    });
-
-    test('clicking Edit on Injury Waiver reveals checkbox and date input', async ({ page }) => {
-        await expect(page.locator('#injury-edit')).toBeHidden();
-        await page.locator('#injuryEditBtn').click();
-        await expect(page.locator('#injury-edit')).toBeVisible();
-        await expect(page.locator('input[name="injury_waiver"]')).toBeVisible();
-        await expect(page.locator('input[name="injury_waiver_date"]')).toBeVisible();
-    });
-
-    test('Edit button becomes Confirm after click', async ({ page }) => {
-        await page.locator('#injuryEditBtn').click();
-        await expect(page.locator('#injuryEditBtn')).toHaveText('Confirm');
-    });
-
-    test('Cancel button on Injury Waiver returns to view mode', async ({ page }) => {
-        await page.locator('#injuryEditBtn').click();
-        await page.locator('#injuryCancelBtn').click();
-        await expect(page.locator('#injury-view')).toBeVisible();
-        await expect(page.locator('#injury-edit')).toBeHidden();
-        await expect(page.locator('#injuryEditBtn')).toHaveText('Edit');
+    test('Waiver card links to waiver_view.php', async ({ page }) => {
+        const link = page.locator('a[href*="waiver_view.php"]').first();
+        await expect(link).toBeVisible();
     });
 
     // ── PAYMENT HISTORY CARD ─────────────────────────────────────────────────────

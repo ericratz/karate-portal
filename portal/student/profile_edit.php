@@ -76,11 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['change_password'])) 
         db()->prepare('UPDATE users SET first_name=?, last_name=?, email=? WHERE id=?')
              ->execute([$first, $last, $email ?: null, $user_id]);
 
-        // Get student ID for redirect (covers both update and insert cases)
-        $sid_q = db()->prepare('SELECT id FROM students WHERE user_id = ?');
-        $sid_q->execute([$user_id]);
-        $sid = (int)$sid_q->fetchColumn();
-        header('Location: ../instructor/student_profile.php?id=' . $sid);
+        header('Location: index.php?saved=1');
         exit;
     }
 } // end profile POST

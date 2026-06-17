@@ -33,7 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['grant'])) {
              VALUES (?,?,?,?,?)'
         )->execute([$sid, $type, $reason ?: null, current_user_id(), $date]);
         audit('grant_waiver', 'waiver', null, "student_id=$sid type=$type");
-        $msg = 'Waiver granted.';
+        $msg = 'Exemption granted.';
     }
 }
 
@@ -78,7 +78,7 @@ include __DIR__ . '/../includes/header.php';
     <!-- Grant form -->
     <div class="col-md-4">
         <div class="card border-0 shadow-sm">
-            <div class="card-header bg-white fw-semibold">Grant Waiver</div>
+            <div class="card-header bg-white fw-semibold">Grant Exemption</div>
             <div class="card-body">
                 <form method="post">
                     <?= csrf_input() ?>
@@ -114,7 +114,7 @@ include __DIR__ . '/../includes/header.php';
                         <input type="date" name="granted_date" class="form-control"
                                value="<?= date('Y-m-d') ?>">
                     </div>
-                    <button name="grant" class="btn btn-success w-100">Grant Waiver</button>
+                    <button name="grant" class="btn btn-success w-100">Grant Exemption</button>
                 </form>
             </div>
         </div>
@@ -156,7 +156,7 @@ include __DIR__ . '/../includes/header.php';
 
         <div class="card border-0 shadow-sm">
             <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
-                <span>All Waivers (<?= count($waivers) ?>)</span>
+                <span>All Exemptions (<?= count($waivers) ?>)</span>
                 <?php if (!empty($waivers)): ?>
                 <button id="editToggle" class="btn btn-sm btn-outline-secondary" onclick="toggleEdit()">Edit</button>
                 <?php endif; ?>
@@ -189,7 +189,7 @@ include __DIR__ . '/../includes/header.php';
                             <td><?= date('j M Y', strtotime($w['granted_date'])) ?></td>
                             <td class="delete-col">
                                 <form method="post" class="d-inline"
-                                      onsubmit="return confirm('Permanently delete this waiver? This cannot be undone.')">
+                                      onsubmit="return confirm('Permanently delete this exemption? This cannot be undone.')">
                                     <?= csrf_input() ?>
                                     <input type="hidden" name="action" value="delete">
                                     <input type="hidden" name="id" value="<?= $w['id'] ?>">

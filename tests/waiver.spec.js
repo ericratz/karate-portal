@@ -71,7 +71,7 @@ test('waiver page shows full agreement text', async ({ page }) => {
     await login(page, W_USER, W_PASS);
     await page.goto(BASE + '/student/waiver.php');
     await expect(page.locator('body')).toContainText('Shotokan Karate Training Program');
-    await expect(page.locator('body')).toContainText('Liability Waiver and Indemnification Agreement');
+    await expect(page.locator('body')).toContainText('Waiver of Legal Rights and Indemnification Agreement');
     await expect(page.locator('body')).toContainText('Noji Ratzlaff');
     await logout(page);
 });
@@ -192,16 +192,11 @@ test('valid submission redirects to dashboard with waiver signed', async ({ page
     await logout(page);
 });
 
-test('dashboard shows ✓ and View button after signing', async ({ page }) => {
+test('dashboard hides waiver card after signing', async ({ page }) => {
     await login(page, W_USER, W_PASS);
     await page.goto(BASE + '/student/');
-    // Complete Waiver button should be gone
+    // Complete Waiver button should be gone — card is hidden once signed
     await expect(page.locator('a:has-text("Complete Waiver")')).toHaveCount(0);
-    // View link should appear
-    await expect(page.locator('a[href="waiver.php"]:has-text("View")')).toBeVisible();
-    // Liability waiver icon should be green ✓
-    const icon = await page.locator('.card-body').filter({ hasText: 'Liability Waiver' }).locator('.display-6').textContent();
-    expect(icon?.trim()).toBe('✓');
     await logout(page);
 });
 
@@ -209,12 +204,14 @@ test('waiver.php shows read-only signed view after submission', async ({ page })
     await login(page, W_USER, W_PASS);
     await page.goto(BASE + '/student/waiver.php');
 
-    // Should NOT show the form
-    await expect(page.locator('input[name="signature"]')).toHaveCount(0);
-    // Should show the signed confirmation
-    await expect(page.locator('.alert-success').first()).toContainText('signed this liability waiver');
-    await expect(page.locator('body')).toContainText('Waiver Tester');
-    await expect(page.locator('body')).toContainText('123 Karate Lane');
+    // Fields should be read-only (not an editable form)
+    await expect(page.locator('input[name="signature"]')).toHaveAttribute('readonly', '');
+    await expect(page.locator('input[name="print_name"]')).toHaveAttribute('readonly', '');
+    // Should show the signed confirmation banner
+    await expect(page.locator('.alert-success').first()).toContainText('signed this waiver');
+    // Signed data should be pre-filled into the readonly inputs
+    await expect(page.locator('input[name="print_name"]')).toHaveValue('Waiver Tester');
+    await expect(page.locator('input[name="street_address"]')).toHaveValue('123 Karate Lane');
     await logout(page);
 });
 
@@ -247,9 +244,9 @@ test('admin: waiver_view.php loads for student with signed waiver', async ({ pag
     await login(page, ADMIN_USER, ADMIN_PASS);
     if (await goToWaiverView(page)) {
         await assertNoPhpErrors(page, 'admin waiver view');
-        await expect(page.locator('body')).toContainText('Waiver Tester');
-        await expect(page.locator('body')).toContainText('123 Karate Lane');
-        await expect(page.locator('body')).toContainText(`waiver${TS}@test.com`);
+        await expect(page.locator('body')).toContainText('Waiver Tester'); // appears in h4 heading
+        await expect(page.locator('input[name="street_address"]')).toHaveValue('123 Karate Lane');
+        await expect(page.locator('input[name="email"]')).toHaveValue(`waiver${TS}@test.com`);
     }
     await logout(page);
 });
@@ -270,8 +267,8 @@ test('admin: waiver_view.php for student without waiver shows warning', async ({
     await assertNoPhpErrors(page, 'waiver view no submission');
     // Either shows a signed waiver, a manual-waiver notice, or a "no waiver" warning
     const body = await page.textContent('body');
-    const hasData    = body?.includes('Signed Waiver');
-    const hasWarning = body?.includes('No waiver on file') || body?.includes('Waiver recorded manually');
+    const hasData    = body?.includes('Waiver digitized and saved') || body?.includes('signed_date');
+    const hasWarning = body?.includes('No digital waiver submission') || body?.includes('No digital submission');
     expect(hasData || hasWarning).toBe(true);
     await logout(page);
 });

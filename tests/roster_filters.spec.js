@@ -31,8 +31,8 @@ test.describe('Admin roster filters', () => {
         await expect(page.locator('#filterWaiver, select[id*="waiver"]')).toBeVisible();
     });
 
-    test('+ New Student button links to student_edit.php', async ({ page }) => {
-        const btn = page.locator('a:has-text("+ New Student")');
+    test('+ New Participant button links to student_edit.php', async ({ page }) => {
+        const btn = page.locator('a:has-text("+ New Participant")');
         await expect(btn).toBeVisible();
         const href = await btn.getAttribute('href');
         expect(href).toContain('student_edit.php');

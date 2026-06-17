@@ -166,7 +166,7 @@ function row(array $s): void {
            style="max-width:200px" placeholder="Filter by name…">
 </div>
 
-<form method="post" action="attendance.php" id="att-form">
+<form method="post" action="attendance.php?date=<?= htmlspecialchars($date) ?>" id="att-form">
     <?= csrf_input() ?>
     <input type="hidden" name="session_date" value="<?= htmlspecialchars($date) ?>">
 

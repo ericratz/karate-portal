@@ -117,7 +117,6 @@ test.describe('student smoke', () => {
         const body = await page.textContent('body');
         expect(body).toContain('Classes Attended');
         expect(body).toContain('Current Rank');
-        expect(body).toContain('Liability Waiver');
         expect(body).toContain('Recent Payments');
         // Nav brand routes correctly
         const href = await page.getAttribute('.navbar-brand', 'href');

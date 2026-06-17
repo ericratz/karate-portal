@@ -196,6 +196,9 @@ function badge_result(string $r): string {
 <?php if ($autopay_success): ?>
 <div class="alert alert-success">✓ Monthly auto-pay is set up! PayPal will charge $<?= number_format(MONTHLY_FEE, 2) ?> automatically each month.</div>
 <?php endif; ?>
+<?php if (($_GET['saved'] ?? '') === '1'): ?>
+<div class="alert alert-success">✓ Profile saved successfully.</div>
+<?php endif; ?>
 
 
 <!-- ── Two-column layout ── -->

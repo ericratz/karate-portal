@@ -133,3 +133,51 @@ test('delete button removes the belt test', async ({ page }) => {
     await assertNoPhpErrors(page, 'after delete');
     await expect(page.locator('body')).not.toContainText(`Delete Me ${TS}`);
 });
+
+// ── AUTO-RANK: passing score auto-inserts into student_ranks ─────────────────
+// PHP logic: score >= 80 → result='pass' AND belt_awarded=1 automatically,
+// which triggers INSERT IGNORE INTO student_ranks. Verified via admin/student_edit.php.
+
+test('create a passing belt test (score ≥ 80) for student 2', async ({ page }) => {
+    await page.goto(BASE + '/instructor/belt_test_edit.php');
+    await page.waitForLoadState('domcontentloaded');
+    const today = new Date().toISOString().slice(0, 10);
+    // Select Sarah Johnson (student id=2) by value
+    await page.selectOption('select[name="student_id"]', { value: '2' });
+    await page.fill('input[name="test_date"]', today);
+    // Choose the first available rank
+    await page.selectOption('select[name="rank_id"]', { index: 1 });
+    // Score >= 80 → PHP auto-sets result='pass' and belt_awarded=1 (auto-rank)
+    await page.fill('#scoreInput', '85');
+    await page.fill('input[name="notes"]', `AutoRank ${TS}`);
+    await page.click('button[type="submit"]');
+    await page.waitForLoadState('domcontentloaded');
+    await assertNoPhpErrors(page, 'create passing belt test');
+    // Successful save redirects to belt_test_edit.php?id=X&saved=1
+    expect(page.url()).toContain('saved=1');
+});
+
+test('passing belt test appears in list with a score badge', async ({ page }) => {
+    await page.goto(BASE + '/instructor/belt_tests_all.php');
+    await expect(page.locator('body')).toContainText(`AutoRank ${TS}`);
+    // The row for our test should show a score (85%) — bg-success badge
+    const row = page.locator('tr').filter({ hasText: `AutoRank ${TS}` });
+    await expect(row.locator('.badge.bg-success, .badge.bg-danger, .badge.bg-secondary').first()).toBeVisible();
+});
+
+test('passing belt test auto-adds rank to student Rank History in student_edit', async ({ page }) => {
+    // student_edit.php requires admin role — clear the instructor session first so
+    // login.php shows its form instead of redirecting to the instructor dashboard
+    await page.context().clearCookies();
+    await login(page, ADMIN_USER, ADMIN_PASS);
+    await page.goto(BASE + '/admin/student_edit.php?id=2');
+    await assertNoPhpErrors(page, 'student edit after auto-rank');
+    // Rank History card should be present
+    await expect(page.locator('.card-header').filter({ hasText: 'Rank History' })).toBeVisible();
+    // The auto-rank INSERT IGNORE means the student's Rank History card
+    // should have at least one rank row (not "No ranks recorded.")
+    await expect(
+        page.locator('.card').filter({ has: page.locator('.card-header:has-text("Rank History")') })
+    ).not.toContainText('No ranks recorded.');
+    await logout(page);
+});

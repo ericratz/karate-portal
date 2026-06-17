@@ -24,7 +24,7 @@ test('student cannot reach admin or instructor pages', async ({ page }) => {
     await login(page, STU_USER, STU_PASS);
     await page.goto(BASE + '/admin/students.php');
     const body = await page.textContent('body');
-    expect(body.includes('Access denied') || !body.includes('+ New Student')).toBe(true);
+    expect(body.includes('Access denied') || !body.includes('+ New Participant')).toBe(true);
     await logout(page);
 });
 
