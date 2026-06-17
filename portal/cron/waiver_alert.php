@@ -1,22 +1,21 @@
 <?php
-// Liability waiver alert — runs daily at 8:00 AM
-// Alerts if any student/guest attended in the last 7 days without signing liability waiver
-// Excludes students with no attendance in the last 3 months (likely inactive)
-// Cron schedule: 0 8 * * *   (8:00 AM daily)
-// Command: php /home/sites/35b/0/049118ce4f/public_html/karate/portal/cron/waiver_alert.php
+// Liability waiver alert — runs every FRIDAY at 8:00 AM server time
+// Alerts if any active student attended in the last 7 days without signing the liability waiver.
+//
+// Cron schedule: 0 8 * * 5   (8:00 AM every Friday)
+// Command: /usr/php74/usr/bin/php /home/sites/35b/0/049118ce4f/public_html/karate/portal/cron/waiver_alert.php
 
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/config.php';
 
 date_default_timezone_set('America/Denver');
 
-// Find students who attended recently but have no liability waiver
-// Excludes anyone whose last attendance was more than 3 months ago
+// Students who attended in the last 7 days but have no signed waiver
 $no_waiver = db()->query(
     'SELECT DISTINCT s.first_name, s.last_name, s.student_type,
             MAX(cs.session_date) AS last_attended
      FROM students s
-     JOIN attendance a  ON a.student_id = s.id AND a.present = 1
+     JOIN attendance a   ON a.student_id = s.id AND a.present = 1
      JOIN class_sessions cs ON cs.id = a.session_id
      WHERE s.injury_waiver = 0
        AND s.active = 1
@@ -32,13 +31,14 @@ $no_waiver = db()->query(
 )->fetchAll();
 
 if (empty($no_waiver)) {
+    echo "OK: All students who attended this week have signed waivers.\n";
     exit(0);
 }
 
 $list = '';
 foreach ($no_waiver as $s) {
-    $type = ucfirst($s['student_type']);
-    $list .= "  - {$s['last_name']}, {$s['first_name']} ($type) — last attended "
+    $type  = ucfirst($s['student_type']);
+    $list .= "  - {$s['last_name']}, {$s['first_name']} ({$type}) — last attended "
            . date('j M Y', strtotime($s['last_attended'])) . "\n";
 }
 
@@ -52,3 +52,7 @@ mail(
     'From: ' . DOJO_EMAIL
 );
 
+echo "ALERT sent: " . count($no_waiver) . " student(s) missing waiver.\n";
+foreach ($no_waiver as $s) {
+    echo "  - {$s['last_name']}, {$s['first_name']}\n";
+}

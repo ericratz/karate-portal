@@ -14,3 +14,4 @@ portal/vendor/
 portal/composer.phar
 portal/composer-setup.php
 migrations/
+portal/cron/
