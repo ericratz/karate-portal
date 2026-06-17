@@ -90,6 +90,27 @@ $possible_links = db()->query(
      ORDER BY u.first_name, u.last_name'
 )->fetchAll();
 
+// ── Attendance alert — was last Saturday's class recorded? ──────────────────
+$check_saturday = (date('N') == 6)                          // 6 = Saturday
+    ? date('Y-m-d')
+    : date('Y-m-d', strtotime('last saturday'));
+$att_stmt = db()->prepare('SELECT id FROM class_sessions WHERE session_date = ?');
+$att_stmt->execute([$check_saturday]);
+$attendance_missing = !$att_stmt->fetch();
+// Only show alert within 6 days of the expected class (Sat–Fri)
+$days_since_saturday = (int)floor((time() - strtotime($check_saturday)) / 86400);
+$show_attendance_alert = $attendance_missing && $days_since_saturday <= 6;
+
+// ── Rent reminder — unpaid rent in first 7 days of month ─────────────────────
+$show_rent_alert = false;
+if ((int)date('j') <= 7) {
+    $rent_stmt = db()->prepare(
+        "SELECT COUNT(*) FROM expenses WHERE expense_type = 'rent' AND DATE_FORMAT(expense_date, '%Y-%m') = ?"
+    );
+    $rent_stmt->execute([date('Y-m')]);
+    $show_rent_alert = (int)$rent_stmt->fetchColumn() === 0;
+}
+
 // Recent payments (last 10)
 $recent_payments = db()->query(
     'SELECT p.payment_date, p.amount, p.payment_type, p.payment_method,
@@ -110,6 +131,24 @@ include __DIR__ . '/../includes/header.php';
 <div class="alert alert-success"><?= htmlspecialchars($linked_msg) ?></div>
 <?php endif; ?>
 
+<?php if ($show_attendance_alert): ?>
+<div class="alert alert-warning alert-dismissible fade show d-flex align-items-center gap-2" role="alert">
+    <span class="fw-semibold">⚠ Attendance not recorded</span> —
+    No class session found for <?= date('D d M Y', strtotime($check_saturday)) ?>.
+    <a href="../instructor/attendance.php?date=<?= $check_saturday ?>" class="alert-link ms-1">Record now →</a>
+    <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+</div>
+<?php endif; ?>
+
+<?php if ($show_rent_alert): ?>
+<div class="alert alert-warning alert-dismissible fade show d-flex align-items-center gap-2" role="alert">
+    <span class="fw-semibold">⚠ Rent not recorded</span> —
+    No rent payment found for <?= date('F Y') ?>.
+    <a href="expenses.php" class="alert-link ms-1">Record now →</a>
+    <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+</div>
+<?php endif; ?>
+
 <div class="d-flex align-items-center justify-content-between mb-4">
     <h3 class="mb-0"></h3>
     <div class="d-flex gap-2 flex-wrap">
@@ -118,6 +157,7 @@ include __DIR__ . '/../includes/header.php';
         <a href="../instructor/index.php"   class="btn btn-primary btn-sm">Instructor Dashboard</a>
         <a href="email_students.php"        class="btn btn-primary btn-sm">Email Students</a>
         <a href="users.php"                 class="btn btn-primary btn-sm">Users</a>
+        <a href="https://ericratz.atlassian.net/jira/software/projects/SCRUM/boards/1" target="_blank" class="btn btn-sm" style="background-color:#0052cc;border-color:#0052cc;color:#fff;">Jira</a>
     </div>
 </div>
 
@@ -182,7 +222,7 @@ include __DIR__ . '/../includes/header.php';
         <!-- Missing waivers -->
         <div class="card border-0 shadow-sm">
             <div class="card-header bg-white fw-semibold d-flex justify-content-between">
-                <span>Missing Injury Waivers</span>
+                <span>Missing Waivers</span>
                 <span class="badge" style="background-color:#fd7e14;color:#fff"><?= count($no_waiver) ?></span>
             </div>
             <div class="card-body p-0">
@@ -244,7 +284,7 @@ include __DIR__ . '/../includes/header.php';
                                 <?= $lr['notes'] ? htmlspecialchars(mb_strimwidth($lr['notes'], 0, 60, '…')) : '—' ?>
                             </td>
                             <td class="small text-muted text-nowrap">
-                                <?= date('j M Y', strtotime($lr['created_at'])) ?>
+                                <?= date('d M Y', strtotime($lr['created_at'])) ?>
                             </td>
                             <td>
                                 <a href="compare_account.php?user_id=<?= $lr['user_id'] ?>&link_request_id=<?= $lr['id'] ?>"
@@ -330,7 +370,7 @@ include __DIR__ . '/../includes/header.php';
                     <tbody>
                     <?php foreach ($recent_payments as $p): ?>
                         <tr>
-                            <td><?= date('j M Y', strtotime($p['payment_date'])) ?></td>
+                            <td><?= date('d M Y', strtotime($p['payment_date'])) ?></td>
                             <td><?= htmlspecialchars($p['first_name'].' '.$p['last_name']) ?></td>
                             <td><?= ucwords(str_replace('_',' ',$p['payment_type'])) ?></td>
                             <td class="text-end">$<?= number_format($p['amount'],2) ?></td>

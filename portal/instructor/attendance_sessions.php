@@ -125,8 +125,8 @@ include __DIR__ . '/../includes/header.php';
         <?= count($sessions) ?> class<?= count($sessions) !== 1 ? 'es' : '' ?>
         <?php if ($filtering): ?>
         <span class="text-muted fw-normal small ms-2">
-            <?= ($date_from ? date('j M Y', strtotime($date_from)) : 'beginning') ?>
-            — <?= ($date_to ? date('j M Y', strtotime($date_to)) : 'today') ?>
+            <?= ($date_from ? date('d M Y', strtotime($date_from)) : 'beginning') ?>
+            — <?= ($date_to ? date('d M Y', strtotime($date_to)) : 'today') ?>
         </span>
         <?php endif; ?>
     </div>
@@ -147,7 +147,7 @@ include __DIR__ . '/../includes/header.php';
                         <a href="attendance.php?date=<?= $sess['session_date'] ?>"
                            class="text-decoration-none"
                            onclick="event.stopPropagation()">
-                            <?= date('D j M Y', strtotime($sess['session_date'])) ?>
+                            <?= date('D d M Y', strtotime($sess['session_date'])) ?>
                         </a>
                     </td>
                     <td class="text-muted small">

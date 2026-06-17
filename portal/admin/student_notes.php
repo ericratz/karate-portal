@@ -42,7 +42,7 @@ if (!$student_id) {
                 <th>Name</th><th>Last Attended</th><th>Status</th><th>Notes</th><th></th>
               </tr></thead><tbody>';
         foreach ($rows as $s) {
-            $att = $s['last_attended'] ? date('j M Y', strtotime($s['last_attended'])) : 'Never';
+            $att = $s['last_attended'] ? date('d M Y', strtotime($s['last_attended'])) : 'Never';
             echo '<tr>';
             echo '<td class="fw-semibold">' . htmlspecialchars($s['first_name'].' '.$s['last_name']) . '</td>';
             echo '<td>' . $att . '</td>';
@@ -194,7 +194,7 @@ include __DIR__ . '/../includes/header.php';
                 <div class="border-bottom p-3">
                     <div class="d-flex justify-content-between align-items-start">
                         <span>
-                            <?= date('j M Y g:i a', strtotime($n['created_at'])) ?>
+                            <?= date('d M Y g:i a', strtotime($n['created_at'])) ?>
                             by <strong><?= htmlspecialchars($n['username'] ?? 'unknown') ?></strong>
                         </span>
                         <form method="post" class="d-inline delete-btn"

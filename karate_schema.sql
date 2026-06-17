@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS users (
     email         VARCHAR(100) NOT NULL,
     first_name    VARCHAR(50)  DEFAULT NULL,
     last_name     VARCHAR(50)  DEFAULT NULL,
+    date_of_birth DATE         DEFAULT NULL,
     active        TINYINT(1)   NOT NULL DEFAULT 1,
     last_login    DATETIME,
     created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -281,6 +282,18 @@ CREATE TABLE IF NOT EXISTS parent_students (
     UNIQUE KEY uq_parent_student (parent_user_id, student_id),
     FOREIGN KEY (parent_user_id) REFERENCES users(id)    ON DELETE CASCADE,
     FOREIGN KEY (student_id)     REFERENCES students(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ------------------------------------------------------------
+-- STUDENT GUARDIANS  (links a parent student record to child records — no user account required)
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS student_guardians (
+    id                INT AUTO_INCREMENT PRIMARY KEY,
+    parent_student_id INT NOT NULL,
+    child_student_id  INT NOT NULL,
+    UNIQUE KEY uq_guardian (parent_student_id, child_student_id),
+    FOREIGN KEY (parent_student_id) REFERENCES students(id) ON DELETE CASCADE,
+    FOREIGN KEY (child_student_id)  REFERENCES students(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ------------------------------------------------------------

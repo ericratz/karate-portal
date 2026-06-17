@@ -36,12 +36,13 @@ if ($role === 'parent' && $input_student_id) {
     $allowed_ids = [];
     $own = db()->prepare('SELECT id FROM students WHERE user_id = ?');
     $own->execute([current_user_id()]);
-    if ($own_row = $own->fetch()) $allowed_ids[] = (int)$own_row['id'];
-    $ch = db()->prepare(
-        'SELECT s.id FROM parent_students ps JOIN students s ON s.id = ps.student_id WHERE ps.parent_user_id = ?'
-    );
-    $ch->execute([current_user_id()]);
-    foreach ($ch->fetchAll() as $r) $allowed_ids[] = (int)$r['id'];
+    if ($own_row = $own->fetch()) {
+        $own_sid = (int)$own_row['id'];
+        $allowed_ids[] = $own_sid;
+        $ch = db()->prepare('SELECT child_student_id FROM student_guardians WHERE parent_student_id = ?');
+        $ch->execute([$own_sid]);
+        foreach ($ch->fetchAll() as $r) $allowed_ids[] = (int)$r['child_student_id'];
+    }
 
     if (!in_array($input_student_id, $allowed_ids, true)) {
         http_response_code(403);

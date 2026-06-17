@@ -24,12 +24,12 @@ if ($own = $own_stmt->fetch()) {
 
 $ch_stmt = db()->prepare(
     'SELECT s.id, s.first_name, s.last_name
-     FROM parent_students ps
-     JOIN students s ON s.id = ps.student_id
-     WHERE ps.parent_user_id = ?
+     FROM student_guardians sg
+     JOIN students s ON s.id = sg.child_student_id
+     WHERE sg.parent_student_id = ?
      ORDER BY s.first_name, s.last_name'
 );
-$ch_stmt->execute([$user_id]);
+$ch_stmt->execute([$own_id]);
 foreach ($ch_stmt->fetchAll() as $c) {
     $child_ids[] = (int)$c['id'];
     $family[] = [

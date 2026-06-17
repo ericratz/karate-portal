@@ -123,7 +123,7 @@ $page_title = 'My Dashboard';
 include __DIR__ . '/../includes/header.php';
 
 function fmt_date(string $d): string {
-    return date('j M Y', strtotime($d));
+    return date('d M Y', strtotime($d));
 }
 function fmt_type(string $t): string {
     return ucwords(str_replace('_', ' ', $t));

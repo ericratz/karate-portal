@@ -63,7 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $ins->execute([$sid, $session_id, current_user_id()]);
         }
 
-        $msg = 'Attendance saved for ' . date('j M Y', strtotime($post_date)) . '.';
+        $msg = 'Attendance saved for ' . date('d M Y', strtotime($post_date)) . '.';
     }
 }
 
@@ -125,7 +125,7 @@ function row(array $s): void {
                 : $s['first_name'] . ' ' . $s['last_name']) ?>
         </td>
         <td class="small">
-            <?= $s['last_attended'] ? date('j M Y', strtotime($s['last_attended'])) : '<em>never</em>' ?>
+            <?= $s['last_attended'] ? date('d M Y', strtotime($s['last_attended'])) : '<em>never</em>' ?>
         </td>
         <td>
             <?php if ($s['injury_waiver']): ?>
@@ -302,7 +302,7 @@ function row(array $s): void {
     <button type="submit" form="att-form" class="btn btn-primary px-4">Save Attendance</button>
     <?php if ($session_id): ?>
     <form method="post" action="attendance.php"
-          onsubmit="return confirm('Delete the class for <?= date('j M Y', strtotime($date)) ?>?\n\nThis will remove all attendance records for this day and cannot be undone.')">
+          onsubmit="return confirm('Delete the class for <?= date('d M Y', strtotime($date)) ?>?\n\nThis will remove all attendance records for this day and cannot be undone.')">
         <?= csrf_input() ?>
         <input type="hidden" name="action" value="delete_session">
         <input type="hidden" name="session_date" value="<?= htmlspecialchars($date) ?>">

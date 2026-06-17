@@ -222,7 +222,7 @@ include __DIR__ . '/../includes/header.php';
             <tbody>
             <?php foreach ($expenses as $e): ?>
                 <tr class="<?= !$e['paid'] ? 'table-warning' : '' ?>">
-                    <td><?= date('j M Y', strtotime($e['expense_date'])) ?></td>
+                    <td><?= date('d M Y', strtotime($e['expense_date'])) ?></td>
                     <td><?= ucfirst($e['expense_type']) ?></td>
                     <td><?= htmlspecialchars($e['description'] ?? '—') ?></td>
                     <td class="text-end">$<?= number_format($e['amount'], 2) ?></td>

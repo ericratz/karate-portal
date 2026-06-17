@@ -48,7 +48,7 @@ include __DIR__ . '/../includes/header.php';
 
 function student_row($s, $id_col = true) {
     global $sort;
-    $att_txt     = $s['last_attended'] ? date('j M Y', strtotime($s['last_attended'])) : 'Never';
+    $att_txt     = $s['last_attended'] ? date('d M Y', strtotime($s['last_attended'])) : 'Never';
     $search_name = strtolower($s['last_name'] . ' ' . $s['first_name'] . ' ' . $s['first_name'] . ' ' . $s['last_name']);
     $display_name = $sort === 'last_name'
         ? $s['last_name'] . ', ' . $s['first_name']

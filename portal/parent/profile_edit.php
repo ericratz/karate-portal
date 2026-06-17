@@ -14,16 +14,11 @@ $own_student_id = null;
 if ($own_row = $own_stmt->fetch()) {
     $own_student_id = (int)$own_row['id'];
     $allowed_ids[]  = $own_student_id;
-}
-
-$ch_stmt = db()->prepare(
-    'SELECT s.id FROM parent_students ps
-     JOIN students s ON s.id = ps.student_id
-     WHERE ps.parent_user_id = ?'
-);
-$ch_stmt->execute([$user_id]);
-foreach ($ch_stmt->fetchAll() as $r) {
-    $allowed_ids[] = (int)$r['id'];
+    $ch_stmt = db()->prepare('SELECT child_student_id FROM student_guardians WHERE parent_student_id = ?');
+    $ch_stmt->execute([$own_student_id]);
+    foreach ($ch_stmt->fetchAll() as $r) {
+        $allowed_ids[] = (int)$r['child_student_id'];
+    }
 }
 
 // Accept student_id from GET or POST

@@ -139,7 +139,7 @@ function user_row(array $u, bool $show_roster = true): void {
         ? '<span class="badge bg-secondary" data-bs-toggle="tooltip" title="Activated: this login is enabled and can sign in">Activated</span>'
         : '<span class="badge bg-danger"    data-bs-toggle="tooltip" title="Deactivated: this login has been disabled — cannot sign in">Deactivated</span>';
     echo '</td>';
-    echo '<td>' . ($u['last_login'] ? date('j M Y', strtotime($u['last_login'])) : 'Never') . '</td>';
+    echo '<td>' . ($u['last_login'] ? date('d M Y', strtotime($u['last_login'])) : 'Never') . '</td>';
     echo '<td><a href="user_profile.php?id=' . $u['id'] . '" class="btn btn-sm btn-outline-secondary">View</a></td>';
     echo '</tr>';
 }

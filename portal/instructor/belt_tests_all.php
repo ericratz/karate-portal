@@ -125,7 +125,7 @@ include __DIR__ . '/../includes/header.php';
             <tbody>
             <?php foreach ($belt_tests as $t): ?>
                 <tr>
-                    <td class="text-nowrap"><?= date('j M Y', strtotime($t['test_date'])) ?></td>
+                    <td class="text-nowrap"><?= date('d M Y', strtotime($t['test_date'])) ?></td>
                     <td>
                         <a href="student_profile.php?id=<?= $t['student_id'] ?>">
                             <?= htmlspecialchars($t['first_name'].' '.$t['last_name']) ?>

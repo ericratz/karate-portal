@@ -116,7 +116,7 @@ include __DIR__ . '/../includes/header.php';
 <div class="d-flex align-items-center gap-3 mb-4">
     <h4 class="mb-0">Waiver — <?= htmlspecialchars($student['first_name'] . ' ' . $student['last_name']) ?></h4>
     <?php if ($student['injury_waiver']): ?>
-        <span class="badge bg-success">Signed <?= date('j M Y', strtotime($student['injury_waiver_date'])) ?></span>
+        <span class="badge bg-success">Signed <?= date('d M Y', strtotime($student['injury_waiver_date'])) ?></span>
     <?php endif; ?>
     <?php if ($has_submission && $submission['ip_address'] === 'admin-entry'): ?>
         <span class="badge bg-secondary">Admin entry</span>
@@ -212,7 +212,7 @@ include __DIR__ . '/../includes/header.php';
             <div class="col-auto" style="min-width:180px">
                 <span class="w-label">Date<?= !$has_submission ? ' <span style="color:#dc3545">*</span>' : '' ?></span>
                 <?php if ($has_submission): ?>
-                    <div class="w-static"><?= !empty($d['signed_date']) ? date('j M Y', strtotime($d['signed_date'])) : ($student['injury_waiver_date'] ? date('j M Y', strtotime($student['injury_waiver_date'])) : '') ?></div>
+                    <div class="w-static"><?= !empty($d['signed_date']) ? date('d M Y', strtotime($d['signed_date'])) : ($student['injury_waiver_date'] ? date('d M Y', strtotime($student['injury_waiver_date'])) : '') ?></div>
                 <?php else: ?>
                     <input type="date" name="signed_date" class="w-input"
                            value="<?= htmlspecialchars($student['injury_waiver_date'] ?? date('Y-m-d')) ?>" required>
@@ -231,7 +231,7 @@ include __DIR__ . '/../includes/header.php';
             <div class="col-auto" style="min-width:180px">
                 <span class="w-label">Date</span>
                 <?php if ($has_submission): ?>
-                    <div class="w-static"><?= !empty($d['guardian_signed_date']) ? date('j M Y', strtotime($d['guardian_signed_date'])) : '' ?></div>
+                    <div class="w-static"><?= !empty($d['guardian_signed_date']) ? date('d M Y', strtotime($d['guardian_signed_date'])) : '' ?></div>
                 <?php else: ?>
                     <input type="date" name="guardian_signed_date" class="w-input">
                 <?php endif; ?>
@@ -241,7 +241,7 @@ include __DIR__ . '/../includes/header.php';
         <!-- Date of Birth -->
         <span class="w-label">Date of Birth</span>
         <?php if ($has_submission): ?>
-            <div class="w-static" style="max-width:220px"><?= !empty($d['date_of_birth']) ? date('j M Y', strtotime($d['date_of_birth'])) : '' ?></div>
+            <div class="w-static" style="max-width:220px"><?= !empty($d['date_of_birth']) ? date('d M Y', strtotime($d['date_of_birth'])) : '' ?></div>
         <?php else: ?>
             <input type="date" name="date_of_birth" class="w-input" style="max-width:220px"
                    value="<?= htmlspecialchars($s['date_of_birth'] ?? '') ?>">

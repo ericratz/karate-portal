@@ -60,7 +60,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'dismi
 }
 
 // ── Load user ─────────────────────────────────────────────────
-$u_stmt = db()->prepare('SELECT * FROM users WHERE id = ?');
+$u_stmt = db()->prepare('SELECT u.*, s.date_of_birth AS student_dob, s.phone AS student_phone
+                         FROM users u LEFT JOIN students s ON s.user_id = u.id
+                         WHERE u.id = ?');
 $u_stmt->execute([$user_id]);
 $user = $u_stmt->fetch();
 if (!$user) { header('Location: index.php'); exit; }
@@ -151,7 +153,7 @@ function cmp_class(string $a, string $b): string {
         </span>
         <strong><?= htmlspecialchars($user['first_name'] . ' ' . $user['last_name']) ?></strong>
         submitted a link request
-        <span class="text-muted small">(<?= date('j M Y g:i a', strtotime($link_req['created_at'])) ?>)</span>
+        <span class="text-muted small">(<?= date('d M Y g:i a', strtotime($link_req['created_at'])) ?>)</span>
         <?php if ($link_req['notes']): ?>
             <div class="mt-1 small fst-italic">"<?= htmlspecialchars($link_req['notes']) ?>"</div>
         <?php endif; ?>
@@ -206,15 +208,19 @@ function cmp_class(string $a, string $b): string {
             <div class="card-body p-0">
                 <table class="table table-sm mb-0 compare-table">
                     <tbody>
-                        <tr>
+                        <tr class="<?= $student ? cmp_class($user['first_name'] ?? '', $student['first_name']) : '' ?>">
                             <td>First Name</td>
                             <td><?= htmlspecialchars($user['first_name'] ?? '—') ?></td>
                         </tr>
-                        <tr>
+                        <tr class="<?= $student ? cmp_class($user['last_name'] ?? '', $student['last_name']) : '' ?>">
                             <td>Last Name</td>
                             <td><?= htmlspecialchars($user['last_name'] ?? '—') ?></td>
                         </tr>
-                        <tr>
+                        <tr class="<?= $student ? cmp_class($user['date_of_birth'] ?? '', $student['date_of_birth'] ?? '') : '' ?>">
+                            <td>Date of Birth</td>
+                            <td><?= !empty($user['date_of_birth']) ? date('d M Y', strtotime($user['date_of_birth'])) : '—' ?></td>
+                        </tr>
+                        <tr class="<?= $student ? cmp_class($user['email'] ?? '', $student['email'] ?? '') : '' ?>">
                             <td>Email</td>
                             <td><?= htmlspecialchars($user['email'] ?? '—') ?></td>
                         </tr>
@@ -265,15 +271,19 @@ function cmp_class(string $a, string $b): string {
                 <?php else: ?>
                 <table class="table table-sm mb-0 compare-table">
                     <tbody>
-                        <tr>
+                        <tr class="<?= cmp_class($user['first_name'] ?? '', $student['first_name']) ?>">
                             <td>First Name</td>
                             <td><?= htmlspecialchars($student['first_name']) ?></td>
                         </tr>
-                        <tr>
+                        <tr class="<?= cmp_class($user['last_name'] ?? '', $student['last_name']) ?>">
                             <td>Last Name</td>
                             <td><?= htmlspecialchars($student['last_name']) ?></td>
                         </tr>
-                        <tr>
+                        <tr class="<?= cmp_class($user['date_of_birth'] ?? '', $student['date_of_birth'] ?? '') ?>">
+                            <td>Date of Birth</td>
+                            <td><?= !empty($student['date_of_birth']) ? date('d M Y', strtotime($student['date_of_birth'])) : '—' ?></td>
+                        </tr>
+                        <tr class="<?= cmp_class($user['email'] ?? '', $student['email'] ?? '') ?>">
                             <td>Email</td>
                             <td><?= htmlspecialchars($student['email'] ?? '—') ?></td>
                         </tr>
@@ -288,13 +298,13 @@ function cmp_class(string $a, string $b): string {
                         <tr>
                             <td>Last Attended</td>
                             <td><?= $student['last_attended']
-                                ? date('j M Y', strtotime($student['last_attended']))
+                                ? date('d M Y', strtotime($student['last_attended']))
                                 : '<span class="text-muted">Never</span>' ?></td>
                         </tr>
                         <tr>
                             <td>Registered</td>
                             <td><?= $student['registration_date']
-                                ? date('j M Y', strtotime($student['registration_date']))
+                                ? date('d M Y', strtotime($student['registration_date']))
                                 : '—' ?></td>
                         </tr>
                         <tr>

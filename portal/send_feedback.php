@@ -32,9 +32,10 @@ $user = $user->fetch();
 $name    = ($user && $user['first_name']) ? $user['first_name'] . ' ' . $user['last_name'] : ($user['username'] ?? 'Unknown');
 $subject = "Portal Message from $name";
 $body    = "Message from: $name\n\n" . $message;
-$headers = "From: " . DOJO_EMAIL . "\r\nReply-To: " . DOJO_EMAIL . "\r\nContent-Type: text/plain; charset=UTF-8\r\n";
+$reply_to = ($user && $user['email']) ? $user['email'] : ADMIN_EMAIL;
+$headers  = "From: " . DOJO_EMAIL . "\r\nReply-To: " . $reply_to . "\r\nContent-Type: text/plain; charset=UTF-8\r\n";
 
-if (mail(DOJO_EMAIL, $subject, $body, $headers)) {
+if (mail(ADMIN_EMAIL, $subject, $body, $headers)) {
     echo json_encode(['ok' => true]);
 } else {
     http_response_code(500);

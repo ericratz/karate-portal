@@ -1,4 +1,4 @@
-# Shotokan Karate Portal — V2.21
+# Shotokan Karate Portal — V2.3
 
 A private membership portal for Noji Ratzlaff's Shotokan Karate dojo. Students can track
 their attendance, belt tests, and payments; instructors can take attendance and manage belt
@@ -6,12 +6,21 @@ tests; and the admin can run the whole operation from one place.
 
 ---
 
-## What's New in V2.21
+## What's New in V2.3
 
-- fixed all tests and wrote new ones to cover latest features
-- Changed date format
-- Paypal is default payment method
-- manual database download button
+- **Student guardians** — parent roster entries can now be linked to child roster entries
+  directly, without requiring either party to have a user account. Links are managed from
+  the student edit page and stored in the new `student_guardians` table. Deleting either
+  party safely removes only the link, not the other record.
+- **Data ownership separation** — user account fields (`first_name`, `last_name`,
+  `date_of_birth`, `email`) are now stored and edited exclusively on the `users` table.
+  Admin-managed student records remain independent. The Compare & Link page highlights
+  mismatches between what a user self-reported and what is on their roster entry.
+- **Date of birth on user accounts** — users can now enter and update their date of birth
+  from their account profile page.
+- **Date format** — all dates across the portal now display with a leading zero (03 Jun 2026).
+- **Jira link** — admin dashboard has a direct link to the project board.
+- **Dojo email address updated** — outgoing mail now sends from `noreply@noji.com`.
 
 ---
 
@@ -51,9 +60,9 @@ The default role for anyone who creates an account via `register.php`.
 
 ### Parent
 
-A family account linked to one or more children's roster entries via `parent_students`.
+A family account linked to one or more children's roster entries via `student_guardians`.
 Created when an admin sets `student_type = parent` on a roster entry and links children
-via the user profile page.
+via the student edit page.
 
 **What a parent can do:**
 
@@ -119,8 +128,8 @@ Full access to everything. Intended for the dojo owner only.
 | `students.student_type` | `students` | How the roster groups a person (`guest` / `student` / `parent` / `instructor` / `admin`) |
 
 Recording a registration payment for a guest automatically promotes `student_type` to
-`student`. Setting `student_type = parent` and linking children via the user profile page
-creates the family relationship stored in `parent_students`.
+`student`. Setting `student_type = parent` and linking children via the student edit page
+creates the family relationship stored in `student_guardians`.
 
 ---
 

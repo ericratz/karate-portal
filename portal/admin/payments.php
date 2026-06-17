@@ -378,7 +378,7 @@ include __DIR__ . '/../includes/header.php';
                                 onclick="prefillPayment(<?= $p['student_id'] ?>, '<?= addslashes($p['first_name'].' '.$p['last_name']) ?>')"
                                 title="Add payment for this student">+</button>
                     </td>
-                    <td class="text-nowrap"><?= date('j M Y', strtotime($p['payment_date'])) ?></td>
+                    <td class="text-nowrap"><?= date('d M Y', strtotime($p['payment_date'])) ?></td>
                     <td>
                         <a href="../instructor/student_profile.php?id=<?= $p['student_id'] ?>" class="text-decoration-none">
                             <?= htmlspecialchars($p['first_name'].' '.$p['last_name']) ?>

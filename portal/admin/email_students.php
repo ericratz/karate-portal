@@ -37,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $name          = $t['first_name'] . ' ' . $t['last_name'];
             $personal_body = "Dear $name,\n\n$body\n\n— " . SITE_NAME;
             $headers       = "From: " . DOJO_EMAIL . "\r\n"
-                           . "Reply-To: " . DOJO_EMAIL . "\r\n"
+                           . "Reply-To: " . ADMIN_EMAIL . "\r\n"
                            . "Content-Type: text/plain; charset=UTF-8\r\n";
             mail($to, $subject, $personal_body, $headers) ? $sent++ : $failed++;
         }

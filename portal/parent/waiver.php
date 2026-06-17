@@ -11,15 +11,13 @@ $error   = '';
 $allowed_ids = [];
 $own_stmt = db()->prepare('SELECT id FROM students WHERE user_id = ?');
 $own_stmt->execute([$user_id]);
-if ($own_row = $own_stmt->fetch()) $allowed_ids[] = (int)$own_row['id'];
-
-$ch_stmt = db()->prepare(
-    'SELECT s.id FROM parent_students ps
-     JOIN students s ON s.id = ps.student_id
-     WHERE ps.parent_user_id = ?'
-);
-$ch_stmt->execute([$user_id]);
-foreach ($ch_stmt->fetchAll() as $r) $allowed_ids[] = (int)$r['id'];
+if ($own_row = $own_stmt->fetch()) {
+    $own_sid = (int)$own_row['id'];
+    $allowed_ids[] = $own_sid;
+    $ch_stmt = db()->prepare('SELECT child_student_id FROM student_guardians WHERE parent_student_id = ?');
+    $ch_stmt->execute([$own_sid]);
+    foreach ($ch_stmt->fetchAll() as $r) $allowed_ids[] = (int)$r['child_student_id'];
+}
 
 $student_id = (int)($_GET['student_id'] ?? $_POST['student_id'] ?? 0);
 if (!$student_id || !in_array($student_id, $allowed_ids, true)) {
@@ -134,7 +132,7 @@ include __DIR__ . '/../includes/header.php';
 <?php if ($signed): ?>
 <div class="alert alert-success mb-3">
     This waiver for <strong><?= htmlspecialchars($student['first_name'] . ' ' . $student['last_name']) ?></strong>
-    was signed on <strong><?= date('j M Y', strtotime($student['injury_waiver_date'])) ?></strong>.
+    was signed on <strong><?= date('d M Y', strtotime($student['injury_waiver_date'])) ?></strong>.
     The waiver is on file — no further action is needed.
 </div>
 <?php endif; ?>
@@ -202,7 +200,7 @@ include __DIR__ . '/../includes/header.php';
             <div class="col-auto" style="min-width:160px">
                 <span class="w-label">Date</span>
                 <?php if ($signed): ?>
-                    <div class="w-static"><?= !empty($d['signed_date']) ? date('j M Y', strtotime($d['signed_date'])) : ($student['injury_waiver_date'] ? date('j M Y', strtotime($student['injury_waiver_date'])) : '') ?></div>
+                    <div class="w-static"><?= !empty($d['signed_date']) ? date('d M Y', strtotime($d['signed_date'])) : ($student['injury_waiver_date'] ? date('d M Y', strtotime($student['injury_waiver_date'])) : '') ?></div>
                 <?php else: ?>
                     <input type="date" name="signed_date" class="w-input" value="<?= date('Y-m-d') ?>" required>
                 <?php endif; ?>
@@ -220,7 +218,7 @@ include __DIR__ . '/../includes/header.php';
             <div class="col-auto" style="min-width:160px">
                 <span class="w-label">Date</span>
                 <?php if ($signed): ?>
-                    <div class="w-static"><?= !empty($d['guardian_signed_date']) ? date('j M Y', strtotime($d['guardian_signed_date'])) : '' ?></div>
+                    <div class="w-static"><?= !empty($d['guardian_signed_date']) ? date('d M Y', strtotime($d['guardian_signed_date'])) : '' ?></div>
                 <?php else: ?>
                     <input type="date" name="guardian_signed_date" class="w-input">
                 <?php endif; ?>
@@ -230,7 +228,7 @@ include __DIR__ . '/../includes/header.php';
         <!-- Date of Birth -->
         <span class="w-label">Date of Birth</span>
         <?php if ($signed): ?>
-            <div class="w-static" style="max-width:220px"><?= !empty($d['date_of_birth']) ? date('j M Y', strtotime($d['date_of_birth'])) : '' ?></div>
+            <div class="w-static" style="max-width:220px"><?= !empty($d['date_of_birth']) ? date('d M Y', strtotime($d['date_of_birth'])) : '' ?></div>
         <?php else: ?>
             <input type="date" name="date_of_birth" class="w-input" style="max-width:220px"
                    value="<?= htmlspecialchars($s['date_of_birth'] ?? '') ?>">

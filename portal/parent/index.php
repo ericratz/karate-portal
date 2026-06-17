@@ -15,16 +15,19 @@ $own_student = db()->prepare(
 $own_student->execute([$user_id]);
 $own_student = $own_student->fetch();
 
-// Children linked to this parent
-$children_stmt = db()->prepare(
-    'SELECT s.id, s.first_name, s.last_name, s.student_type, s.injury_waiver
-     FROM parent_students ps
-     JOIN students s ON s.id = ps.student_id
-     WHERE ps.parent_user_id = ?
-     ORDER BY s.first_name, s.last_name'
-);
-$children_stmt->execute([$user_id]);
-$children = $children_stmt->fetchAll();
+// Children linked to this parent (via student_guardians — no user account required)
+$children = [];
+if ($own_student) {
+    $children_stmt = db()->prepare(
+        'SELECT s.id, s.first_name, s.last_name, s.student_type, s.injury_waiver
+         FROM student_guardians sg
+         JOIN students s ON s.id = sg.child_student_id
+         WHERE sg.parent_student_id = ?
+         ORDER BY s.first_name, s.last_name'
+    );
+    $children_stmt->execute([$own_student['id']]);
+    $children = $children_stmt->fetchAll();
+}
 
 // Per-child summary data for aggregate table
 $children_summary = [];
@@ -137,7 +140,7 @@ if ($tab_id) {
 $page_title = 'My Dashboard';
 include __DIR__ . '/../includes/header.php';
 
-function fmt_date(string $d): string { return date('j M Y', strtotime($d)); }
+function fmt_date(string $d): string { return date('d M Y', strtotime($d)); }
 function fmt_phone(string $p): string { $d = preg_replace('/\D/', '', $p); return strlen($d) === 10 ? substr($d,0,3).'-'.substr($d,3,3).'-'.substr($d,6) : $p; }
 function fmt_type(string $t): string { return ucwords(str_replace('_', ' ', $t)); }
 function score_badge(string $result, ?int $score): string {

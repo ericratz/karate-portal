@@ -109,7 +109,7 @@ include __DIR__ . '/../includes/header.php';
             <?php foreach ($entries as $e): ?>
                 <tr>
                     <td class="text-nowrap small text-muted">
-                        <?= date('j M Y g:i a', strtotime($e['created_at'])) ?>
+                        <?= date('d M Y g:i a', strtotime($e['created_at'])) ?>
                     </td>
                     <td class="small"><?= htmlspecialchars($e['username'] ?? '—') ?></td>
                     <td>

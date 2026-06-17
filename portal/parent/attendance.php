@@ -9,12 +9,13 @@ $user_id = current_user_id();
 $allowed_ids = [];
 $own = db()->prepare('SELECT id FROM students WHERE user_id = ?');
 $own->execute([$user_id]);
-if ($r = $own->fetch()) $allowed_ids[] = (int)$r['id'];
-$ch = db()->prepare(
-    'SELECT s.id FROM parent_students ps JOIN students s ON s.id = ps.student_id WHERE ps.parent_user_id = ?'
-);
-$ch->execute([$user_id]);
-foreach ($ch->fetchAll() as $r) $allowed_ids[] = (int)$r['id'];
+if ($r = $own->fetch()) {
+    $own_sid = (int)$r['id'];
+    $allowed_ids[] = $own_sid;
+    $ch = db()->prepare('SELECT child_student_id FROM student_guardians WHERE parent_student_id = ?');
+    $ch->execute([$own_sid]);
+    foreach ($ch->fetchAll() as $r) $allowed_ids[] = (int)$r['child_student_id'];
+}
 
 $student_id = (int)($_GET['student_id'] ?? 0);
 if (!$student_id || !in_array($student_id, $allowed_ids, true)) {
@@ -81,7 +82,7 @@ include __DIR__ . '/../includes/header.php';
             <?php foreach ($attended as $i => $row): ?>
                 <tr>
                     <td class="text-muted small"><?= count($attended) - $i ?></td>
-                    <td><?= date('l j M Y', strtotime($row['session_date'])) ?></td>
+                    <td><?= date('l d M Y', strtotime($row['session_date'])) ?></td>
                 </tr>
             <?php endforeach; ?>
             </tbody>

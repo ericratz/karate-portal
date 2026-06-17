@@ -4,8 +4,11 @@
 
 define('SITE_NAME',     'Shotokan Karate Portal');
 define('SITE_URL',      'https://noji.com/karate/portal');
-// DOJO_EMAIL is loaded from .env — this fallback is used only if .env is missing
-if (!defined('DOJO_EMAIL')) define('DOJO_EMAIL', 'admin@example.com');
+// DOJO_EMAIL  — the From address for all outgoing mail (must be a domain address, e.g. noreply@noji.com)
+// ADMIN_EMAIL — where alerts and feedback are delivered (your real inbox, e.g. nojiratz@hotmail.com)
+// Both are loaded from .env — fallbacks used only if .env is missing
+if (!defined('DOJO_EMAIL'))  define('DOJO_EMAIL',  'noreply@noji.com');
+if (!defined('ADMIN_EMAIL')) define('ADMIN_EMAIL', 'admin@example.com');
 define('MONTHLY_FEE',   30.00);
 define('REG_FEE',       15.00);
 define('TEST_FEE',      10.00);

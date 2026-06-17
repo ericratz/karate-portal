@@ -354,6 +354,36 @@ if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ===
     exit;
 }
 
+// Add guardian link (student_guardians — no user account needed)
+if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add_guardian') {
+    verify_csrf();
+    $other_id = (int)($_POST['guardian_student_id'] ?? 0);
+    if ($other_id && $other_id !== $id) {
+        $ts = db()->prepare('SELECT student_type FROM students WHERE id=?');
+        $ts->execute([$id]);
+        $stype = $ts->fetchColumn();
+        [$parent_sid, $child_sid] = ($stype === 'parent') ? [$id, $other_id] : [$other_id, $id];
+        db()->prepare('INSERT IGNORE INTO student_guardians (parent_student_id, child_student_id) VALUES (?,?)')
+             ->execute([$parent_sid, $child_sid]);
+        audit('add_guardian', 'student', $id, "linked=$other_id");
+    }
+    header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
+    exit;
+}
+
+// Remove guardian link
+if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'remove_guardian') {
+    verify_csrf();
+    $link_id = (int)($_POST['guardian_link_id'] ?? 0);
+    if ($link_id) {
+        db()->prepare('DELETE FROM student_guardians WHERE id=? AND (parent_student_id=? OR child_student_id=?)')
+             ->execute([$link_id, $id, $id]);
+        audit('remove_guardian', 'student', $id, "link_id=$link_id");
+    }
+    header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
+    exit;
+}
+
 // Add new student (only when id=0)
 if (!$id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add_student') {
     verify_csrf();
@@ -472,9 +502,46 @@ if ($id) {
     );
     $pay_stmt->execute([$id]);
     $payments = $pay_stmt->fetchAll();
+
+    // Guardian links (student_guardians — no user account required)
+    $is_parent_type = ($student['student_type'] ?? '') === 'parent';
+    if ($is_parent_type) {
+        $gl_stmt = db()->prepare(
+            'SELECT sg.id AS link_id, s.id AS student_id, s.first_name, s.last_name
+             FROM student_guardians sg JOIN students s ON s.id = sg.child_student_id
+             WHERE sg.parent_student_id = ? ORDER BY s.first_name, s.last_name'
+        );
+        $gl_stmt->execute([$id]);
+        $guardian_links = $gl_stmt->fetchAll();
+        $linked_ids = array_map('intval', array_column($guardian_links, 'student_id'));
+        $excl = $linked_ids ? ' AND id NOT IN (' . implode(',', $linked_ids) . ')' : '';
+        $guardian_candidates = db()->query(
+            "SELECT id, first_name, last_name FROM students
+             WHERE student_type IN ('student','guest') AND id != $id$excl
+             ORDER BY first_name, last_name"
+        )->fetchAll();
+    } else {
+        $gl_stmt = db()->prepare(
+            'SELECT sg.id AS link_id, s.id AS student_id, s.first_name, s.last_name
+             FROM student_guardians sg JOIN students s ON s.id = sg.parent_student_id
+             WHERE sg.child_student_id = ? ORDER BY s.first_name, s.last_name'
+        );
+        $gl_stmt->execute([$id]);
+        $guardian_links = $gl_stmt->fetchAll();
+        $linked_ids = array_map('intval', array_column($guardian_links, 'student_id'));
+        $excl = $linked_ids ? ' AND id NOT IN (' . implode(',', $linked_ids) . ')' : '';
+        $guardian_candidates = db()->query(
+            "SELECT id, first_name, last_name FROM students
+             WHERE student_type = 'parent' AND id != $id$excl
+             ORDER BY first_name, last_name"
+        )->fetchAll();
+    }
 } else {
-    $payment_waivers = [];
-    $payments = [];
+    $payment_waivers    = [];
+    $payments           = [];
+    $guardian_links     = [];
+    $guardian_candidates = [];
+    $is_parent_type     = false;
 }
 
 $back_url = $id ? '../instructor/student_profile.php?id=' . $id : 'students.php';
@@ -540,13 +607,13 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                         $pv = [
                             'First Name'        => htmlspecialchars($student['first_name'] ?? '') ?: '—',
                             'Last Name'         => htmlspecialchars($student['last_name']  ?? '') ?: '—',
-                            'Date of Birth'     => $student['date_of_birth'] ? date('j M Y', strtotime($student['date_of_birth'])) : '—',
+                            'Date of Birth'     => $student['date_of_birth'] ? date('d M Y', strtotime($student['date_of_birth'])) : '—',
                             'Phone'             => ($student['phone'] ?? '') ? fmt_phone($student['phone']) : '—',
                             'Email'             => htmlspecialchars($student['email'] ?? '') ?: '—',
                             'Emergency Contact' => htmlspecialchars($student['emergency_contact_name']  ?? '') ?: '—',
                             'Emergency Phone'   => ($student['emergency_contact_phone'] ?? '') ? fmt_phone($student['emergency_contact_phone']) : '—',
                             'Address'           => $addr_parts ? implode('<br>', $addr_parts) : '—',
-                            'Member Since'      => $student['registration_date'] ? date('j M Y', strtotime($student['registration_date'])) : '—',
+                            'Member Since'      => $student['registration_date'] ? date('d M Y', strtotime($student['registration_date'])) : '—',
                         ];
                         foreach ($pv as $lbl => $val): ?>
                         <div class="d-flex py-1 border-bottom">
@@ -585,7 +652,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                             <div>
                                 <?php if ($injury_done): ?>
                                     <span class="text-success">✓</span>
-                                    <?php if ($injury_date): ?><span class="ms-1"><?= date('j M Y', strtotime($injury_date)) ?></span><?php endif; ?>
+                                    <?php if ($injury_date): ?><span class="ms-1"><?= date('d M Y', strtotime($injury_date)) ?></span><?php endif; ?>
                                     <a href="waiver_view.php?student_id=<?= $id ?>" class="btn btn-sm btn-outline-secondary ms-2">View</a>
                                 <?php else: ?>
                                     —
@@ -773,7 +840,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                                 <td>
                                     <a href="../instructor/attendance.php?date=<?= $a['session_date'] ?>"
                                        class="text-primary text-decoration-none">
-                                        <?= date('D j M Y', strtotime($a['session_date'])) ?>
+                                        <?= date('D d M Y', strtotime($a['session_date'])) ?>
                                     </a>
                                 </td>
                                 <td>
@@ -819,7 +886,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                         <span class="text-muted small"><?= $mode_labels[$ov_val] ?></span>
                         <?php if ($last_attended): ?>
                             <div class="form-text mt-1">
-                                Last attended: <strong><?= date('j M Y', strtotime($last_attended)) ?></strong>
+                                Last attended: <strong><?= date('d M Y', strtotime($last_attended)) ?></strong>
                                 <?php
                                 $months_ago = (new DateTime($last_attended))->diff(new DateTime())->days / 30;
                                 echo $months_ago > 3
@@ -926,7 +993,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                     <tbody>
                     <?php foreach ($payments as $p): ?>
                         <tr class="pay-data-row">
-                            <td><?= date('j M Y', strtotime($p['payment_date'])) ?></td>
+                            <td><?= date('d M Y', strtotime($p['payment_date'])) ?></td>
                             <td><?= ucwords(str_replace('_', ' ', $p['payment_type'])) ?></td>
                             <td><?= ['paypal'=>'PayPal','venmo'=>'Venmo','cash'=>'Cash','check'=>'Check','mail'=>'Mail'][$p['payment_method']] ?? ucfirst($p['payment_method']) ?></td>
                             <td class="text-end">$<?= number_format($p['amount'], 2) ?></td>
@@ -1073,7 +1140,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                                     </select>
                                 </td>
                                 <td>
-                                    <span class="rank-view-cell"><?= $r['achieved_date'] ? date('j M Y', strtotime($r['achieved_date'])) : '—' ?></span>
+                                    <span class="rank-view-cell"><?= $r['achieved_date'] ? date('d M Y', strtotime($r['achieved_date'])) : '—' ?></span>
                                     <input type="date" name="rank_updates[<?= $r['sr_id'] ?>][achieved_date]"
                                            class="form-control form-control-sm rank-edit-cell" style="display:none;width:auto"
                                            value="<?= htmlspecialchars($r['achieved_date']) ?>">
@@ -1171,7 +1238,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                 <?php foreach ($belt_tests as $bt): ?>
                 <div class="border-bottom px-3 py-2">
                     <div class="bt-row-view-<?= $bt['id'] ?> d-flex align-items-center gap-3 flex-wrap">
-                        <span class="text-nowrap"><?= date('j M Y', strtotime($bt['test_date'])) ?></span>
+                        <span class="text-nowrap"><?= date('d M Y', strtotime($bt['test_date'])) ?></span>
                         <span class="flex-grow-1"><?= htmlspecialchars($bt['kyu_dan']) ?></span>
                         <?php if (isset($bt['score']) && $bt['score'] !== null): ?>
                             <?php if ($bt['result']==='pass'): ?>
@@ -1317,7 +1384,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                                     <div class="text-muted small"><?= htmlspecialchars($pw['reason']) ?></div>
                                 <?php endif; ?>
                             </td>
-                            <td class="text-nowrap"><?= date('j M Y', strtotime($pw['granted_date'])) ?></td>
+                            <td class="text-nowrap"><?= date('d M Y', strtotime($pw['granted_date'])) ?></td>
                             <td class="pw-action-col text-end text-nowrap">
                                 <button type="button" class="btn btn-sm btn-outline-primary py-0 me-1"
                                         onclick="togglePwRow(<?= $pw['id'] ?>)">Edit</button>
@@ -1369,6 +1436,76 @@ $injury_date = $student['injury_waiver_date'] ?? null;
             </div>
         </div>
 
+        <!-- Guardian / Children -->
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
+                <span><?= $is_parent_type ? 'Linked Children' : 'Guardian / Parent' ?></span>
+                <div class="d-flex gap-2">
+                    <?php if (!empty($guardian_links)): ?>
+                    <button id="guardianEditToggle" type="button" class="btn btn-sm btn-success"
+                            onclick="toggleGuardianEdit()">Edit</button>
+                    <?php endif; ?>
+                    <button type="button" class="btn btn-sm btn-success"
+                            onclick="toggleBox('guardian-add-box')">+ Link</button>
+                </div>
+            </div>
+            <div id="guardian-add-box" style="display:none">
+                <div class="card-body border-bottom pb-3">
+                    <form method="post" class="d-flex gap-2 align-items-center flex-wrap">
+                        <?= csrf_input() ?>
+                        <input type="hidden" name="action" value="add_guardian">
+                        <?php if (!empty($guardian_candidates)): ?>
+                            <select name="guardian_student_id" class="form-select form-select-sm"
+                                    style="max-width:240px" required>
+                                <option value="">— select —</option>
+                                <?php foreach ($guardian_candidates as $gc): ?>
+                                    <option value="<?= $gc['id'] ?>">
+                                        <?= htmlspecialchars($gc['first_name'] . ' ' . $gc['last_name']) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <button type="submit" class="btn btn-sm btn-success">Add</button>
+                        <?php else: ?>
+                            <span class="text-muted small">
+                                No <?= $is_parent_type ? 'child' : 'parent' ?> records available to link.
+                            </span>
+                        <?php endif; ?>
+                        <button type="button" class="btn btn-sm btn-secondary"
+                                onclick="toggleBox('guardian-add-box')">Cancel</button>
+                    </form>
+                </div>
+            </div>
+            <div class="card-body<?= empty($guardian_links) ? '' : ' p-0' ?>">
+                <?php if (empty($guardian_links)): ?>
+                    <p class="text-muted mb-0">None linked.</p>
+                <?php else: ?>
+                <table id="guardianTable" class="table table-sm table-hover mb-0 align-middle">
+                    <tbody>
+                    <?php foreach ($guardian_links as $gl): ?>
+                        <tr>
+                            <td>
+                                <a href="student_edit.php?id=<?= $gl['student_id'] ?>"
+                                   class="text-decoration-none">
+                                    <?= htmlspecialchars($gl['first_name'] . ' ' . $gl['last_name']) ?>
+                                </a>
+                            </td>
+                            <td class="guardian-delete-col text-end">
+                                <form method="post" class="d-inline"
+                                      onsubmit="return confirm('Remove this link?')">
+                                    <?= csrf_input() ?>
+                                    <input type="hidden" name="action" value="remove_guardian">
+                                    <input type="hidden" name="guardian_link_id" value="<?= $gl['link_id'] ?>">
+                                    <button class="btn btn-sm btn-outline-danger py-0">✕</button>
+                                </form>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+                <?php endif; ?>
+            </div>
+        </div>
+
         <!-- Waiver -->
         <div class="card border-0 shadow-sm">
             <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
@@ -1381,7 +1518,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                 <?php if ($injury_done): ?>
                     <span class="badge bg-success">Completed</span>
                     <?php if ($injury_date): ?>
-                        <span class="ms-1"><?= date('j M Y', strtotime($injury_date)) ?></span>
+                        <span class="ms-1"><?= date('d M Y', strtotime($injury_date)) ?></span>
                     <?php endif; ?>
                 <?php else: ?>
                     <span class="text-muted">Not completed</span>
@@ -1396,16 +1533,18 @@ $injury_date = $student['injury_waiver_date'] ?? null;
 </div><!-- /row -->
 
 <style>
-    .pw-action-col   { display:none !important; }
-    .rank-delete-col { display:none !important; }
-    .note-delete     { display:none !important; }
-    .bt-delete-btn   { display:none !important; }
-    .pay-action-col  { display:none !important; }
-    #pwTable.editing   .pw-action-col   { display:table-cell !important; }
-    #rankTable.editing .rank-delete-col { display:table-cell !important; }
-    #notesContainer.notes-editing .note-delete { display:inline-block !important; }
-    #btList.editing   .bt-delete-btn   { display:inline !important; }
-    #payTable.editing  .pay-action-col  { display:table-cell !important; }
+    .pw-action-col      { display:none !important; }
+    .rank-delete-col    { display:none !important; }
+    .note-delete        { display:none !important; }
+    .bt-delete-btn      { display:none !important; }
+    .pay-action-col     { display:none !important; }
+    .guardian-delete-col{ display:none !important; }
+    #pwTable.editing       .pw-action-col       { display:table-cell !important; }
+    #rankTable.editing     .rank-delete-col     { display:table-cell !important; }
+    #notesContainer.notes-editing .note-delete  { display:inline-block !important; }
+    #btList.editing        .bt-delete-btn       { display:inline !important; }
+    #payTable.editing      .pay-action-col      { display:table-cell !important; }
+    #guardianTable.editing .guardian-delete-col { display:table-cell !important; }
 </style>
 <script>
 // Generic: toggle a collapsible add-box
@@ -1506,6 +1645,15 @@ function togglePayRow(pid) {
     var closing = row.style.display !== 'none';
     row.style.display = closing ? 'none' : '';
     if (closing && typeof setFormClean === 'function') setFormClean();
+}
+
+// Guardian links — edit reveals delete column
+function toggleGuardianEdit() {
+    var table = document.getElementById('guardianTable');
+    var btn   = document.getElementById('guardianEditToggle');
+    var on    = table.classList.toggle('editing');
+    btn.textContent = on ? 'Done' : 'Edit';
+    btn.className   = on ? 'btn btn-sm btn-warning' : 'btn btn-sm btn-success';
 }
 
 // Payment waivers — edit reveals action column; per-row edit form
@@ -1632,7 +1780,7 @@ function rankEdit() {
         <div class="border-bottom p-3" id="note-wrap-<?= $n['id'] ?>">
             <div class="d-flex justify-content-between align-items-start gap-2">
                 <small class="text-muted">
-                    <?= date('j M Y g:i a', strtotime($n['created_at'])) ?>
+                    <?= date('d M Y g:i a', strtotime($n['created_at'])) ?>
                     · <strong><?= htmlspecialchars($n['username'] ?? 'unknown') ?></strong>
                 </small>
                 <div class="d-flex gap-1 flex-shrink-0">

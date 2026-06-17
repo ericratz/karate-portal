@@ -26,7 +26,7 @@ $page_title = 'Belt Test History';
 include __DIR__ . '/../includes/header.php';
 
 function fmt_date(string $d): string {
-    return date('j M Y', strtotime($d));
+    return date('d M Y', strtotime($d));
 }
 function badge_result(string $r, ?int $score): string {
     if ($score === null) return '<span class="badge bg-secondary">Pending</span>';

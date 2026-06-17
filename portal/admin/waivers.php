@@ -186,7 +186,7 @@ include __DIR__ . '/../includes/header.php';
                             </td>
                             <td><?= ucwords(str_replace('_',' ',$w['waiver_type'])) ?></td>
                             <td><?= htmlspecialchars($w['reason'] ?? '—') ?></td>
-                            <td><?= date('j M Y', strtotime($w['granted_date'])) ?></td>
+                            <td><?= date('d M Y', strtotime($w['granted_date'])) ?></td>
                             <td class="delete-col">
                                 <form method="post" class="d-inline"
                                       onsubmit="return confirm('Permanently delete this exemption? This cannot be undone.')">

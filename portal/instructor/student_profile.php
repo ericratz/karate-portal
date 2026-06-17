@@ -144,69 +144,50 @@ if (has_role('instructor', 'admin')) {
 // Build a tab list if this student is a parent or is a child of a parent.
 $family_tabs = [];
 
-if ($student['student_type'] === 'parent' && $student['user_id']) {
-    // Viewing a parent — load their linked children
+if ($student['student_type'] === 'parent') {
+    // Viewing a parent — load children via student_guardians
     $ch_stmt = db()->prepare(
         'SELECT s.id, s.first_name, s.last_name
-         FROM parent_students ps
-         JOIN students s ON s.id = ps.student_id
-         WHERE ps.parent_user_id = ?
-         ORDER BY s.first_name, s.last_name'
+         FROM student_guardians sg JOIN students s ON s.id = sg.child_student_id
+         WHERE sg.parent_student_id = ? ORDER BY s.first_name, s.last_name'
     );
-    $ch_stmt->execute([$student['user_id']]);
+    $ch_stmt->execute([$id]);
     $children = $ch_stmt->fetchAll();
 
     if (!empty($children)) {
-        $family_tabs[] = [
-            'id'   => $id,
-            'name' => $student['first_name'] . ' ' . $student['last_name'],
-            'role' => 'parent',
-        ];
+        $family_tabs[] = ['id' => $id, 'name' => $student['first_name'] . ' ' . $student['last_name'], 'role' => 'parent'];
         foreach ($children as $ch) {
-            $family_tabs[] = [
-                'id'   => $ch['id'],
-                'name' => $ch['first_name'] . ' ' . $ch['last_name'],
-                'role' => 'child',
-            ];
+            $family_tabs[] = ['id' => $ch['id'], 'name' => $ch['first_name'] . ' ' . $ch['last_name'], 'role' => 'child'];
         }
     }
 } else {
-    // Viewing a child — check if they belong to a parent
-    $par_stmt = db()->prepare(
-        'SELECT u.id AS parent_user_id, sp.id AS parent_sid,
-                sp.first_name AS par_first, sp.last_name AS par_last
-         FROM parent_students ps
-         JOIN users u ON u.id = ps.parent_user_id
-         JOIN students sp ON sp.user_id = u.id
-         WHERE ps.student_id = ?
-         LIMIT 1'
+    // Viewing a child — find parent and siblings via student_guardians
+    $pg_stmt = db()->prepare(
+        'SELECT sp.id AS parent_sid, sp.first_name AS par_first, sp.last_name AS par_last
+         FROM student_guardians sg JOIN students sp ON sp.id = sg.parent_student_id
+         WHERE sg.child_student_id = ? LIMIT 1'
     );
-    $par_stmt->execute([$id]);
-    $par_row = $par_stmt->fetch();
+    $pg_stmt->execute([$id]);
+    $pg_row = $pg_stmt->fetch();
 
-    if ($par_row) {
-        // Load all siblings under this parent
+    if ($pg_row) {
+        $par_row = $pg_row;
         $sib_stmt = db()->prepare(
             'SELECT s.id, s.first_name, s.last_name
-             FROM parent_students ps
-             JOIN students s ON s.id = ps.student_id
-             WHERE ps.parent_user_id = ?
-             ORDER BY s.first_name, s.last_name'
+             FROM student_guardians sg JOIN students s ON s.id = sg.child_student_id
+             WHERE sg.parent_student_id = ? ORDER BY s.first_name, s.last_name'
         );
-        $sib_stmt->execute([$par_row['parent_user_id']]);
+        $sib_stmt->execute([$pg_row['parent_sid']]);
         $siblings = $sib_stmt->fetchAll();
+    } else {
+        $par_row = null;
+        $siblings = [];
+    }
 
-        $family_tabs[] = [
-            'id'   => $par_row['parent_sid'],
-            'name' => $par_row['par_first'] . ' ' . $par_row['par_last'],
-            'role' => 'parent',
-        ];
+    if ($par_row) {
+        $family_tabs[] = ['id' => $par_row['parent_sid'], 'name' => $par_row['par_first'] . ' ' . $par_row['par_last'], 'role' => 'parent'];
         foreach ($siblings as $sib) {
-            $family_tabs[] = [
-                'id'   => $sib['id'],
-                'name' => $sib['first_name'] . ' ' . $sib['last_name'],
-                'role' => 'child',
-            ];
+            $family_tabs[] = ['id' => $sib['id'], 'name' => $sib['first_name'] . ' ' . $sib['last_name'], 'role' => 'child'];
         }
     }
 }
@@ -281,7 +262,7 @@ include __DIR__ . '/../includes/header.php';
                         ? '../admin/waiver_view.php?student_id=' . $student['id']
                         : '../student/waiver.php';
                     $waiver_val = '<span class="text-success">✓</span> '
-                        . ($student['injury_waiver_date'] ? date('j M Y', strtotime($student['injury_waiver_date'])) : '')
+                        . ($student['injury_waiver_date'] ? date('d M Y', strtotime($student['injury_waiver_date'])) : '')
                         . ' <a href="' . $waiver_url . '" class="btn btn-sm btn-outline-secondary ms-2">View</a>';
                 } else {
                     $waiver_val = '—';
@@ -291,13 +272,13 @@ include __DIR__ . '/../includes/header.php';
                     htmlspecialchars($student['city_state_zip'] ?? ''),
                 ]);
                 $pv = [
-                    'Date of Birth'     => $student['date_of_birth'] ? date('j M Y', strtotime($student['date_of_birth'])) : '—',
+                    'Date of Birth'     => $student['date_of_birth'] ? date('d M Y', strtotime($student['date_of_birth'])) : '—',
                     'Phone'             => ($student['phone'] ?? '') ? fmt_phone($student['phone']) : '—',
                     'Email'             => htmlspecialchars($student['email'] ?? '') ?: '—',
                     'Emergency Contact' => htmlspecialchars($student['emergency_contact_name']  ?? '') ?: '—',
                     'Emergency Phone'   => ($student['emergency_contact_phone'] ?? '') ? fmt_phone($student['emergency_contact_phone']) : '—',
                     'Address'           => $addr_parts ? implode('<br>', $addr_parts) : '—',
-                    'Member Since'      => date('j M Y', strtotime($student['registration_date'])),
+                    'Member Since'      => date('d M Y', strtotime($student['registration_date'])),
                 ];
                 foreach ($pv as $lbl => $val): ?>
                 <div class="d-flex py-1 border-bottom">
@@ -324,7 +305,7 @@ include __DIR__ . '/../includes/header.php';
                 </div>
                 <div class="d-flex py-1 border-bottom">
                     <div class="text-muted small" style="min-width:160px">Last Login</div>
-                    <div><?= $student['last_login'] ? date('j M Y', strtotime($student['last_login'])) : '—' ?></div>
+                    <div><?= $student['last_login'] ? date('d M Y', strtotime($student['last_login'])) : '—' ?></div>
                 </div>
                 <div class="d-flex py-1">
                     <div class="text-muted small" style="min-width:160px">Medical Note</div>
@@ -364,7 +345,7 @@ include __DIR__ . '/../includes/header.php';
                         <?php foreach ($attendance as $a): ?>
                             <?php if (!$a['present'] && !has_role('instructor', 'admin')): continue; endif; ?>
                             <tr>
-                                <td><?= date('D j M Y', strtotime($a['session_date'])) ?></td>
+                                <td><?= date('D d M Y', strtotime($a['session_date'])) ?></td>
                                 <?php if (has_role('instructor', 'admin')): ?>
                                 <td>
                                     <?php if ($a['present']): ?>
@@ -413,7 +394,7 @@ include __DIR__ . '/../includes/header.php';
                     <tbody>
                     <?php foreach ($payments as $p): ?>
                         <tr>
-                            <td><?= date('j M Y', strtotime($p['payment_date'])) ?></td>
+                            <td><?= date('d M Y', strtotime($p['payment_date'])) ?></td>
                             <td><?= ucwords(str_replace('_', ' ', $p['payment_type'])) ?></td>
                             <td><?= ucfirst($p['payment_method']) ?></td>
                             <td class="text-end">$<?= number_format($p['amount'], 2) ?></td>
@@ -469,7 +450,7 @@ include __DIR__ . '/../includes/header.php';
                     <tbody>
                     <?php foreach ($belt_tests as $bt): ?>
                         <tr>
-                            <td class="text-nowrap"><?= date('j M Y', strtotime($bt['test_date'])) ?></td>
+                            <td class="text-nowrap"><?= date('d M Y', strtotime($bt['test_date'])) ?></td>
                             <td><?= htmlspecialchars($bt['kyu_dan']) ?></td>
                             <td>
                                 <?php if (isset($bt['score']) && $bt['score'] !== null): ?>
@@ -513,7 +494,7 @@ include __DIR__ . '/../includes/header.php';
         <?php foreach ($notes as $n): ?>
         <div class="border-bottom p-3">
             <small class="text-muted d-block mb-1">
-                <?= date('j M Y g:i a', strtotime($n['created_at'])) ?>
+                <?= date('d M Y g:i a', strtotime($n['created_at'])) ?>
                 · <strong><?= htmlspecialchars($n['username'] ?? 'unknown') ?></strong>
             </small>
             <p class="mb-0 small"><?= nl2br(htmlspecialchars($n['content'])) ?></p>

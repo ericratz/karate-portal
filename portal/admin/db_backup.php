@@ -27,7 +27,7 @@ ob_implicit_flush(true);
 // ── Header ────────────────────────────────────────────────────────────────────
 echo "-- ============================================================\n";
 echo "-- Database backup: {$dbname}\n";
-echo "-- Generated:       " . date('D j M Y g:i a') . "\n";
+echo "-- Generated:       " . date('D d M Y g:i a') . "\n";
 echo "-- PHP export (read-only — no data was modified or deleted)\n";
 echo "-- ============================================================\n\n";
 echo "SET NAMES utf8mb4;\n";
