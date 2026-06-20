@@ -80,12 +80,11 @@ $users = db()->query(
      ORDER BY u.role, u.username'
 )->fetchAll();
 
-// Unlinked roster entries (for the link dropdown) — exclude children already linked to a parent
+// Unlinked roster entries (for the link dropdown)
 $unlinked_students = db()->query(
     'SELECT id, first_name, last_name, student_type, active
      FROM students
      WHERE user_id IS NULL
-       AND id NOT IN (SELECT student_id FROM parent_students)
      ORDER BY first_name, last_name'
 )->fetchAll();
 

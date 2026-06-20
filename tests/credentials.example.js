@@ -2,7 +2,7 @@
 // credentials.js is gitignored — this example file is safe to commit.
 
 module.exports = {
-    ADMIN_USER:  'admin',
+    ADMIN_USER:  'Noji',
     ADMIN_PASS:  'your_admin_password',
 
     INST_USER:   'instructor',

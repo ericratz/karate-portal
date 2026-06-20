@@ -1,4 +1,4 @@
-# Shotokan Karate Portal — V2.3
+# Shotokan Karate Portal — V2.4
 
 A private membership portal for Noji Ratzlaff's Shotokan Karate dojo. Students can track
 their attendance, belt tests, and payments; instructors can take attendance and manage belt
@@ -6,21 +6,28 @@ tests; and the admin can run the whole operation from one place.
 
 ---
 
-## What's New in V2.3
+## What's New in V2.4
 
-- **Student guardians** — parent roster entries can now be linked to child roster entries
-  directly, without requiring either party to have a user account. Links are managed from
-  the student edit page and stored in the new `student_guardians` table. Deleting either
-  party safely removes only the link, not the other record.
-- **Data ownership separation** — user account fields (`first_name`, `last_name`,
-  `date_of_birth`, `email`) are now stored and edited exclusively on the `users` table.
-  Admin-managed student records remain independent. The Compare & Link page highlights
-  mismatches between what a user self-reported and what is on their roster entry.
-- **Date of birth on user accounts** — users can now enter and update their date of birth
-  from their account profile page.
-- **Date format** — all dates across the portal now display with a leading zero (03 Jun 2026).
-- **Jira link** — admin dashboard has a direct link to the project board.
-- **Dojo email address updated** — outgoing mail now sends from `noreply@noji.com`.
+- **Multi-step registration flow** — new users are walked through three steps: fill in
+  account details → match an existing roster record → confirm. Nothing is written to the
+  database until the final confirm. Users get full portal access immediately on registration.
+- **Automatic record matching** — registration searches for existing roster entries by name,
+  date of birth, or email. Match cards show name, belt rank, masked email, and birth day/month
+  (year hidden for privacy). Users can claim a match, create a new record, or flag that their
+  record wasn't found.
+- **Admin alert cards** — the dashboard Link Requests card is replaced by three separate cards:
+  Needs Manual Linking, Claimed Existing Records, and New Registrations. Each has dismiss and
+  resolve actions.
+- **Resolve link page** — new `admin/resolve_link.php` lets the admin manually link a user
+  whose record wasn't found during registration: search the full roster and pick the right entry.
+- **Guest role** — a new `guest` role is assigned at registration and replaced with the
+  appropriate role once the record is linked. Guests have full student portal access.
+- **`last_login` on registration** — creating an account now populates `last_login`
+  immediately, so "Last login: Never" no longer appears for brand-new accounts.
+- **`parent_students` removed** — superseded by `student_guardians` in V2.3; all remaining
+  references removed from PHP files, tests, and schema.
+- **Cron job fix** — removed spurious `-f php` from cron commands that caused
+  "Could not open input file: php" errors.
 
 ---
 
@@ -39,12 +46,20 @@ tests; and the admin can run the whole operation from one place.
 
 ## Roles
 
-There are four roles, stored in `users.role`. Each user account is optionally linked to a
+There are five roles, stored in `users.role`. Each user account is optionally linked to a
 row in the `students` table via `students.user_id`.
+
+### Guest
+
+The role assigned automatically when a new account is created via `register.php`. Guests
+have full student portal access. The role is updated to `student`, `parent`, or `instructor`
+once an admin links the account to the correct roster entry.
+
+---
 
 ### Student
 
-The default role for anyone who creates an account via `register.php`.
+Assigned once a guest account is linked to a roster entry.
 
 **What a student can do:**
 
@@ -149,12 +164,15 @@ dashboard. Family groups are treated as a unit for the tuition check.
 
 ## Registration Flow
 
-1. Register at `/portal/register.php` → creates a `users` row
-2. Optional "Notify Noji" step — user selects new student / returning student / parent and
-   optionally adds a note. Creates a `link_requests` record visible on the admin dashboard.
-3. Admin reviews via the Link Requests card → Compare page → links account to roster entry
-4. Admin records a registration payment → `student_type` flips from `guest` to `student`
-5. Student signs the digital injury waiver
+1. Fill in account details at `/portal/register.php`
+2. Portal searches for matching roster records (by name, DOB, or email) and shows match cards
+3. User picks a match, creates a new record, or flags that their record wasn't found
+4. Confirm screen — user reviews their choice, then submits. DB write happens here.
+5. User is logged in immediately with `guest` role and full student portal access
+6. Admin sees an alert card on the dashboard (Claimed Existing / New Registration / Needs Linking)
+7. Admin links or resolves the alert → user role updated to `student`, `parent`, or `instructor`
+8. Admin records a registration payment → `student_type` flips from `guest` to `student`
+9. Student signs the digital injury waiver
 
 ---
 

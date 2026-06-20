@@ -22,23 +22,13 @@ test('setup: register fresh account for waiver tests', async ({ page }) => {
     await page.fill('input[name="username"]', W_USER);
     await page.fill('input[name="password"]', W_PASS);
     await page.fill('input[name="confirm"]',  W_PASS);
+    await page.click('button:has-text("Next")');
+    await page.waitForLoadState('domcontentloaded');
+    // No matching records for fresh user → confirm step with "Create Account"
     await page.click('button:has-text("Create Account")');
     await page.waitForLoadState('domcontentloaded');
-    // Registration now shows the Notify Noji step — skip it to reach the done screen
-    await page.click('button:has-text("Skip")');
-    await page.waitForLoadState('domcontentloaded');
-    await expect(page.locator('.alert-success').first()).toBeVisible();
-
-    // Submit profile form to create a linked student record (needed for dashboard to load)
-    // profile_edit.php creates a guest student row when none exists
-    await login(page, W_USER, W_PASS);
-    await page.goto(BASE + '/student/profile_edit.php');
-    await page.fill('input[name="first_name"]', 'Waiver');
-    await page.fill('input[name="last_name"]',  `Tester${TS}`);
-    await page.fill('input[name="date_of_birth"]', '1990-03-15');
-    await page.fill('input[name="email"]', `waiver${TS}@test.com`);
-    await page.click('button:has-text("Save Profile")');
-    await page.waitForLoadState('domcontentloaded');
+    // User is now logged in with a linked guest student record — log out for subsequent tests
+    expect(page.url()).toContain('/student/');
     await logout(page);
 });
 

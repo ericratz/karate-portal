@@ -100,7 +100,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
         $pdo->beginTransaction();
         try {
             $pdo->prepare('UPDATE students SET user_id = NULL WHERE user_id = ?')->execute([$id]);
-            $pdo->prepare('DELETE FROM parent_students WHERE parent_user_id = ?')->execute([$id]);
             $pdo->prepare('DELETE FROM users WHERE id = ?')->execute([$id]);
             $pdo->commit();
             audit('delete_user', 'user', $id);

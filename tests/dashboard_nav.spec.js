@@ -80,8 +80,8 @@ test.describe('Admin dashboard navigation', () => {
         }
     });
 
-    test('Missing Injury Waivers card is visible', async ({ page }) => {
-        await expect(page.locator('.card-header').filter({ hasText: 'Missing Injury Waivers' })).toBeVisible();
+    test('Missing Waivers card is visible', async ({ page }) => {
+        await expect(page.locator('.card-header').filter({ hasText: 'Missing Waivers' })).toBeVisible();
     });
 
     test('Recent Payments card is visible', async ({ page }) => {

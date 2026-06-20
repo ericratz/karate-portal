@@ -175,7 +175,19 @@ function dashboard_url(string $role): string {
         case 'admin':      return '/karate/portal/admin/';
         case 'instructor': return '/karate/portal/instructor/';
         case 'parent':     return '/karate/portal/parent/';
-        default:           return '/karate/portal/student/';
+        default:           return '/karate/portal/student/'; // student, guest
+    }
+}
+
+// Maps a student_type value to the appropriate users.role.
+// Safety: 'admin' student_type → 'student' role (can never self-assign admin).
+function stype_to_role(string $stype): string {
+    switch ($stype) {
+        case 'instructor': return 'instructor';
+        case 'parent':     return 'parent';
+        case 'student':    return 'student';
+        case 'guest':      return 'guest';
+        default:           return 'student'; // 'admin' → 'student' for safety
     }
 }
 

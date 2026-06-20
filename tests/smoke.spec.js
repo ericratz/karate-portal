@@ -28,7 +28,7 @@ test.describe('admin smoke', () => {
         await page.goto(BASE + '/admin/');
         await expect(page.locator('body')).toContainText('Active Students');
         await expect(page.locator('.card-header').filter({ hasText: 'Tuition Unpaid' })).toBeVisible();
-        await expect(page.locator('.card-header').filter({ hasText: 'Missing Injury Waivers' })).toBeVisible();
+        await expect(page.locator('.card-header').filter({ hasText: 'Missing Waivers' })).toBeVisible();
         await expect(page.locator('.card-header').filter({ hasText: 'Recent Payments' })).toBeVisible();
         await page.goto(BASE + '/admin/students.php');
         for (const h of ['Instructors','Parents','Students','Guests']) {

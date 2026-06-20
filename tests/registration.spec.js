@@ -21,7 +21,7 @@ test('mismatched passwords shows error', async ({ page }) => {
     await page.fill('input[name="username"]', `u${TS}`);
     await page.fill('input[name="password"]', 'Testpass1!');
     await page.fill('input[name="confirm"]', 'Different1!');
-    await page.click('button:has-text("Create Account")');
+    await page.click('button:has-text("Next")');
     await page.waitForLoadState('domcontentloaded');
     await expect(page.locator('.alert-danger')).toContainText('do not match');
 });
@@ -35,12 +35,12 @@ test('duplicate username shows error', async ({ page }) => {
     await page.fill('input[name="username"]', ADMIN_USER);
     await page.fill('input[name="password"]', 'pass1234A!');
     await page.fill('input[name="confirm"]', 'pass1234A!');
-    await page.click('button:has-text("Create Account")');
+    await page.click('button:has-text("Next")');
     await page.waitForLoadState('domcontentloaded');
     await expect(page.locator('.alert-danger')).toContainText('already taken');
 });
 
-test('valid registration reaches Notify Noji step', async ({ page }) => {
+test('valid registration creates account and logs in', async ({ page }) => {
     await page.goto(BASE + '/register.php');
     await page.fill('input[name="first_name"]', 'Playwright');
     await page.fill('input[name="last_name"]', `Test${TS}`);
@@ -49,9 +49,14 @@ test('valid registration reaches Notify Noji step', async ({ page }) => {
     await page.fill('input[name="username"]', `pw${TS}`);
     await page.fill('input[name="password"]', 'TestPass1!');
     await page.fill('input[name="confirm"]', 'TestPass1!');
+    await page.click('button:has-text("Next")');
+    await page.waitForLoadState('domcontentloaded');
+    // No matching records for fresh user → lands on confirm step
+    await expect(page.locator('.card-header small')).toContainText('Confirm');
     await page.click('button:has-text("Create Account")');
     await page.waitForLoadState('domcontentloaded');
-    await expect(page.locator('.option-card').first()).toBeVisible();
+    // Should be logged in and redirected to student dashboard
+    expect(page.url()).toContain('/student/');
 });
 
 test('new account can log in after registration', async ({ page }) => {

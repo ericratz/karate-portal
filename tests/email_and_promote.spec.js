@@ -25,23 +25,13 @@ test.describe('Guest auto-promotion', () => {
         await page.fill('input[name="username"]', `promote${TS}`);
         await page.fill('input[name="password"]', 'TestPass1!');
         await page.fill('input[name="confirm"]',  'TestPass1!');
+        await page.click('button:has-text("Next")');
+        await page.waitForLoadState('domcontentloaded');
+        // No matching records for fresh user → confirm step with "Create Account"
         await page.click('button:has-text("Create Account")');
         await page.waitForLoadState('domcontentloaded');
-        // Registration now shows the Notify Noji step — skip it to reach the done screen
-        await page.click('button:has-text("Skip")');
-        await page.waitForLoadState('domcontentloaded');
-        await expect(page.locator('.alert-success').first()).toBeVisible();
-
-        // Submit profile form to create a linked guest student record so the account
-        // appears in admin/students.php and tests can verify its type
-        await login(page, `promote${TS}`, 'TestPass1!');
-        await page.goto(BASE + '/student/profile_edit.php');
-        await page.fill('input[name="first_name"]', 'Promote');
-        await page.fill('input[name="last_name"]',  `Me${TS}`);
-        await page.fill('input[name="date_of_birth"]', '1995-01-01');
-        await page.fill('input[name="email"]', `promote${TS}@test.com`);
-        await page.click('button:has-text("Save Profile")');
-        await page.waitForLoadState('domcontentloaded');
+        // User is now logged in with a linked guest student record
+        expect(page.url()).toContain('/student/');
         await logout(page);
     });
 

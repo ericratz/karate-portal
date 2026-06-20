@@ -70,7 +70,7 @@ test.describe('Parent pages — admin role denied', () => {
 // These require a parent account seeded in the DB snapshot:
 //   1. users row: role='parent'
 //   2. students row linked via user_id, student_type='parent'
-//   3. At least one child row in parent_students
+//   3. At least one child row in student_guardians
 //   4. PARENT_USER / PARENT_PASS added to credentials.js
 //   5. 'parent' auth state added to global-setup.js and helpers.js AUTH object
 // Add those and write the integration tests at that point.

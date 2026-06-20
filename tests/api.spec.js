@@ -59,6 +59,7 @@ test('registration rejects password shorter than 8 chars', async ({ page }) => {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: new URLSearchParams({
+                action: 'step1',
                 csrf_token: token, first_name: 'Api', last_name: 'Test',
                 date_of_birth: '2000-01-01', email: 'api@test.com',
                 username: 'apitestuser1', password: 'abc123!', confirm: 'abc123!',
@@ -77,6 +78,7 @@ test('registration rejects duplicate username', async ({ page }) => {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: new URLSearchParams({
+                action: 'step1',
                 csrf_token: token, first_name: 'Api', last_name: 'Test',
                 date_of_birth: '2000-01-01', email: 'api2@test.com',
                 username: adminUser, password: 'ValidPass1!', confirm: 'ValidPass1!',

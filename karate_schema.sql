@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS users (
     id            INT AUTO_INCREMENT PRIMARY KEY,
     username      VARCHAR(50)  NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
-    role          ENUM('student','instructor','admin','parent') NOT NULL DEFAULT 'student',
+    role          ENUM('student','instructor','admin','parent','guest') NOT NULL DEFAULT 'student',
     email         VARCHAR(100) NOT NULL,
     first_name    VARCHAR(50)  DEFAULT NULL,
     last_name     VARCHAR(50)  DEFAULT NULL,
@@ -273,18 +273,6 @@ CREATE TABLE IF NOT EXISTS audit_log (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ------------------------------------------------------------
--- PARENT STUDENTS  (links a parent user to their children's student records)
--- ------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS parent_students (
-    id             INT AUTO_INCREMENT PRIMARY KEY,
-    parent_user_id INT NOT NULL,
-    student_id     INT NOT NULL,
-    UNIQUE KEY uq_parent_student (parent_user_id, student_id),
-    FOREIGN KEY (parent_user_id) REFERENCES users(id)    ON DELETE CASCADE,
-    FOREIGN KEY (student_id)     REFERENCES students(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- ------------------------------------------------------------
 -- STUDENT GUARDIANS  (links a parent student record to child records — no user account required)
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS student_guardians (
@@ -322,6 +310,25 @@ CREATE TABLE IF NOT EXISTS subscriptions (
     created_at             DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at             DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ------------------------------------------------------------
+-- LINK REQUESTS  (admin alerts generated during registration)
+-- request_type: claimed_existing | new_student | needs_linking
+--               (legacy: new_guest | existing_student | parent)
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS link_requests (
+    id            INT AUTO_INCREMENT PRIMARY KEY,
+    user_id       INT NOT NULL,
+    student_id    INT DEFAULT NULL,
+    request_type  VARCHAR(50) NOT NULL,
+    notes         TEXT NULL,
+    created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    resolved      TINYINT(1) NOT NULL DEFAULT 0,
+    resolved_at   TIMESTAMP NULL,
+    resolved_by   INT NULL,
+    FOREIGN KEY (user_id)    REFERENCES users(id)    ON DELETE CASCADE,
+    FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ------------------------------------------------------------

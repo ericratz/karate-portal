@@ -125,7 +125,7 @@ test('registration server rejects password shorter than 8 chars', async ({ page 
     });
     await page.fill('input[name="password"]', 'abc123!'); // 7 chars
     await page.fill('input[name="confirm"]',  'abc123!');
-    await page.click('button:has-text("Create Account")');
+    await page.click('button:has-text("Next")');
     await page.waitForLoadState('domcontentloaded');
     await expect(page.locator('.alert-danger').first()).toContainText('8 characters');
 });

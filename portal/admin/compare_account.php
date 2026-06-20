@@ -101,11 +101,10 @@ if ($student_id) {
     if (!$student) $student_id = 0;
 }
 
-// ── All students for picker — exclude children already linked to a parent ────
+// ── All students for picker ───────────────────────────────────────────────────
 $all_students = db()->query(
     'SELECT id, first_name, last_name, student_type
      FROM students
-     WHERE id NOT IN (SELECT student_id FROM parent_students)
      ORDER BY first_name, last_name'
 )->fetchAll();
 
