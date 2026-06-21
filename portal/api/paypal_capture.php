@@ -2,10 +2,10 @@
 // Called via fetch() after the user approves the payment in the PayPal popup
 // Captures the payment and logs it to the database
 
-require_once __DIR__ . '/includes/auth.php';
-require_once __DIR__ . '/includes/db.php';
-require_once __DIR__ . '/includes/config.php';
-require_once __DIR__ . '/includes/paypal.php';
+require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/db.php';
+require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../includes/paypal.php';
 require_login();
 
 header('Content-Type: application/json');
@@ -57,7 +57,7 @@ try {
     $student_id  = $pending['student_id'] ?? null;
     $student_row = null;
     if ($student_id) {
-        $stmt = db()->prepare('SELECT id, first_name, last_name FROM students WHERE id = ?');
+        $stmt = db()->prepare('SELECT id, first_name, last_name, email FROM students WHERE id = ?');
         $stmt->execute([$student_id]);
         $student_row = $stmt->fetch();
         if (!$student_row) $student_id = null;
@@ -109,6 +109,20 @@ try {
         }
     }
 
+    // Send payment receipt email
+    if ($student_row && !empty($student_row['email'])) {
+        $receipt_items = array_map(function($item) use ($user_priced) {
+            return [
+                'type'   => $item['type'],
+                'amount' => in_array($item['type'], $user_priced)
+                    ? (float)$item['amount']
+                    : fee_for_type($item['type']),
+            ];
+        }, $pending['items']);
+        $student_name = trim($student_row['first_name'] . ' ' . $student_row['last_name']);
+        send_payment_receipt($student_row['email'], $student_name, $receipt_items, $captured_amount, 'paypal', $txn_id);
+    }
+
     // Clear pending payment from session
     unset($_SESSION['pending_payment']);
 
@@ -123,4 +137,3 @@ try {
     http_response_code(500);
     echo json_encode(['success' => false, 'error' => 'Payment capture failed — contact the instructor']);
 }
-

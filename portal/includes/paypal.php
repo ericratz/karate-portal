@@ -94,7 +94,7 @@ function paypal_create_subscription(string $first_name, string $last_name, strin
             'email_address' => $email,
         ],
         'application_context' => [
-            'return_url'  => SITE_URL . '/../paypal_subscription_return.php',
+            'return_url'  => SITE_URL . '/api/paypal_subscription_return.php',
             'cancel_url'  => SITE_URL . '/student/pay.php',
             'user_action' => 'SUBSCRIBE_NOW',
         ],

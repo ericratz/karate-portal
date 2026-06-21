@@ -2,9 +2,9 @@
 // PayPal webhook receiver — no user session, called directly by PayPal.
 // Register this URL in the PayPal dashboard under Notifications > Webhooks.
 
-require_once __DIR__ . '/includes/db.php';
-require_once __DIR__ . '/includes/config.php';
-require_once __DIR__ . '/includes/paypal.php';
+require_once __DIR__ . '/../includes/db.php';
+require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../includes/paypal.php';
 
 $body = file_get_contents('php://input');
 
@@ -78,4 +78,3 @@ switch ($event_type) {
 
 http_response_code(200);
 echo 'OK';
-

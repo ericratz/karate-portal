@@ -1,33 +1,41 @@
-# Shotokan Karate Portal — V2.4
+# Shotokan Karate Portal — V2.5
 
-A private membership portal for Noji Ratzlaff's Shotokan Karate dojo. Students can track
-their attendance, belt tests, and payments; instructors can take attendance and manage belt
-tests; and the admin can run the whole operation from one place.
+A private membership portal for Noji Ratzlaff's Shotokan Karate dojo. Students track
+attendance, belt tests, and payments. Instructors manage classes and roster. The admin
+runs the full operation from one place.
 
 ---
 
+## What's New in V2.5
+
+- **API endpoints moved** — PayPal and feedback endpoints live in `portal/api/` (cleaner root directory)
+- **Payment receipts** — students receive an email receipt after any PayPal or manually-recorded payment
+- **Google registration** — now runs the same multi-step matching flow as standard registration (find existing record → confirm → create account)
+- **Rate limiting on registration** — max 5 attempts per hour per IP
+- **Belt test → rank sync** — awarding a belt test (score ≥ 80%) automatically updates the student's rank history from both the admin and instructor edit forms
+- **Donation payment type** — admins can now record donations manually alongside other payment types
+- **Venmo removed** — no longer a valid payment method for new entries (legacy records still display correctly)
+- **Hardcoded paths replaced** — all `/karate/portal/` paths now use `SITE_URL` from `.env`
+- **Student dashboard** — added Homework and Tests & Grading buttons linking to the karate website
+
 ## What's New in V2.4
 
-- **Multi-step registration flow** — new users are walked through three steps: fill in
-  account details → match an existing roster record → confirm. Nothing is written to the
-  database until the final confirm. Users get full portal access immediately on registration.
-- **Automatic record matching** — registration searches for existing roster entries by name,
-  date of birth, or email. Match cards show name, belt rank, masked email, and birth day/month
-  (year hidden for privacy). Users can claim a match, create a new record, or flag that their
-  record wasn't found.
-- **Admin alert cards** — the dashboard Link Requests card is replaced by three separate cards:
-  Needs Manual Linking, Claimed Existing Records, and New Registrations. Each has dismiss and
-  resolve actions.
-- **Resolve link page** — new `admin/resolve_link.php` lets the admin manually link a user
-  whose record wasn't found during registration: search the full roster and pick the right entry.
-- **Guest role** — a new `guest` role is assigned at registration and replaced with the
-  appropriate role once the record is linked. Guests have full student portal access.
-- **`last_login` on registration** — creating an account now populates `last_login`
-  immediately, so "Last login: Never" no longer appears for brand-new accounts.
-- **`parent_students` removed** — superseded by `student_guardians` in V2.3; all remaining
-  references removed from PHP files, tests, and schema.
-- **Cron job fix** — removed spurious `-f php` from cron commands that caused
-  "Could not open input file: php" errors.
+- **Multi-step registration** — form → match existing roster record → confirm. Nothing written to DB until final confirm. Users get full portal access immediately.
+- **Automatic record matching** — registration searches for existing roster entries by name, DOB, or email. Match cards show name, belt rank, masked email, and birth day/month (year hidden).
+- **Admin registration alerts** — three dashboard cards replace the old Link Requests card: Needs Manual Linking, Claimed Existing Records, New Registrations.
+- **Resolve link page** — `admin/resolve_link.php` lets admin manually link a user to a roster entry when no match was found during registration.
+- **Guest role** — assigned at registration; replaced with the correct role once the record is linked.
+- **`last_login` on registration** — populated immediately so "Last login: Never" never appears for new accounts.
+- **`parent_students` removed** — superseded by `student_guardians` in V2.3.
+- **Cron job fix** — removed spurious `-f php` that caused "Could not open input file: php" errors.
+
+## What's New in V2.3
+
+- **Student guardians** — parent roster entries can be linked to child roster entries via `student_guardians`. No user account required for either party.
+- **Data ownership separation** — user account fields (`first_name`, `last_name`, `date_of_birth`, `email`) live on the `users` table. Roster entries are admin-managed separately.
+- **Date of birth on user accounts** — users can enter and update their DOB from their profile.
+- **Date format** — all dates display with a leading zero (03 Jun 2026).
+- **Dojo email updated** — outgoing mail sends from `noreply@noji.com`.
 
 ---
 
@@ -35,10 +43,11 @@ tests; and the admin can run the whole operation from one place.
 
 | Layer | Detail |
 |---|---|
-| Language | PHP 7.x |
-| Database | MySQL 8.0 — DB: `karate_portal` |
+| Language | PHP 7.4 |
+| Database | MySQL 8.0 — `karate_portal` |
 | Frontend | Bootstrap 5 (CDN), vanilla JS |
-| Payments | PayPal JS SDK (sandbox by default) |
+| Payments | PayPal JS SDK (one-time + subscriptions) |
+| Auth | Username/password + Google OAuth |
 | Local dev | XAMPP at `C:\Users\ericratz\XAMPP` |
 | Tests | Playwright 1.60 (`npm test`) |
 
@@ -46,207 +55,91 @@ tests; and the admin can run the whole operation from one place.
 
 ## Roles
 
-There are five roles, stored in `users.role`. Each user account is optionally linked to a
-row in the `students` table via `students.user_id`.
+Five roles stored in `users.role`:
 
-### Guest
-
-The role assigned automatically when a new account is created via `register.php`. Guests
-have full student portal access. The role is updated to `student`, `parent`, or `instructor`
-once an admin links the account to the correct roster entry.
-
----
-
-### Student
-
-Assigned once a guest account is linked to a roster entry.
-
-**What a student can do:**
-
-- View their personal dashboard — recent attendance, current rank, recent payments, belt
-  test history, injury waiver status
-- Browse full attendance, belt test, and payment history
-- Make a payment online via PayPal
-- Sign the digital injury waiver and later view their signed copy
-- Edit their profile and change their password
-- Send a message to Noji from the dashboard
-
----
-
-### Parent
-
-A family account linked to one or more children's roster entries via `student_guardians`.
-Created when an admin sets `student_type = parent` on a roster entry and links children
-via the student edit page.
-
-**What a parent can do:**
-
-- Tabbed dashboard — one tab per linked child, showing each child's attendance, rank,
-  waiver status, and payment summary
-- View full attendance, belt test, and payment history for any linked child
-- Make a payment for a specific child (dropdown selector); the system warns if any family
-  member has already paid tuition this month
-- Sign and view the liability waiver for any linked child
-- Edit profile info for any linked child; change their own password on their own tab only
-
----
-
-### Instructor
-
-Granted manually by the admin. Has full read access to the roster and takes attendance.
-
-**What an instructor can do (everything a student can, plus):**
-
-- View the full roster split into four groups: Instructors, Parents, Students, Guests
-- Filter the roster by name, status, has-login, rank, injury waiver, and recent attendance
-- View any student's full profile — attendance with present/absent status, belt tests,
-  rank, notes; family tabs shown when viewing a parent or child
-- Edit a student's attendance from the student profile view
-- Take attendance — creates or edits a session; sortable and filterable by name
-- Browse sessions with date-range and type filters; expandable rows showing who attended
-- Add private notes to a student's profile
-- Schedule, edit, record, and delete belt tests; student picker shows current rank and
-  full test history inline
-
----
-
-### Admin
-
-Full access to everything. Intended for the dojo owner only.
-
-**What an admin can do (everything an instructor can, plus):**
-
-- **Roster** — add, edit, and delete students; set student type, active override, and all
-  profile fields
-- **Payments** — record manual payments, delete incorrect records, full filtering
-- **Exempt** — grant tuition exemptions
-- **Expenses** — log and manage dojo expenses
-- **Waivers** — view signed waivers; digitize physical paper waivers with full field entry
-- **Email students** — compose and send to any combination of groups or individuals
-- **Class notes** — general notes visible in the class log
-- **Student notes** — private per-student notes
-- **Users** — view all accounts, toggle active status, reset passwords, link/unlink roster
-  entries; role and status badges have tooltips; children are excluded from the link dropdown
-- **Compare & Link** — side-by-side account vs roster comparison with field mismatch
-  highlighting before committing a link
-- **Link Requests** — admin dashboard card showing Notify Noji submissions from new
-  registrations, with a Review button that opens the Compare page
-- **Audit log** — read-only log of all significant actions
-
----
-
-## Student Types vs. Roles
-
-| Field | Table | What it controls |
+| Role | How assigned | Access |
 |---|---|---|
-| `users.role` | `users` | Portal access (`student` / `parent` / `instructor` / `admin`) |
-| `students.student_type` | `students` | How the roster groups a person (`guest` / `student` / `parent` / `instructor` / `admin`) |
+| `guest` | Automatically on registration | Full student portal |
+| `student` | Admin links account to roster entry | Student portal |
+| `parent` | Admin links account to a parent roster entry | Parent portal (tabbed per child) |
+| `instructor` | Admin manually promotes | Roster, attendance, belt tests |
+| `admin` | Seed account only | Everything |
 
-Recording a registration payment for a guest automatically promotes `student_type` to
-`student`. Setting `student_type = parent` and linking children via the student edit page
-creates the family relationship stored in `student_guardians`.
-
----
-
-## Active / Inactive Status
-
-`students.active` is maintained automatically by `apply_auto_inactive()`, which runs every
-time the instructor or admin dashboard loads:
-
-- No attendance in the last 3 months → `active = 0`
-- Attends a class → `active = 1`
-- `active_override` set by admin → auto-rule skipped; "Override" badge shown on roster
-
-Only active students appear in the "Unpaid tuition" and "Missing waivers" lists on the admin
-dashboard. Family groups are treated as a unit for the tuition check.
+A separate `students.student_type` field controls how the roster groups a person
+(`guest` / `student` / `parent` / `instructor`). Recording a registration payment
+promotes `student_type` from `guest` to `student`.
 
 ---
 
 ## Registration Flow
 
-1. Fill in account details at `/portal/register.php`
-2. Portal searches for matching roster records (by name, DOB, or email) and shows match cards
-3. User picks a match, creates a new record, or flags that their record wasn't found
-4. Confirm screen — user reviews their choice, then submits. DB write happens here.
-5. User is logged in immediately with `guest` role and full student portal access
-6. Admin sees an alert card on the dashboard (Claimed Existing / New Registration / Needs Linking)
-7. Admin links or resolves the alert → user role updated to `student`, `parent`, or `instructor`
-8. Admin records a registration payment → `student_type` flips from `guest` to `student`
-9. Student signs the digital injury waiver
+1. Fill in account details → portal searches for matching roster entries (name, DOB, or email)
+2. User claims a match, creates a new record, or flags their record wasn't found
+3. User confirms → account created, logged in immediately as `guest`
+4. Admin resolves the alert → links account to roster, role updated
+5. Admin records registration payment → `student_type` promoted to `student`
+6. Student signs the digital injury waiver
 
 ---
 
 ## Payments
 
-Supported payment types: `monthly_tuition`, `registration`, `belt_test`, `slc_training`,
-`seminar`, `other`.
+Supported types: `monthly_tuition`, `registration`, `belt_test`, `slc_training`, `seminar`, `other`, `donation`.
 
-Supported payment methods: `paypal`, `cash`, `check`, `mail`.
+Supported methods: `paypal`, `cash`, `check`, `mail`.
 
-| Fee | Amount |
-|---|---|
-| Monthly tuition | $30 |
-| Registration | $15 |
-| Belt test | $10 |
-| SLC training | $10 |
-| Seminar | $60 |
-
-Students and parents pay online via PayPal. The SDK is in **sandbox mode** — switch
-`PAYPAL_MODE` to `'live'` in `config.php` before going to production.
+PayPal mode (sandbox vs live) is controlled by `PAYPAL_MODE`, `PAYPAL_CLIENT_ID`, and `PAYPAL_SECRET` in `.env`. Local `.env` uses sandbox credentials; live server `.env` uses live credentials.
 
 ---
 
 ## Security
 
-- **Session hardening** — `HttpOnly`, `SameSite=Lax`, session ID regenerated on login
-- **CSRF protection** — every mutating form includes a hidden `csrf_token`
-- **Login rate limiting** — 5 failed attempts in 15 minutes (same username or IP) blocks
-  login; stored in `login_attempts`, cleared after 1 hour
-- **Password hashing** — bcrypt, auto-upgraded on cost change
-- **Role enforcement** — `require_role()` at the top of every protected page
-- **Audit log** — all logins, edits, deletions, and payments logged with IP and timestamp
+- CSRF tokens on every mutating form
+- Login rate limiting (5 failures in 15 min blocks login)
+- Bcrypt password hashing
+- HttpOnly + SameSite=Lax session cookies, ID regenerated on login
+- Role enforcement on every protected page
+- Full audit log (logins, edits, deletions, payments)
 
 ---
 
-## Automated Cron Jobs (production / cPanel)
+## Cron Jobs
 
-| Job | Schedule | What it does |
+| Job | Schedule | Purpose |
 |---|---|---|
-| `cron/backup.php` | Wednesdays 2:00 AM | Full DB dump, gzipped, 8-week retention |
-| `cron/attendance_alert.php` | Sundays 7:00 AM | Alerts if Saturday session wasn't recorded |
-| `cron/waiver_alert.php` | Daily 8:00 AM | Alerts on active students with no waiver |
+| `cron/backup.php` | Sundays 7:00 AM | Full DB dump, pure PHP/PDO, 8-week retention |
+| `cron/attendance_alert.php` | Saturdays 8:00 PM | Alerts if Saturday session wasn't recorded |
+| `cron/waiver_alert.php` | Fridays 8:00 AM | Alerts on active students missing a waiver |
 | `cron/rent_reminder.php` | Saturdays 7:00 AM | First Saturday of month rent reminder |
 
-See `portal/cron/CRON_SETUP.txt` for exact cPanel commands.
+See `portal/cron/CRON_SETUP.txt` for cPanel commands.
 
 ---
 
 ## Cannot Test Locally
 
-- **PayPal flow** — capture endpoint requires a publicly reachable URL
+- **PayPal flow** — requires a publicly reachable URL
+- **Google login** — OAuth callback requires a publicly reachable URL registered in Google Cloud Console
+- **Email delivery** — `mail()` silently succeeds; no email is actually sent
+- **Cron jobs** — must be scheduled and tested on the live server via cPanel
 - **Session timeout** — PHP GC settings differ from production
-- **Email delivery** — `mail()` succeeds silently; no email is actually sent on localhost
 
 ---
 
 ## Local Development
 
 ```bash
-# 1. Import the database (phpMyAdmin or CLI)
+# 1. Import the database
 CREATE DATABASE karate_portal;
-USE karate_portal;
 SOURCE /path/to/karate_schema.sql;
 
-# 2. Install PHP dependencies (Google OAuth library)
-cd portal
-php composer.phar install   # or: composer install
-cd ..
+# 2. Install PHP dependencies
+cd portal && php composer.phar install && cd ..
 
 # 3. Install Playwright
 npm install
 
-# 4. Create tests/credentials.js (gitignored — never committed)
-# Copy the template below and fill in real values:
+# 4. Create tests/credentials.js (gitignored)
 module.exports = {
     ADMIN_USER: 'admin',  ADMIN_PASS: '...',
     INST_USER:  '...',    INST_PASS:  '...',
@@ -266,9 +159,8 @@ GOOGLE_CLIENT_SECRET=...
 Site: `http://localhost/karate/portal`
 
 ```bash
-npm test
-# or headed:
-npx playwright test --headed
+npm test          # run all tests
+npm run test:ui   # headed (see the browser)
 ```
 
 ---
@@ -277,20 +169,16 @@ npx playwright test --headed
 
 ```
 karate/
-├── portal/                 # PHP application root (served by XAMPP)
-│   ├── includes/           # Shared: auth, DB, config, header/footer, auto-inactive rule
-│   ├── student/            # Student portal — dashboard, attendance, payments, waiver, profile
-│   ├── parent/             # Parent portal — tabbed family dashboard, per-child pages
-│   ├── instructor/         # Instructor pages — attendance, roster, belt tests, student profiles
-│   ├── admin/              # Admin-only pages — all of the above plus payments, expenses,
-│   │                       #   donations, waivers, users, audit log, compare & link
-│   └── cron/               # Scheduled jobs — backup, alerts, reminders (see CRON_SETUP.txt)
-├── tests/                  # Playwright test suite (299 tests, ~2.7 min)
-│   ├── global-setup.js     # Saves DB snapshot + auth state before each run
-│   ├── global-teardown.js  # Always restores DB snapshot after run (pass or fail)
-│   ├── helpers.js          # Shared login, visit, CSRF, API helpers + AUTH constants
-│   ├── credentials.js      # gitignored — create locally with test account passwords
-│   └── *.spec.js           # One spec file per feature area (27 files)
-├── playwright.config.js
-└── karate_schema.sql       # Fresh-install DB schema with seed data
+├── portal/
+│   ├── includes/       # Shared: auth, DB, config, header/footer
+│   ├── student/        # Dashboard, attendance, payments, waiver, profile
+│   ├── parent/         # Tabbed family dashboard, per-child pages
+│   ├── instructor/     # Attendance, roster, belt tests, student profiles
+│   ├── admin/          # Full management: payments, expenses, waivers,
+│   │                   #   users, audit log, email, donations, backup
+│   └── cron/           # Scheduled jobs
+├── tests/              # Playwright test suite (~30 spec files)
+├── migrations/         # SQL migration scripts
+├── karate_schema.sql   # Fresh-install schema with seed data
+└── README.md
 ```

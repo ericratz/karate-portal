@@ -97,7 +97,7 @@ window.addEventListener('pageshow', function(e) {
         var data = new FormData();
         data.append('feedback_message', msg.value);
         data.append('csrf_token', '<?= csrf_token() ?>');
-        fetch('/karate/portal/send_feedback.php', {
+        fetch('<?= SITE_URL ?>/api/send_feedback.php', {
             method: 'POST',
             body: data
         })

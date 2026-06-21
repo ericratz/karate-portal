@@ -228,7 +228,7 @@ include __DIR__ . '/../includes/header.php';
                         Set up a recurring monthly payment of $<?= number_format(MONTHLY_FEE, 2) ?> through PayPal.
                         You can cancel anytime from your profile page.
                     </p>
-                    <form method="post" action="../paypal_subscription_create.php">
+                    <form method="post" action="<?= SITE_URL ?>/api/paypal_subscription_create.php">
                         <?= csrf_input() ?>
                         <button type="submit" class="btn btn-success">Set up Monthly Auto-Pay</button>
                     </form>
@@ -251,7 +251,7 @@ include __DIR__ . '/../includes/header.php';
     </div>
 </div>
 
-<script src="https://www.paypal.com/sdk/js?client-id=<?= htmlspecialchars(PAYPAL_CLIENT_ID) ?>&currency=USD&enable-funding=venmo"></script>
+<script src="https://www.paypal.com/sdk/js?client-id=<?= htmlspecialchars(PAYPAL_CLIENT_ID) ?>&currency=USD"></script>
 
 <script>
 const FEES = <?= json_encode($fees) ?>;
@@ -322,7 +322,7 @@ function renderButtons() {
 
         createOrder: function() {
             capturedItems = buildItems();
-            return fetch('/karate/portal/paypal_create.php', {
+            return fetch('<?= SITE_URL ?>/api/paypal_create.php', {
                 method:  'POST',
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
                 body:    JSON.stringify({
@@ -339,7 +339,7 @@ function renderButtons() {
         },
 
         onApprove: function(data) {
-            return fetch('/karate/portal/paypal_capture.php', {
+            return fetch('<?= SITE_URL ?>/api/paypal_capture.php', {
                 method:  'POST',
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
                 body:    JSON.stringify({ orderID: data.orderID }),

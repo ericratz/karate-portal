@@ -2,10 +2,10 @@
 // Creates a PayPal subscription and redirects the student to PayPal for approval.
 // Called via form POST from student/pay.php.
 
-require_once __DIR__ . '/includes/auth.php';
-require_once __DIR__ . '/includes/db.php';
-require_once __DIR__ . '/includes/config.php';
-require_once __DIR__ . '/includes/paypal.php';
+require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/db.php';
+require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../includes/paypal.php';
 require_login();
 verify_csrf();
 
@@ -16,7 +16,7 @@ $student->execute([current_user_id()]);
 $student = $student->fetch();
 
 if (!$student) {
-    header('Location: student/pay.php?autopay=no_profile');
+    header('Location: ' . SITE_URL . '/student/pay.php?autopay=no_profile');
     exit;
 }
 
@@ -26,7 +26,7 @@ $existing = db()->prepare(
 );
 $existing->execute([$student['id']]);
 if ($existing->fetch()) {
-    header('Location: student/pay.php?autopay=already');
+    header('Location: ' . SITE_URL . '/student/pay.php?autopay=already');
     exit;
 }
 
@@ -46,7 +46,6 @@ try {
     exit;
 } catch (RuntimeException $e) {
     error_log('Subscription create error: ' . $e->getMessage());
-    header('Location: student/pay.php?autopay=error');
+    header('Location: ' . SITE_URL . '/student/pay.php?autopay=error');
     exit;
 }
-

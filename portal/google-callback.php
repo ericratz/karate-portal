@@ -5,7 +5,7 @@ require_once __DIR__ . '/includes/config.php';
 require_once __DIR__ . '/vendor/autoload.php';
 
 if (!isset($_GET['code'])) {
-    header('Location: /karate/portal/login.php?error=google_failed');
+    header('Location: ' . SITE_URL . '/login.php?error=google_failed');
     exit;
 }
 
@@ -17,7 +17,7 @@ $client->setRedirectUri(GOOGLE_REDIRECT_URI);
 $token = $client->fetchAccessTokenWithAuthCode($_GET['code']);
 
 if (isset($token['error'])) {
-    header('Location: /karate/portal/login.php?error=google_failed');
+    header('Location: ' . SITE_URL . '/login.php?error=google_failed');
     exit;
 }
 
@@ -30,7 +30,7 @@ $first  = $guser->givenName     ?? '';
 $last   = $guser->familyName    ?? '';
 
 if ($email === '') {
-    header('Location: /karate/portal/login.php?error=google_failed');
+    header('Location: ' . SITE_URL . '/login.php?error=google_failed');
     exit;
 }
 
@@ -41,7 +41,7 @@ $user = $stmt->fetch();
 
 if ($user) {
     if (!$user['active']) {
-        header('Location: /karate/portal/login.php?error=inactive');
+        header('Location: ' . SITE_URL . '/login.php?error=inactive');
         exit;
     }
 
@@ -68,6 +68,6 @@ $_SESSION['google_pending'] = [
     'last'  => $last,
 ];
 
-header('Location: /karate/portal/google-register.php');
+header('Location: ' . SITE_URL . '/google-register.php');
 exit;
 

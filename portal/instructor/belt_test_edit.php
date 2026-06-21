@@ -65,8 +65,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== 'delet
 
         if ($awarded) {
             db()->prepare(
-                'INSERT IGNORE INTO student_ranks (student_id, rank_id, achieved_date)
-                 VALUES (?,?,?)'
+                'INSERT INTO student_ranks (student_id, rank_id, achieved_date)
+                 VALUES (?,?,?)
+                 ON DUPLICATE KEY UPDATE achieved_date = VALUES(achieved_date)'
             )->execute([$sid, $rank_id, $date]);
             audit('belt_awarded', 'student', $sid, "rank_id=$rank_id date=$date");
         }

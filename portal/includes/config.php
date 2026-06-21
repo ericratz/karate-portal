@@ -1,41 +1,67 @@
 <?php
-// Site-wide constants
-// Edit these to match your setup
+// ── Load .env (two levels up from portal/includes/) ───────────────────────
+$_env_file = dirname(__DIR__, 2) . '/.env';
+if (file_exists($_env_file)) {
+    foreach (file($_env_file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $_line) {
+        if (strncmp(trim($_line), '#', 1) === 0) continue;
+        if (strpos($_line, '=') === false) continue;
+        [$_k, $_v] = explode('=', $_line, 2);
+        $_k = trim($_k); $_v = trim($_v);
+        if (!defined($_k)) define($_k, $_v);
+    }
+}
 
-define('SITE_NAME',     'Shotokan Karate Portal');
-define('SITE_URL',      'https://noji.com/karate/portal');
-// DOJO_EMAIL  — the From address for all outgoing mail (must be a domain address, e.g. noreply@noji.com)
-// ADMIN_EMAIL — where alerts and feedback are delivered (your real inbox, e.g. nojiratz@hotmail.com)
-// Both are loaded from .env — fallbacks used only if .env is missing
+// ── Site ──────────────────────────────────────────────────────────────────
+define('SITE_NAME', 'Shotokan Karate Portal');
+if (!defined('SITE_URL')) define('SITE_URL', 'http://localhost/karate/portal');
+
+// ── Email ─────────────────────────────────────────────────────────────────
 if (!defined('DOJO_EMAIL'))  define('DOJO_EMAIL',  'noreply@noji.com');
 if (!defined('ADMIN_EMAIL')) define('ADMIN_EMAIL', 'admin@example.com');
-define('MONTHLY_FEE',   30.00);
-define('REG_FEE',       15.00);
-define('TEST_FEE',      10.00);
-define('SLC_FEE',       10.00);
-define('SEMINAR_FEE',   60.00);
 
-// Google OAuth — credentials loaded from .env (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET)
-// Leave them out of .env to hide the button entirely
+// ── Fees (business constants — same everywhere) ───────────────────────────
+define('MONTHLY_FEE', 30.00);
+define('REG_FEE',     15.00);
+define('TEST_FEE',    10.00);
+define('SLC_FEE',     10.00);
+define('SEMINAR_FEE', 60.00);
+
+// ── Google OAuth ──────────────────────────────────────────────────────────
 if (!defined('GOOGLE_CLIENT_ID'))     define('GOOGLE_CLIENT_ID',     '');
 if (!defined('GOOGLE_CLIENT_SECRET')) define('GOOGLE_CLIENT_SECRET', '');
-define('GOOGLE_REDIRECT_URI', 'https://noji.com/karate/portal/google-callback.php');
+define('GOOGLE_REDIRECT_URI', SITE_URL . '/google-callback.php');
 
-// PayPal — switch to live credentials when ready
-define('PAYPAL_MODE',        'sandbox');            // 'sandbox' or 'live'
-define('PAYPAL_CLIENT_ID',   'YOUR_PAYPAL_CLIENT_ID');
-define('PAYPAL_SECRET',      'YOUR_PAYPAL_SECRET');
+// ── PayPal ────────────────────────────────────────────────────────────────
+if (!defined('PAYPAL_MODE'))       define('PAYPAL_MODE',       'sandbox');
+if (!defined('PAYPAL_CLIENT_ID'))  define('PAYPAL_CLIENT_ID',  '');
+if (!defined('PAYPAL_SECRET'))     define('PAYPAL_SECRET',     '');
+if (!defined('PAYPAL_PLAN_ID'))    define('PAYPAL_PLAN_ID',    '');
+if (!defined('PAYPAL_WEBHOOK_ID')) define('PAYPAL_WEBHOOK_ID', '');
 
-// PayPal Subscriptions — set these up before enabling auto-pay:
-// 1. In PayPal dashboard: Catalog > Products > Create a product
-// 2. Catalog > Subscription Plans > Create a plan (monthly, $30, fixed price)
-// 3. Copy the Plan ID (P-XXXX) and paste below
-// 4. In PayPal dashboard: Notifications > Webhooks > Add webhook
-//    URL: https://yourdomain.com/karate/portal/paypal_webhook.php
-//    Events: BILLING.SUBSCRIPTION.ACTIVATED, BILLING.SUBSCRIPTION.CANCELLED,
-//            BILLING.SUBSCRIPTION.EXPIRED, BILLING.SUBSCRIPTION.SUSPENDED,
-//            PAYMENT.SALE.COMPLETED
-// 5. Copy the Webhook ID and paste below
-define('PAYPAL_PLAN_ID',     'YOUR_PAYPAL_PLAN_ID');   // P-XXXXXXXXXXXX
-define('PAYPAL_WEBHOOK_ID',  'YOUR_PAYPAL_WEBHOOK_ID'); // numeric webhook ID
+// ── Payment receipt email ─────────────────────────────────────────────────
+// $items: array of ['type' => string, 'amount' => float]
+function send_payment_receipt(string $to_email, string $to_name, array $items, float $total, string $method, ?string $txn_id = null): void {
+    if (!$to_email || !filter_var($to_email, FILTER_VALIDATE_EMAIL)) return;
 
+    $lines = '';
+    foreach ($items as $item) {
+        $label  = ucwords(str_replace('_', ' ', $item['type']));
+        $lines .= "  {$label}: $" . number_format((float)$item['amount'], 2) . "\n";
+    }
+
+    $body = "Hi {$to_name},\n\n"
+          . "We received your payment. Here is your receipt:\n\n"
+          . $lines
+          . "\n  Total:  $" . number_format($total, 2) . "\n"
+          . "  Method: " . ucwords(str_replace('_', ' ', $method)) . "\n"
+          . "  Date:   " . date('d M Y') . "\n";
+    if ($txn_id) $body .= "  Transaction ID: {$txn_id}\n";
+    $body .= "\nView your full payment history:\n"
+           . SITE_URL . "/student/payment_history.php\n\n"
+           . "Thank you,\n" . SITE_NAME;
+
+    $headers = "From: " . DOJO_EMAIL . "\r\n"
+             . "Reply-To: " . ADMIN_EMAIL . "\r\n"
+             . "Content-Type: text/plain; charset=UTF-8\r\n";
+    @mail($to_email, '[' . SITE_NAME . '] Payment Receipt', $body, $headers);
+}

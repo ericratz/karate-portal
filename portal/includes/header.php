@@ -158,10 +158,10 @@
 <nav class="navbar navbar-expand-md sticky-top">
     <div class="container-fluid">
         <?php
-        if (has_role('admin'))          $dashboard_url = '/karate/portal/admin/';
-        elseif (has_role('instructor')) $dashboard_url = '/karate/portal/instructor/';
-        elseif (has_role('parent'))     $dashboard_url = '/karate/portal/parent/';
-        else                            $dashboard_url = '/karate/portal/student/';
+        if (has_role('admin'))          $dashboard_url = SITE_URL . '/admin/';
+        elseif (has_role('instructor')) $dashboard_url = SITE_URL . '/instructor/';
+        elseif (has_role('parent'))     $dashboard_url = SITE_URL . '/parent/';
+        else                            $dashboard_url = SITE_URL . '/student/';
         ?>
         <a class="navbar-brand fw-semibold" href="<?= $dashboard_url ?>">
             &#9675; <?php
@@ -184,25 +184,25 @@
                        data-bs-toggle="dropdown" role="button">Admin</a>
                     <ul class="dropdown-menu">
                         <li><h6 class="dropdown-header">Instructor</h6></li>
-                        <li><a class="dropdown-item" href="/karate/portal/instructor/attendance_sessions.php">Attendance</a></li>
-                        <li><a class="dropdown-item" href="/karate/portal/instructor/belt_tests_all.php">Belt Tests</a></li>
-                        <li><a class="dropdown-item" href="/karate/portal/instructor/">Instructor Dashboard</a></li>
-                        <li><a class="dropdown-item" href="/karate/portal/admin/students.php">Roster</a></li>
-                        <li><a class="dropdown-item" href="/karate/portal/admin/student_notes.php">Student Notes</a></li>
+                        <li><a class="dropdown-item" href="<?= SITE_URL ?>/instructor/attendance_sessions.php">Attendance</a></li>
+                        <li><a class="dropdown-item" href="<?= SITE_URL ?>/instructor/belt_tests_all.php">Belt Tests</a></li>
+                        <li><a class="dropdown-item" href="<?= SITE_URL ?>/instructor/">Instructor Dashboard</a></li>
+                        <li><a class="dropdown-item" href="<?= SITE_URL ?>/admin/students.php">Roster</a></li>
+                        <li><a class="dropdown-item" href="<?= SITE_URL ?>/admin/student_notes.php">Student Notes</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><h6 class="dropdown-header">Finances</h6></li>
-                        <li><a class="dropdown-item" href="/karate/portal/admin/donations.php">Donations</a></li>
-                        <li><a class="dropdown-item" href="/karate/portal/admin/expenses.php">Expenses</a></li>
-                        <li><a class="dropdown-item" href="/karate/portal/admin/waivers.php">Exempt</a></li>
-                        <li><a class="dropdown-item" href="/karate/portal/admin/payments.php">Payments</a></li>
+                        <li><a class="dropdown-item" href="<?= SITE_URL ?>/admin/donations.php">Donations</a></li>
+                        <li><a class="dropdown-item" href="<?= SITE_URL ?>/admin/expenses.php">Expenses</a></li>
+                        <li><a class="dropdown-item" href="<?= SITE_URL ?>/admin/waivers.php">Exempt</a></li>
+                        <li><a class="dropdown-item" href="<?= SITE_URL ?>/admin/payments.php">Payments</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><h6 class="dropdown-header">Security</h6></li>
-                        <li><a class="dropdown-item" href="/karate/portal/admin/audit_log.php">Audit Log</a></li>
-                        <li><a class="dropdown-item" href="/karate/portal/admin/users.php">Users</a></li>
+                        <li><a class="dropdown-item" href="<?= SITE_URL ?>/admin/audit_log.php">Audit Log</a></li>
+                        <li><a class="dropdown-item" href="<?= SITE_URL ?>/admin/users.php">Users</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><h6 class="dropdown-header">Communication</h6></li>
-                        <li><a class="dropdown-item" href="/karate/portal/admin/general_notes.php">Class Notes</a></li>
-                        <li><a class="dropdown-item" href="/karate/portal/admin/email_students.php">Email Students</a></li>
+                        <li><a class="dropdown-item" href="<?= SITE_URL ?>/admin/general_notes.php">Class Notes</a></li>
+                        <li><a class="dropdown-item" href="<?= SITE_URL ?>/admin/email_students.php">Email Students</a></li>
                     </ul>
                 </li>
                 <?php endif; ?>
@@ -229,7 +229,7 @@
                     ?>
                     <span class="role-badge"<?= $_tip ? ' data-bs-toggle="tooltip" title="' . htmlspecialchars($_tip) . '"' : '' ?>><?= htmlspecialchars($_rt) ?></span>
                     &nbsp;
-                    <a href="/karate/portal/logout.php"
+                    <a href="<?= SITE_URL ?>/logout.php"
                        class="btn btn-sm btn-logout ms-2">Log out</a>
                 </span>
             </div>

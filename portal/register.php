@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/includes/auth.php';
-require_once __DIR__ . '/includes/db.php';
 require_once __DIR__ . '/includes/config.php';
+require_once __DIR__ . '/includes/registration.php';
 
 // Already logged in → go to dashboard
 if (!empty($_SESSION['user_id'])) {
@@ -10,39 +10,6 @@ if (!empty($_SESSION['user_id'])) {
 }
 
 $error = '';
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function mask_email(string $email): string {
-    if (strpos($email, '@') === false) return '***';
-    $parts  = explode('@', $email, 2);
-    $local  = $parts[0];
-    $domain = $parts[1];
-    return substr($local, 0, 1) . '***@' . $domain;
-}
-
-function find_matches(string $first, string $last, string $dob, string $email): array {
-    $stmt = db()->prepare(
-        'SELECT s.id, s.first_name, s.last_name, s.date_of_birth,
-                s.city_state_zip, s.email, s.student_type,
-                (SELECT r.name FROM student_ranks sr
-                 JOIN ranks r ON r.id = sr.rank_id
-                 WHERE sr.student_id = s.id
-                 ORDER BY r.rank_order DESC LIMIT 1) AS rank_name
-         FROM students s
-         WHERE s.user_id IS NULL
-           AND (
-               (LOWER(s.first_name) = LOWER(?) AND LOWER(s.last_name) = LOWER(?))
-               OR (? != \'\' AND s.date_of_birth IS NOT NULL AND s.date_of_birth = ?)
-               OR (? != \'\' AND s.email IS NOT NULL AND s.email != \'\' AND LOWER(s.email) = LOWER(?))
-           )
-         ORDER BY
-             (LOWER(s.first_name) = LOWER(?) AND LOWER(s.last_name) = LOWER(?)) DESC,
-             s.first_name, s.last_name'
-    );
-    $stmt->execute([$first, $last, $dob, $dob, $email, $email, $first, $last]);
-    return $stmt->fetchAll();
-}
 
 // ─── POST Handlers ────────────────────────────────────────────────────────────
 
@@ -58,6 +25,20 @@ if ($action === 'back1') {
 
 } elseif ($action === 'step1') {
     verify_csrf();
+
+    // Rate limit: max 5 registration attempts per hour per IP
+    $reg_ip = $_SERVER['REMOTE_ADDR'] ?? '';
+    if ($reg_ip !== '127.0.0.1' && $reg_ip !== '::1') {
+        $rl = db()->prepare(
+            "SELECT COUNT(*) FROM login_attempts WHERE identifier = ? AND attempted_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)"
+        );
+        $rl->execute(['reg:' . $reg_ip]);
+        if ((int)$rl->fetchColumn() >= 5) {
+            $error = 'Too many registration attempts. Please try again in an hour.';
+        }
+    }
+
+    if (!$error) {
     $first    = trim($_POST['first_name']    ?? '');
     $last     = trim($_POST['last_name']     ?? '');
     $dob      = trim($_POST['date_of_birth'] ?? '');
@@ -96,6 +77,13 @@ if ($action === 'back1') {
             }
         }
     }
+    // Record attempt regardless of validation outcome (prevents bot spam)
+    if ($reg_ip !== '127.0.0.1' && $reg_ip !== '::1') {
+        try {
+            db()->prepare("INSERT INTO login_attempts (identifier) VALUES (?)")->execute(['reg:' . $reg_ip]);
+        } catch (Exception $e) {}
+    }
+    } // end if (!$error)
 
 } elseif ($action === 'select') {
     verify_csrf();
@@ -589,7 +577,7 @@ if ($step === 'confirm' && ($sel['type'] ?? '') === 'claim') {
 
     <div class="card-footer text-center text-muted small py-2">
         <?php if ($step === 'form'): ?>
-            Already have an account? <a href="/karate/portal/login.php">Log in</a>
+            Already have an account? <a href="<?= SITE_URL ?>/login.php">Log in</a>
         <?php else: ?>
             &nbsp;
         <?php endif; ?>

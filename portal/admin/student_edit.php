@@ -15,6 +15,7 @@ function sync_registration_status(int $student_id): void {
 }
 
 $id    = (int)($_GET['id'] ?? 0);
+$ref   = $_GET['ref'] ?? '';
 $msg   = '';
 $error = '';
 
@@ -120,8 +121,8 @@ if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ===
     $pay_type   = $_POST['payment_type']   ?? 'monthly_tuition';
     $pay_method = $_POST['payment_method'] ?? 'cash';
     $amount     = (float)($_POST['amount'] ?? 0);
-    $valid_types   = ['monthly_tuition','registration','belt_test','slc_training','seminar','other'];
-    $valid_methods = ['paypal','cash','check','mail','venmo'];
+    $valid_types   = ['monthly_tuition','registration','belt_test','slc_training','seminar','other','donation'];
+    $valid_methods = ['paypal','cash','check','mail'];
     if ($amount > 0 && in_array($pay_type, $valid_types) && in_array($pay_method, $valid_methods)) {
         db()->prepare(
             'UPDATE payments SET payment_date=?, payment_type=?, payment_method=?, amount=? WHERE id=? AND student_id=?'
@@ -290,13 +291,20 @@ if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ===
     $test_date = $_POST['test_date'] ?? date('Y-m-d');
     $score     = ($_POST['score'] ?? '') !== '' ? min(100, max(0, (int)$_POST['score'])) : null;
     $result    = $score === null ? 'pending' : ($score >= 80 ? 'pass' : 'fail');
-    $fee_paid     = isset($_POST['fee_paid'])     ? 1 : 0;
-    $belt_awarded = ($result === 'pass' && isset($_POST['belt_awarded'])) ? 1 : 0;
+    $fee_paid     = isset($_POST['fee_paid']) ? 1 : 0;
+    $belt_awarded = ($result === 'pass') ? 1 : 0;
     if ($rank_for) {
         db()->prepare(
             'INSERT INTO belt_tests (student_id, rank_testing_for, test_date, result, score, fee_paid, belt_awarded)
              VALUES (?,?,?,?,?,?,?)'
         )->execute([$id, $rank_for, $test_date, $result, $score, $fee_paid, $belt_awarded]);
+        if ($belt_awarded) {
+            db()->prepare(
+                'INSERT INTO student_ranks (student_id, rank_id, achieved_date)
+                 VALUES (?,?,?)
+                 ON DUPLICATE KEY UPDATE achieved_date = VALUES(achieved_date)'
+            )->execute([$id, $rank_for, $test_date]);
+        }
         audit('add_belt_test', 'student', $id);
     }
     header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
@@ -311,13 +319,20 @@ if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ===
     $test_date = $_POST['test_date'] ?? date('Y-m-d');
     $score     = ($_POST['score'] ?? '') !== '' ? min(100, max(0, (int)$_POST['score'])) : null;
     $result    = $score === null ? 'pending' : ($score >= 80 ? 'pass' : 'fail');
-    $fee_paid     = isset($_POST['fee_paid'])     ? 1 : 0;
-    $belt_awarded = ($result === 'pass' && isset($_POST['belt_awarded'])) ? 1 : 0;
+    $fee_paid     = isset($_POST['fee_paid']) ? 1 : 0;
+    $belt_awarded = ($result === 'pass') ? 1 : 0;
     if ($bt_id && $rank_for) {
         db()->prepare(
             'UPDATE belt_tests SET rank_testing_for=?, test_date=?, result=?, score=?, fee_paid=?, belt_awarded=?
              WHERE id=? AND student_id=?'
         )->execute([$rank_for, $test_date, $result, $score, $fee_paid, $belt_awarded, $bt_id, $id]);
+        if ($belt_awarded) {
+            db()->prepare(
+                'INSERT INTO student_ranks (student_id, rank_id, achieved_date)
+                 VALUES (?,?,?)
+                 ON DUPLICATE KEY UPDATE achieved_date = VALUES(achieved_date)'
+            )->execute([$id, $rank_for, $test_date]);
+        }
         audit('update_belt_test', 'student', $id);
     }
     header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
@@ -956,6 +971,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                                     <option value="slc_training">SLC Training</option>
                                     <option value="seminar">Seminar</option>
                                     <option value="other">Other</option>
+                                    <option value="donation">Donation</option>
                                 </select>
                             </div>
                             <div class="col-6">
@@ -995,7 +1011,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                         <tr class="pay-data-row">
                             <td><?= date('d M Y', strtotime($p['payment_date'])) ?></td>
                             <td><?= ucwords(str_replace('_', ' ', $p['payment_type'])) ?></td>
-                            <td><?= ['paypal'=>'PayPal','venmo'=>'Venmo','cash'=>'Cash','check'=>'Check','mail'=>'Mail'][$p['payment_method']] ?? ucfirst($p['payment_method']) ?></td>
+                            <td><?= ['paypal'=>'PayPal','cash'=>'Cash','check'=>'Check','mail'=>'Mail'][$p['payment_method']] ?? ucfirst($p['payment_method']) ?></td>
                             <td class="text-end">$<?= number_format($p['amount'], 2) ?></td>
                             <td class="pay-action-col text-end text-nowrap">
                                 <button type="button" class="btn btn-sm btn-outline-primary py-0 me-1"
@@ -1023,7 +1039,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                                     <div class="col-auto">
                                         <label class="form-label small mb-1">Type</label>
                                         <select name="payment_type" class="form-select form-select-sm">
-                                            <?php foreach (['monthly_tuition'=>'Monthly Tuition','registration'=>'Registration Fee','belt_test'=>'Belt Test Fee','slc_training'=>'SLC Training','seminar'=>'Seminar','other'=>'Other'] as $tv=>$tl): ?>
+                                            <?php foreach (['monthly_tuition'=>'Monthly Tuition','registration'=>'Registration Fee','belt_test'=>'Belt Test Fee','slc_training'=>'SLC Training','seminar'=>'Seminar','other'=>'Other','donation'=>'Donation'] as $tv=>$tl): ?>
                                             <option value="<?= $tv ?>" <?= $p['payment_type']===$tv?'selected':'' ?>><?= $tl ?></option>
                                             <?php endforeach; ?>
                                         </select>

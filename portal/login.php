@@ -137,7 +137,7 @@ if (defined('GOOGLE_CLIENT_ID') && GOOGLE_CLIENT_ID !== '') {
         </div>
         <div class="card-footer text-center text-muted small py-2">
             Don't have an account?
-            <a href="/karate/portal/register.php">Create one</a>
+            <a href="<?= SITE_URL ?>/register.php">Create one</a>
             &nbsp;|&nbsp;
             <a href="/karate/">Back to karate home</a>
         </div>

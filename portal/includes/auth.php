@@ -3,6 +3,7 @@
 // Call require_login() or require_role() at the top of each page
 
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/config.php';
 
 date_default_timezone_set('America/Denver');
 
@@ -48,7 +49,7 @@ function verify_csrf(): void {
 // ── Role / login guards ──────────────────────────────────────
 function require_login(): void {
     if (empty($_SESSION['user_id'])) {
-        header('Location: /karate/portal/login.php');
+        header('Location: ' . SITE_URL . '/login.php');
         exit;
     }
 }
@@ -172,10 +173,10 @@ function attempt_login(string $username, string $password): string {
 
 function dashboard_url(string $role): string {
     switch ($role) {
-        case 'admin':      return '/karate/portal/admin/';
-        case 'instructor': return '/karate/portal/instructor/';
-        case 'parent':     return '/karate/portal/parent/';
-        default:           return '/karate/portal/student/'; // student, guest
+        case 'admin':      return SITE_URL . '/admin/';
+        case 'instructor': return SITE_URL . '/instructor/';
+        case 'parent':     return SITE_URL . '/parent/';
+        default:           return SITE_URL . '/student/'; // student, guest
     }
 }
 
@@ -200,7 +201,7 @@ function logout(): void {
             $p['path'], $p['domain'], $p['secure'], $p['httponly']);
     }
     session_destroy();
-    header('Location: /karate/portal/login.php');
+    header('Location: ' . SITE_URL . '/login.php');
     exit;
 }
 

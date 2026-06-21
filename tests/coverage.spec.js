@@ -57,7 +57,7 @@ test('pay.php has PayPal SDK script tag', async ({ page }) => {
 
 test('paypal_create.php rejects unauthenticated request', async ({ page }) => {
     // Hit the endpoint without a session
-    const res = await page.goto(BASE + '/paypal_create.php');
+    const res = await page.goto(BASE + '/api/paypal_create.php');
     // Should redirect to login or return error
     const body = await page.textContent('body');
     expect(body).not.toContain('order_id');

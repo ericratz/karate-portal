@@ -1,8 +1,8 @@
 <?php
-require_once __DIR__ . '/includes/auth.php';
-require_once __DIR__ . '/includes/db.php';
-require_once __DIR__ . '/includes/config.php';
-require_once __DIR__ . '/includes/paypal.php';
+require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/db.php';
+require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../includes/paypal.php';
 require_login();
 
 header('Content-Type: application/json');
@@ -92,8 +92,8 @@ if (abs($server_total - $total) > 0.01) {
 }
 
 $labels = array_map(function($i) {
-    if ($i['type'] === 'other')     return $i['reason'] ?? 'Other';
-    if ($i['type'] === 'donation')  return 'Donation';
+    if ($i['type'] === 'other')    return $i['reason'] ?? 'Other';
+    if ($i['type'] === 'donation') return 'Donation';
     return ucwords(str_replace('_', ' ', $i['type']));
 }, $items);
 $description = 'Shotokan Karate — ' . implode(', ', $labels);
@@ -115,4 +115,3 @@ try {
     http_response_code(500);
     echo json_encode(['error' => $e->getMessage()]);
 }
-

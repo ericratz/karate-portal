@@ -43,8 +43,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'edit_
     $month  = $_POST['month_covered']         ?? '';
     $txn    = trim($_POST['transaction_id']   ?? '');
     $notes  = trim($_POST['notes']            ?? '');
-    $valid_types   = ['monthly_tuition','registration','belt_test','slc_training','seminar','other'];
-    $valid_methods = ['paypal','cash','check','mail','venmo'];
+    $valid_types   = ['monthly_tuition','registration','belt_test','slc_training','seminar','other','donation'];
+    $valid_methods = ['paypal','cash','check','mail'];
     if ($pid && $amount > 0 && in_array($type, $valid_types) && in_array($method, $valid_methods)) {
         db()->prepare(
             'UPDATE payments SET payment_date=?, payment_type=?, payment_method=?, amount=?,
@@ -84,8 +84,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== 'delet
     $txn    = trim($_POST['transaction_id']  ?? '');
     $notes  = trim($_POST['notes']           ?? '');
 
-    $valid_types   = ['monthly_tuition','registration','belt_test','slc_training','seminar','other'];
-    $valid_methods = ['paypal','cash','check','mail','venmo']; // venmo kept for legacy records
+    $valid_types   = ['monthly_tuition','registration','belt_test','slc_training','seminar','other','donation'];
+    $valid_methods = ['paypal','cash','check','mail'];
 
     $payer_name = trim($_POST['payer_name'] ?? '');
     $payer_note = trim($_POST['payer_note'] ?? '');
@@ -115,6 +115,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== 'delet
                  ->execute([$sid]);
         }
         $msg = 'Payment recorded.';
+
+        // Send payment receipt email to student
+        $receipt_student = db()->prepare('SELECT first_name, last_name, email FROM students WHERE id = ?');
+        $receipt_student->execute([$sid]);
+        $rs = $receipt_student->fetch();
+        if ($rs && !empty($rs['email'])) {
+            $rs_name = trim($rs['first_name'] . ' ' . $rs['last_name']);
+            send_payment_receipt(
+                $rs['email'],
+                $rs_name,
+                [['type' => $type, 'amount' => $amount]],
+                $amount,
+                $method,
+                $txn ?: null
+            );
+        }
     }
 }
 
@@ -208,7 +224,7 @@ include __DIR__ . '/../includes/header.php';
                     <label class="form-label">Type *</label>
                     <select name="payment_type" class="form-select" required>
                         <?php
-                        $types = ['monthly_tuition','registration','belt_test','slc_training','seminar','other'];
+                        $types = ['monthly_tuition','registration','belt_test','slc_training','seminar','other','donation'];
                         foreach ($types as $t):
                         ?>
                         <option value="<?= $t ?>" <?= $t === $prefill_type ? 'selected' : '' ?>>
@@ -291,7 +307,7 @@ include __DIR__ . '/../includes/header.php';
                 <label class="form-label small mb-1">Type</label>
                 <select name="type" class="form-select form-select-sm">
                     <option value="">All Types</option>
-                    <?php foreach (['monthly_tuition','registration','belt_test','slc_training','seminar','other'] as $t): ?>
+                    <?php foreach (['monthly_tuition','registration','belt_test','slc_training','seminar','other','donation'] as $t): ?>
                         <option value="<?= $t ?>" <?= $t === $f_type ? 'selected' : '' ?>>
                             <?= ucwords(str_replace('_',' ',$t)) ?>
                         </option>
@@ -302,7 +318,7 @@ include __DIR__ . '/../includes/header.php';
                 <label class="form-label small mb-1">Method</label>
                 <select name="method" class="form-select form-select-sm">
                     <option value="">All Methods</option>
-                    <?php foreach (['cash'=>'Cash','check'=>'Check','paypal'=>'PayPal','venmo'=>'Venmo'] as $mv=>$ml): ?>
+                    <?php foreach (['cash'=>'Cash','check'=>'Check','paypal'=>'PayPal','mail'=>'Mail'] as $mv=>$ml): ?>
                         <option value="<?= $mv ?>" <?= $mv === $f_method ? 'selected' : '' ?>><?= $ml ?></option>
                     <?php endforeach; ?>
                 </select>
@@ -391,7 +407,7 @@ include __DIR__ . '/../includes/header.php';
                     <td class="text-nowrap">
                         <?= $p['month_covered'] ? date('M Y', strtotime($p['month_covered'])) : '—' ?>
                     </td>
-                    <td><?= ['paypal'=>'PayPal','venmo'=>'Venmo','cash'=>'Cash','check'=>'Check','mail'=>'Mail'][$p['payment_method']] ?? ucfirst($p['payment_method']) ?></td>
+                    <td><?= ['paypal'=>'PayPal','cash'=>'Cash','check'=>'Check','mail'=>'Mail'][$p['payment_method']] ?? ucfirst($p['payment_method']) ?></td>
                     <td><?= htmlspecialchars($p['transaction_id'] ?? '—') ?></td>
                     <td>
                         <?= htmlspecialchars($p['notes'] ?? '') ?>
@@ -429,7 +445,7 @@ include __DIR__ . '/../includes/header.php';
                             <div class="col-auto">
                                 <label class="form-label small mb-1">Type</label>
                                 <select name="payment_type" class="form-select form-select-sm">
-                                    <?php foreach (['monthly_tuition'=>'Monthly Tuition','registration'=>'Registration Fee','belt_test'=>'Belt Test Fee','slc_training'=>'SLC Training','seminar'=>'Seminar','other'=>'Other'] as $tv=>$tl): ?>
+                                    <?php foreach (['monthly_tuition'=>'Monthly Tuition','registration'=>'Registration Fee','belt_test'=>'Belt Test Fee','slc_training'=>'SLC Training','seminar'=>'Seminar','other'=>'Other','donation'=>'Donation'] as $tv=>$tl): ?>
                                     <option value="<?= $tv ?>" <?= $p['payment_type']===$tv?'selected':'' ?>><?= $tl ?></option>
                                     <?php endforeach; ?>
                                 </select>

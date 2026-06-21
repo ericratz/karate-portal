@@ -147,7 +147,9 @@ function badge_result(string $r): string {
             Member since <?= fmt_date($student['registration_date']) ?>
         </small>
     </div>
-    <div class="d-flex gap-2">
+    <div class="d-flex gap-2 flex-wrap">
+        <a href="https://noji.com/karate/class/homework/homework.php" target="_blank" class="btn" style="background-color:#0052cc;border-color:#0052cc;color:#fff;">Homework</a>
+        <a href="https://noji.com/karate/testing/testing.php" target="_blank" class="btn" style="background-color:#0052cc;border-color:#0052cc;color:#fff;">Tests &amp; Grading</a>
         <a href="../instructor/student_profile.php?id=<?= $student_id ?>" class="btn btn-success">View Profile</a>
         <a href="pay.php" class="btn btn-success">Make a Payment</a>
     </div>
