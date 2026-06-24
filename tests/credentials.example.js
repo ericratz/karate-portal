@@ -14,6 +14,10 @@ module.exports = {
     GUEST_USER:  'test',
     GUEST_PASS:  'your_guest_password',
 
+    // Parent portal account (student_type='parent', has linked children in student_guardians)
+    PARENT_USER: 'test',
+    PARENT_PASS: 'your_parent_password',
+
     // Password used for dynamically-registered waiver test account
     W_PASS:      'your_waiver_test_password',
 };

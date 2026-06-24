@@ -47,7 +47,9 @@ try {
     // Verify the captured amount matches what we set (fraud check)
     $captured_amount = paypal_captured_amount($capture);
     if (abs($captured_amount - $pending['total']) > 0.01) {
-        error_log("PayPal amount mismatch: expected {$pending['total']}, got $captured_amount, order $order_id");
+        log_event('critical', 'payment', 'PayPal amount mismatch', [
+            'expected' => $pending['total'], 'captured' => $captured_amount, 'order_id' => $order_id,
+        ]);
         echo json_encode(['success' => false, 'error' => 'Payment amount mismatch — contact the instructor']);
         exit;
     }
@@ -133,7 +135,7 @@ try {
     ]);
 
 } catch (RuntimeException $e) {
-    error_log('PayPal capture error: ' . $e->getMessage());
+    log_event('error', 'payment', 'PayPal capture exception', ['message' => $e->getMessage(), 'order_id' => $order_id]);
     http_response_code(500);
     echo json_encode(['success' => false, 'error' => 'Payment capture failed — contact the instructor']);
 }

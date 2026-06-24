@@ -3,3 +3,10 @@
     Order allow,deny
     Deny from all
 </Files>
+
+# Security headers
+<IfModule mod_headers.c>
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://www.paypal.com https://www.paypalobjects.com https://accounts.google.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data: https://www.paypalobjects.com; frame-src https://www.paypal.com https://accounts.google.com; connect-src 'self' https://www.paypal.com https://api.paypal.com https://api.sandbox.paypal.com; font-src 'self' https://cdn.jsdelivr.net; report-uri /karate/portal/api/csp_report.php"
+</IfModule>

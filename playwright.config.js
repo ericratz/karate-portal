@@ -3,6 +3,7 @@ const { defineConfig } = require('@playwright/test');
 
 module.exports = defineConfig({
     testDir: './tests',
+    outputDir: 'tests/results',
     testIgnore: '**/cleanup.spec.js',   // run manually: npx playwright test tests/cleanup.spec.js
     timeout: 12000,
     retries: 0,
@@ -12,7 +13,7 @@ module.exports = defineConfig({
     globalTeardown: './tests/global-teardown.js',
     reporter: [
         ['list'],
-        ['html', { outputFolder: 'playwright-report', open: 'never' }],
+        ['html', { outputFolder: 'tests/report', open: 'never' }],
         ['./tests/fail-reporter.js'],
     ],
     use: {

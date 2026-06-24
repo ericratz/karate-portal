@@ -138,8 +138,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== 'delet
 $f_student = (int)($_GET['student_id'] ?? 0);
 $f_type    = $_GET['type']   ?? '';
 $f_method  = $_GET['method'] ?? '';
-$f_from    = $_GET['from']   ?? '';
-$f_to      = $_GET['to']     ?? '';
+$f_from    = $_GET['from']   ?? date('Y-01-01');
+$f_to      = $_GET['to']     ?? date('Y-m-d');
 
 $where  = ['1=1'];
 $params = [];
@@ -147,8 +147,8 @@ $params = [];
 if ($f_student) { $where[] = 'p.student_id = ?'; $params[] = $f_student; }
 if ($f_type)    { $where[] = 'p.payment_type = ?'; $params[] = $f_type; }
 if ($f_method)  { $where[] = 'p.payment_method = ?'; $params[] = $f_method; }
-if ($f_from)    { $where[] = 'DATE(p.payment_date) >= ?'; $params[] = $f_from; }
-if ($f_to)      { $where[] = 'DATE(p.payment_date) <= ?'; $params[] = $f_to; }
+if ($f_from)    { $where[] = 'p.payment_date >= ?'; $params[] = $f_from . ' 00:00:00'; }
+if ($f_to)      { $where[] = 'p.payment_date <= ?'; $params[] = $f_to   . ' 23:59:59'; }
 
 $sql = 'SELECT p.*, s.first_name, s.last_name, u.username AS recorded_by_name
         FROM payments p
@@ -342,13 +342,11 @@ include __DIR__ . '/../includes/header.php';
             </div>
             <div class="col-auto">
                 <a href="payments.php?from=<?= date('Y-01-01') ?>&to=<?= date('Y-m-d') ?>"
-                   class="btn btn-outline-secondary btn-sm <?= ($f_from === date('Y-01-01') && $f_to === date('Y-m-d') && !$f_student && !$f_type && !$f_method) ? 'active' : '' ?>">This Year</a>
+                   class="btn btn-filter btn-sm <?= ($f_from === date('Y-01-01') && $f_to === date('Y-m-d') && !$f_student && !$f_type && !$f_method) ? 'active' : '' ?>">This Year</a>
             </div>
-            <?php if ($f_from || $f_to || $f_student || $f_type || $f_method): ?>
             <div class="col-auto">
-                <a href="payments.php" class="btn btn-filter btn-sm">Clear</a>
+                <a href="payments.php?from=&to=" class="btn btn-filter btn-sm">Clear</a>
             </div>
-            <?php endif; ?>
         </form>
     </div>
 </div>

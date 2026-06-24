@@ -24,10 +24,31 @@ $belt_tests = db()->query(
 $has_more_tests = count($belt_tests) === 11;
 if ($has_more_tests) array_pop($belt_tests);
 
+// Own student record (for View Profile / Payment buttons)
+$own_student_q = db()->prepare('SELECT id FROM students WHERE user_id = ? LIMIT 1');
+$own_student_q->execute([current_user_id()]);
+$own_student_id = $own_student_q->fetchColumn();
+
+// Children linked to this instructor
+$has_children = false;
+if ($own_student_id) {
+    $ic_q = db()->prepare(
+        'SELECT COUNT(*) FROM student_guardians WHERE parent_student_id = ?'
+    );
+    $ic_q->execute([$own_student_id]);
+    $has_children = (bool)$ic_q->fetchColumn();
+}
+
 $page_title = 'Instructor Dashboard';
 include __DIR__ . '/../includes/header.php';
 ?>
 
+<?php if ($own_student_id): ?>
+<div class="d-flex justify-content-end gap-2 mb-3">
+    <a href="student_profile.php?id=<?= (int)$own_student_id ?>" class="btn btn-outline-secondary">View Profile</a>
+    <a href="../parent/pay.php?student_id=<?= (int)$own_student_id ?>" class="btn btn-success">Make a Payment</a>
+</div>
+<?php endif; ?>
 
 <div class="row g-4">
 

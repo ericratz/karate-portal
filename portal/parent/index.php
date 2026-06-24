@@ -66,14 +66,19 @@ if (!in_array($tab_id, $allowed_ids)) {
 }
 
 // Load the selected student's full data
-$student        = null;
-$attendance     = [];
-$payments       = [];
-$belt_tests     = [];
-$rank           = null;
-$active_waivers = [];
-$has_autopay    = false;
-$att_summary    = ['attended' => 0, 'total' => 0];
+$student           = null;
+$attendance        = [];
+$payments          = [];
+$belt_tests        = [];
+$rank              = null;
+$active_waivers    = [];
+$has_autopay       = false;
+$att_summary       = ['attended' => 0, 'total' => 0];
+$att_chart_by_month = [];
+$chart_labels      = [];
+$chart_data        = [];
+$chart_colors      = [];
+$chart_ranks       = [];
 
 if ($tab_id) {
     $student = db()->prepare('SELECT * FROM students WHERE id = ?');
@@ -128,6 +133,40 @@ if ($tab_id) {
         );
         $wv_q->execute([$tab_id]);
         $active_waivers = $wv_q->fetchAll();
+
+        // Monthly attendance — last 12 months
+        $ac_q = db()->prepare(
+            "SELECT DATE_FORMAT(cs.session_date, '%Y-%m') AS month, COUNT(*) AS count
+             FROM attendance a
+             JOIN class_sessions cs ON cs.id = a.session_id
+             WHERE a.student_id = ? AND a.present = 1
+               AND cs.session_date >= DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 11 MONTH), '%Y-%m-01')
+             GROUP BY month
+             ORDER BY month ASC"
+        );
+        $ac_q->execute([$tab_id]);
+        $att_chart_by_month = $ac_q->fetchAll(PDO::FETCH_KEY_PAIR);
+        $rm_q = db()->prepare(
+            "SELECT DATE_FORMAT(sr.achieved_date, '%Y-%m') AS month, r.name AS rank_name
+             FROM student_ranks sr
+             JOIN ranks r ON r.id = sr.rank_id
+             WHERE sr.student_id = ?
+               AND sr.achieved_date >= DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 11 MONTH), '%Y-%m-01')
+             ORDER BY sr.achieved_date"
+        );
+        $rm_q->execute([$tab_id]);
+        $rank_months = [];
+        foreach ($rm_q->fetchAll() as $row) {
+            $rank_months[$row['month']][] = $row['rank_name'];
+        }
+
+        for ($i = 11; $i >= 0; $i--) {
+            $key            = date('Y-m', strtotime("-$i months"));
+            $chart_labels[] = date('M Y', strtotime("-$i months"));
+            $chart_data[]   = (int)($att_chart_by_month[$key] ?? 0);
+            $chart_colors[] = isset($rank_months[$key]) ? '#6f42c1' : '#198754';
+            $chart_ranks[]  = isset($rank_months[$key]) ? implode(', ', $rank_months[$key]) : null;
+        }
 
         $sub_q = db()->prepare(
             "SELECT id FROM subscriptions WHERE student_id=? AND status='active' LIMIT 1"
@@ -246,6 +285,14 @@ function score_badge(string $result, ?int $score): string {
 
 </div>
 
+
+<!-- ── Attendance bar graph ── -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white fw-semibold border-bottom">Attendance — Last 12 Months</div>
+    <div class="card-body" style="height:220px;">
+        <canvas id="attChart"></canvas>
+    </div>
+</div>
 
 <!-- ── Two-column layout ── -->
 <div class="row g-4">
@@ -436,6 +483,61 @@ function score_badge(string $result, ?int $score): string {
 </div><!-- /row -->
 
 <?php endif; // $student ?>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+    var chartInst = null;
+    var ranks     = <?= json_encode($chart_ranks) ?>;
+
+    function colors() {
+        var dark = document.getElementById('html-root').getAttribute('data-bs-theme') === 'dark';
+        return {
+            grid:  dark ? 'rgba(255,255,255,.12)' : 'rgba(0,0,0,.2)',
+            label: dark ? '#dee2e6' : '#000'
+        };
+    }
+
+    function buildChart() {
+        if (chartInst) chartInst.destroy();
+        var c = colors();
+        chartInst = new Chart(document.getElementById('attChart'), {
+            type: 'bar',
+            data: {
+                labels: <?= json_encode($chart_labels) ?>,
+                datasets: [{
+                    data: <?= json_encode($chart_data) ?>,
+                    backgroundColor: <?= json_encode($chart_colors) ?>,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx) { return 'Classes: ' + ctx.parsed.y; },
+                            afterLabel: function(ctx) { return ranks[ctx.dataIndex] ? 'Belt: ' + ranks[ctx.dataIndex] : ''; }
+                        }
+                    }
+                },
+                scales: {
+                    x: { ticks: { color: c.label }, grid: { color: c.grid } },
+                    y: { beginAtZero: true, ticks: { stepSize: 1, color: c.label }, grid: { color: c.grid } }
+                }
+            }
+        });
+    }
+
+    buildChart();
+    new MutationObserver(buildChart).observe(
+        document.getElementById('html-root'),
+        { attributes: true, attributeFilter: ['data-bs-theme'] }
+    );
+})();
+</script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>
 

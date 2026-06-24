@@ -11,10 +11,12 @@ $order_sql = $sort === 'last_name' ? 's.last_name, s.first_name' : 's.first_name
 $all = db()->query(
     'SELECT s.id, s.first_name, s.last_name, s.student_type, s.active,
             s.active_override, s.injury_waiver, s.registration_date, s.medical_note,
-            r.kyu_dan, u.role AS user_role,
+            r.kyu_dan, u.id AS user_role,
             (SELECT MAX(cs.session_date)
              FROM attendance a JOIN class_sessions cs ON cs.id = a.session_id
-             WHERE a.student_id = s.id AND a.present = 1) AS last_attended
+             WHERE a.student_id = s.id AND a.present = 1) AS last_attended,
+            (SELECT COUNT(*) FROM payments p
+             WHERE p.student_id = s.id AND p.payment_type = "registration") AS reg_paid
      FROM students s
      LEFT JOIN users u ON u.id = s.user_id
      LEFT JOIN student_ranks sr ON sr.student_id = s.id
@@ -71,6 +73,9 @@ function student_row($s, $id_col = true) {
     echo '<td>' . ($s['injury_waiver']
         ? '<a href="waiver_view.php?student_id=' . $s['id'] . '" class="text-success text-decoration-none">✓</a>'
         : '<span class="text-danger">✗</span>') . '</td>';
+    echo '<td>' . ($s['reg_paid']
+        ? '<span class="text-success">✓</span>'
+        : '<span class="text-danger">✗</span>') . '</td>';
     echo '<td>' . $att_txt . '</td>';
     echo '<td>';
     if ($s['active'])
@@ -93,14 +98,15 @@ function student_table($rows, $empty_msg) {
     }
     echo '<table class="table table-sm table-hover mb-0" style="table-layout:fixed;width:100%">';
     echo '<colgroup>
-            <col style="width:28%">
+            <col style="width:26%">
+            <col style="width:18%">
+            <col style="width:10%">
+            <col style="width:10%">
             <col style="width:20%">
-            <col style="width:14%">
-            <col style="width:22%">
             <col style="width:16%">
           </colgroup>';
     echo '<thead class="table-light"><tr>
-            <th>Name</th><th>Rank</th><th>Waiver</th>
+            <th>Name</th><th>Rank</th><th>Waiver</th><th>Registration</th>
             <th>Last Attended</th><th>Status</th>
           </tr></thead><tbody>';
     foreach ($rows as $s) student_row($s);

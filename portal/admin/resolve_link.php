@@ -12,7 +12,7 @@ if (!$lr_id) {
 // Load the link request (must be needs_linking and unresolved)
 $lr_stmt = db()->prepare(
     'SELECT lr.id, lr.created_at, lr.student_id,
-            u.id AS user_id, u.username, u.role,
+            u.id AS user_id, u.username, u.is_admin,
             u.first_name AS u_first, u.last_name AS u_last,
             u.email AS u_email, u.date_of_birth AS u_dob,
             s.id AS dup_id, s.first_name AS s_first, s.last_name AS s_last,
@@ -64,11 +64,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                      ->execute([$lr['dup_id']]);
             }
 
-            // Update user role to match the real student type
-            $new_role = stype_to_role($real['student_type']);
-            db()->prepare('UPDATE users SET role = ? WHERE id = ?')
-                 ->execute([$new_role, $lr['user_id']]);
-
             // Mark alert resolved
             db()->prepare(
                 'UPDATE link_requests SET resolved = 1, resolved_at = NOW(), resolved_by = ? WHERE id = ?'
@@ -83,6 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         } catch (Exception $e) {
             db()->rollBack();
+            log_event('error', 'system', 'Link resolution failed', ['message' => $e->getMessage()]);
             $error = $e->getMessage();
         }
     }
@@ -167,7 +163,7 @@ include __DIR__ . '/../includes/header.php';
 
         <div class="alert alert-info small mt-3">
             <strong>What happens:</strong> The user's login gets linked to the selected real student record.
-            Their temporary auto-created record is deleted. Their account role will update to match the real record's student type.
+            Their temporary auto-created record is deleted. Their account type is determined by the linked student record.
         </div>
     </div>
 

@@ -194,10 +194,11 @@ if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ===
     $street   = trim($_POST['street_address'] ?? '');
     $csz      = trim($_POST['city_state_zip'] ?? '');
     $reg_date = $_POST['registration_date'] ?? date('Y-m-d');
-    $s_type      = in_array($_POST['account_type'] ?? '', ['guest','student','parent','instructor','admin'])
+    $s_type      = in_array($_POST['account_type'] ?? '', ['guest','student','parent','instructor'])
                    ? $_POST['account_type'] : 'guest';
-    $user_role   = in_array($s_type, ['parent','instructor','admin']) ? $s_type : 'student';
-    $medical_note = trim($_POST['medical_note'] ?? '');
+    $medical_note  = trim($_POST['medical_note']  ?? '');
+    $uniform_size  = trim($_POST['uniform_size']  ?? '');
+    $belt_size     = trim($_POST['belt_size']     ?? '');
     if (!$first || !$last) {
         $error = 'First and last name are required.';
     } else {
@@ -206,14 +207,14 @@ if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ===
              emergency_contact_name=?, emergency_contact_phone=?,
              street_address=?, city_state_zip=?,
              registration_date=?, student_type=?,
-             medical_note=?
+             medical_note=?, uniform_size=?, belt_size=?
              WHERE id=?'
-        )->execute([$first,$last,$dob?:null,$phone,$email,$ec_name,$ec_phone,$street?:null,$csz?:null,$reg_date,$s_type,$medical_note?:null,$id]);
+        )->execute([$first,$last,$dob?:null,$phone,$email,$ec_name,$ec_phone,$street?:null,$csz?:null,$reg_date,$s_type,$medical_note?:null,$uniform_size?:null,$belt_size?:null,$id]);
         $uid_q = db()->prepare('SELECT user_id FROM students WHERE id=?');
         $uid_q->execute([$id]);
         if ($lu = $uid_q->fetchColumn()) {
-            db()->prepare('UPDATE users SET role=?, first_name=?, last_name=?, email=? WHERE id=?')
-                 ->execute([$user_role,$first,$last,$email?:null,$lu]);
+            db()->prepare('UPDATE users SET first_name=?, last_name=?, email=? WHERE id=?')
+                 ->execute([$first, $last, $email ?: null, $lu]);
         }
         audit('update_student', 'student', $id);
         header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
@@ -377,7 +378,7 @@ if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ===
         $ts = db()->prepare('SELECT student_type FROM students WHERE id=?');
         $ts->execute([$id]);
         $stype = $ts->fetchColumn();
-        [$parent_sid, $child_sid] = ($stype === 'parent') ? [$id, $other_id] : [$other_id, $id];
+        [$parent_sid, $child_sid] = in_array($stype, ['parent', 'instructor'], true) ? [$id, $other_id] : [$other_id, $id];
         db()->prepare('INSERT IGNORE INTO student_guardians (parent_student_id, child_student_id) VALUES (?,?)')
              ->execute([$parent_sid, $child_sid]);
         audit('add_guardian', 'student', $id, "linked=$other_id");
@@ -412,9 +413,11 @@ if (!$id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ==
     $street   = trim($_POST['street_address'] ?? '');
     $csz      = trim($_POST['city_state_zip'] ?? '');
     $reg_date = $_POST['registration_date'] ?? date('Y-m-d');
-    $s_type      = in_array($_POST['account_type'] ?? '', ['guest','student','parent','instructor','admin'])
+    $s_type      = in_array($_POST['account_type'] ?? '', ['guest','student','parent','instructor'])
                    ? $_POST['account_type'] : 'guest';
-    $medical_note = trim($_POST['medical_note'] ?? '');
+    $medical_note  = trim($_POST['medical_note']  ?? '');
+    $uniform_size  = trim($_POST['uniform_size']  ?? '');
+    $belt_size     = trim($_POST['belt_size']     ?? '');
     if (!$first || !$last) {
         $error = 'First and last name are required.';
     } else {
@@ -423,9 +426,9 @@ if (!$id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ==
              (first_name,last_name,date_of_birth,phone,email,
               emergency_contact_name,emergency_contact_phone,
               street_address,city_state_zip,
-              registration_date,student_type,medical_note,active,active_override)
-             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,1,NULL)'
-        )->execute([$first,$last,$dob?:null,$phone,$email,$ec_name,$ec_phone,$street?:null,$csz?:null,$reg_date,$s_type,$medical_note?:null]);
+              registration_date,student_type,medical_note,uniform_size,belt_size,active,active_override)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,NULL)'
+        )->execute([$first,$last,$dob?:null,$phone,$email,$ec_name,$ec_phone,$street?:null,$csz?:null,$reg_date,$s_type,$medical_note?:null,$uniform_size?:null,$belt_size?:null]);
         $id = (int)db()->lastInsertId();
         header("Location: student_edit.php?id=$id");
         exit;
@@ -449,7 +452,7 @@ if ($id) {
     if (!$student) { header('Location: students.php'); exit; }
 
     if ($student['user_id']) {
-        $lu = db()->prepare('SELECT id, username, role FROM users WHERE id=?');
+        $lu = db()->prepare('SELECT id, username, is_admin FROM users WHERE id=?');
         $lu->execute([$student['user_id']]);
         $linked_user = $lu->fetch();
     }
@@ -519,8 +522,8 @@ if ($id) {
     $payments = $pay_stmt->fetchAll();
 
     // Guardian links (student_guardians — no user account required)
-    $is_parent_type = ($student['student_type'] ?? '') === 'parent';
-    if ($is_parent_type) {
+    $is_guardian_type = in_array($student['student_type'] ?? '', ['parent', 'instructor'], true);
+    if ($is_guardian_type) {
         $gl_stmt = db()->prepare(
             'SELECT sg.id AS link_id, s.id AS student_id, s.first_name, s.last_name
              FROM student_guardians sg JOIN students s ON s.id = sg.child_student_id
@@ -547,7 +550,7 @@ if ($id) {
         $excl = $linked_ids ? ' AND id NOT IN (' . implode(',', $linked_ids) . ')' : '';
         $guardian_candidates = db()->query(
             "SELECT id, first_name, last_name FROM students
-             WHERE student_type = 'parent' AND id != $id$excl
+             WHERE student_type IN ('parent','instructor') AND id != $id$excl
              ORDER BY first_name, last_name"
         )->fetchAll();
     }
@@ -556,7 +559,7 @@ if ($id) {
     $payments           = [];
     $guardian_links     = [];
     $guardian_candidates = [];
-    $is_parent_type     = false;
+    $is_guardian_type   = false;
 }
 
 $back_url = $id ? '../instructor/student_profile.php?id=' . $id : 'students.php';
@@ -675,6 +678,14 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                             </div>
                         </div>
                         <div class="d-flex py-1">
+                            <div class="text-muted small" style="min-width:160px">Uniform Size</div>
+                            <div><?= htmlspecialchars($student['uniform_size'] ?? '') ?: '—' ?></div>
+                        </div>
+                        <div class="d-flex py-1">
+                            <div class="text-muted small" style="min-width:160px">Belt Size</div>
+                            <div><?= htmlspecialchars($student['belt_size'] ?? '') ?: '—' ?></div>
+                        </div>
+                        <div class="d-flex py-1">
                             <div class="text-muted small" style="min-width:160px">Medical Note</div>
                             <div><?= !empty($student['medical_note']) ? nl2br(htmlspecialchars($student['medical_note'])) : '—' ?></div>
                         </div>
@@ -738,7 +749,24 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                                 <option value="student"     <?= $acct_val==='student'     ? 'selected':'' ?>>Student</option>
                                 <option value="parent"      <?= $acct_val==='parent'      ? 'selected':'' ?>>Parent</option>
                                 <option value="instructor"  <?= $acct_val==='instructor'  ? 'selected':'' ?>>Instructor</option>
-                                <option value="admin"       <?= $acct_val==='admin'       ? 'selected':'' ?>>Admin</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Uniform Size</label>
+                            <select name="uniform_size" class="form-select">
+                                <option value="">— not set —</option>
+                                <?php foreach (['000','00','0','1','2','3','4','5','6','7','8'] as $us): ?>
+                                <option value="<?= $us ?>" <?= ($student['uniform_size'] ?? '') === $us ? 'selected' : '' ?>><?= $us ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Belt Size</label>
+                            <select name="belt_size" class="form-select">
+                                <option value="">— not set —</option>
+                                <?php foreach (['2','3','4','5','6','7','8'] as $bs): ?>
+                                <option value="<?= $bs ?>" <?= ($student['belt_size'] ?? '') === $bs ? 'selected' : '' ?>><?= $bs ?></option>
+                                <?php endforeach; ?>
                             </select>
                         </div>
                         <div class="col-12">
@@ -808,7 +836,24 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                                 <option value="student">Student</option>
                                 <option value="parent">Parent</option>
                                 <option value="instructor">Instructor</option>
-                                <option value="admin">Admin</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Uniform Size</label>
+                            <select name="uniform_size" class="form-select">
+                                <option value="">— not set —</option>
+                                <?php foreach (['000','00','0','1','2','3','4','5','6','7','8'] as $us): ?>
+                                <option value="<?= $us ?>"><?= $us ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Belt Size</label>
+                            <select name="belt_size" class="form-select">
+                                <option value="">— not set —</option>
+                                <?php foreach (['2','3','4','5','6','7','8'] as $bs): ?>
+                                <option value="<?= $bs ?>"><?= $bs ?></option>
+                                <?php endforeach; ?>
                             </select>
                         </div>
                         <div class="col-12">
@@ -1455,7 +1500,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
         <!-- Guardian / Children -->
         <div class="card border-0 shadow-sm">
             <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
-                <span><?= $is_parent_type ? 'Linked Children' : 'Guardian / Parent' ?></span>
+                <span><?= $is_guardian_type ? 'Linked Children' : 'Guardian / Parent' ?></span>
                 <div class="d-flex gap-2">
                     <?php if (!empty($guardian_links)): ?>
                     <button id="guardianEditToggle" type="button" class="btn btn-sm btn-success"

@@ -31,7 +31,7 @@ $note  = $input['note'] ?? '';
 $role             = $_SESSION['role'] ?? 'student';
 $input_student_id = (int)($input['student_id'] ?? 0);
 
-if ($role === 'parent' && $input_student_id) {
+if (in_array($role, ['parent', 'instructor'], true) && $input_student_id) {
     // Build the allowed list for this parent
     $allowed_ids = [];
     $own = db()->prepare('SELECT id FROM students WHERE user_id = ?');
@@ -112,6 +112,7 @@ try {
 
     echo json_encode(['id' => $order_id]);
 } catch (RuntimeException $e) {
+    log_event('error', 'payment', 'PayPal order create failed', ['message' => $e->getMessage()]);
     http_response_code(500);
     echo json_encode(['error' => $e->getMessage()]);
 }

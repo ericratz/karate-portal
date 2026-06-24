@@ -18,7 +18,7 @@ if ($f_user)   { $where[] = 'al.username LIKE ?';        $params[] = '%' . $f_us
 
 $stmt = db()->prepare(
     'SELECT al.*
-     FROM audit_log al
+     FROM activity_log al
      WHERE ' . implode(' AND ', $where) . '
      ORDER BY al.created_at DESC
      LIMIT 500'
@@ -28,21 +28,18 @@ $entries = $stmt->fetchAll();
 
 // Distinct actions for filter dropdown
 $actions = db()->query(
-    'SELECT DISTINCT action FROM audit_log ORDER BY action'
+    'SELECT DISTINCT action FROM activity_log ORDER BY action'
 )->fetchAll(PDO::FETCH_COLUMN);
 
-$page_title = 'Audit Log';
+$page_title = 'Activity Log';
 include __DIR__ . '/../includes/header.php';
 ?>
 
 <div class="d-flex align-items-center justify-content-between mb-4">
-    <h3 class="mb-0">Audit Log</h3>
-    <div class="d-flex align-items-center gap-3">
-        <small class="text-muted">Last 500 matching entries</small>
-        <a href="db_backup.php" class="btn btn-sm btn-outline-secondary">
-            ⬇ Download Database Backup
-        </a>
-    </div>
+    <h3 class="mb-0">Activity Log</h3>
+    <a href="db_backup.php" class="btn btn-sm btn-outline-secondary">
+        ⬇ Download Database Backup
+    </a>
 </div>
 
 <!-- Filter bar -->
@@ -86,8 +83,11 @@ include __DIR__ . '/../includes/header.php';
 </div>
 
 <div class="card border-0 shadow-sm">
-    <div class="card-header bg-white fw-semibold">
-        <?= count($entries) ?> entr<?= count($entries) !== 1 ? 'ies' : 'y' ?>
+    <div class="card-header bg-white fw-semibold d-flex align-items-center justify-content-between">
+        <span><?= count($entries) ?> entr<?= count($entries) !== 1 ? 'ies' : 'y' ?></span>
+        <?php if (count($entries) === 500): ?>
+        <span class="text-warning small fw-normal">Result limit reached — use filters to narrow your search</span>
+        <?php endif; ?>
     </div>
     <div class="card-body p-0">
         <?php if (empty($entries)): ?>

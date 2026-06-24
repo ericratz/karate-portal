@@ -95,7 +95,7 @@ if ($action === 'back1') {
         try {
             db()->beginTransaction();
 
-            // Determine role from claimed student type (or guest for new)
+            // Determine student type from claimed record (or guest for new)
             if ($sel['type'] === 'claim') {
                 $rs = db()->prepare('SELECT student_type FROM students WHERE id = ? AND user_id IS NULL');
                 $rs->execute([$sel['student_id']]);
@@ -103,20 +103,19 @@ if ($action === 'back1') {
                 if (!$stype) {
                     throw new Exception('That student record was already claimed. Please go back and try again.');
                 }
-                $role = stype_to_role($stype);
+                // Guard: student_type='admin' is no longer valid; treat as student
+                if ($stype === 'admin') $stype = 'student';
             } else {
                 $stype = 'guest';
-                $role  = 'guest';
             }
 
             // 1. Create user
             db()->prepare(
-                'INSERT INTO users (username, password_hash, role, email, first_name, last_name, date_of_birth)
-                 VALUES (?, ?, ?, ?, ?, ?, ?)'
+                'INSERT INTO users (username, password_hash, email, first_name, last_name, date_of_birth)
+                 VALUES (?, ?, ?, ?, ?, ?)'
             )->execute([
                 $reg['username'],
                 $reg['password_hash'],
-                $role,
                 $reg['email'],
                 $reg['first_name'],
                 $reg['last_name'],
@@ -158,18 +157,18 @@ if ($action === 'back1') {
 
             // 4. Log user in immediately
             session_regenerate_id(true);
-            $_SESSION['user_id']      = $user_id;
-            $_SESSION['role']         = $role;
-            $_SESSION['username']     = $reg['username'];
-            $_SESSION['student_type'] = $stype;
+            $_SESSION['user_id']  = $user_id;
+            $_SESSION['role']     = $stype;
+            $_SESSION['username'] = $reg['username'];
             audit('google_register', 'user', $user_id, "type=$alert_type");
 
             unset($_SESSION['greg'], $_SESSION['greg_matches'], $_SESSION['greg_selection'], $_SESSION['google_pending']);
-            header('Location: ' . dashboard_url($role));
+            header('Location: ' . dashboard_url($stype));
             exit;
 
         } catch (Exception $e) {
             db()->rollBack();
+            log_event('error', 'auth', 'Google registration failed', ['message' => $e->getMessage()]);
             $error = $e->getMessage();
         }
     }

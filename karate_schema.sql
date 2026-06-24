@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS users (
     id            INT AUTO_INCREMENT PRIMARY KEY,
     username      VARCHAR(50)  NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
-    role          ENUM('student','instructor','admin','parent','guest') NOT NULL DEFAULT 'student',
+    is_admin      TINYINT(1)   NOT NULL DEFAULT 0,
     email         VARCHAR(100) NOT NULL,
     first_name    VARCHAR(50)  DEFAULT NULL,
     last_name     VARCHAR(50)  DEFAULT NULL,
@@ -50,6 +50,8 @@ CREATE TABLE IF NOT EXISTS students (
     injury_waiver_date      DATE,
     notes                   TEXT,
     medical_note            TEXT,
+    uniform_size            VARCHAR(5)  DEFAULT NULL,
+    belt_size               VARCHAR(5)  DEFAULT NULL,
     active                  TINYINT(1) NOT NULL DEFAULT 1,
     active_override         TINYINT(1) DEFAULT NULL,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -256,9 +258,9 @@ CREATE TABLE IF NOT EXISTS login_attempts (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ------------------------------------------------------------
--- AUDIT LOG
+-- ACTIVITY LOG  (logins, edits, admin actions)
 -- ------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS audit_log (
+CREATE TABLE IF NOT EXISTS activity_log (
     id          INT AUTO_INCREMENT PRIMARY KEY,
     user_id     INT,
     username    VARCHAR(50),
@@ -332,14 +334,46 @@ CREATE TABLE IF NOT EXISTS link_requests (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ------------------------------------------------------------
+-- PASSWORD RESET TOKENS
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+    id         INT AUTO_INCREMENT PRIMARY KEY,
+    user_id    INT NOT NULL,
+    token      VARCHAR(64) NOT NULL,
+    expires_at DATETIME NOT NULL,
+    used       TINYINT(1) NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_token (token),
+    INDEX idx_user_id (user_id),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ------------------------------------------------------------
+-- ERROR LOG  (failures, warnings, PHP errors, CSP violations, security events)
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS error_log (
+    id         INT AUTO_INCREMENT PRIMARY KEY,
+    logged_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    level      ENUM('debug','info','warning','error','critical') NOT NULL DEFAULT 'info',
+    channel    VARCHAR(50)  NOT NULL DEFAULT 'app',
+    message    VARCHAR(500) NOT NULL,
+    context    TEXT         DEFAULT NULL,
+    user_id    INT          DEFAULT NULL,
+    ip_address VARCHAR(45)  DEFAULT NULL,
+    INDEX idx_logged_at (logged_at),
+    INDEX idx_level     (level),
+    INDEX idx_channel   (channel)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ------------------------------------------------------------
 -- SEED: default admin account
 -- Username: admin   Password: ChangeMe123!
 -- CHANGE THIS PASSWORD immediately after first login
 -- ------------------------------------------------------------
-INSERT INTO users (username, password_hash, role, email) VALUES (
+INSERT INTO users (username, password_hash, is_admin, email) VALUES (
     'admin',
     '$2y$12$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi',
-    'admin',
+    1,
     'admin@example.com'
 );
 

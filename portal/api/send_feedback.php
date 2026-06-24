@@ -35,9 +35,10 @@ $body     = "Message from: $name\n\n" . $message;
 $reply_to = ($user && $user['email']) ? $user['email'] : ADMIN_EMAIL;
 $headers  = "From: " . DOJO_EMAIL . "\r\nReply-To: " . $reply_to . "\r\nContent-Type: text/plain; charset=UTF-8\r\n";
 
-if (mail(ADMIN_EMAIL, $subject, $body, $headers)) {
+if (log_email(ADMIN_EMAIL, $subject, $body, $headers, 'feedback')) {
     echo json_encode(['ok' => true]);
 } else {
+    log_event('error', 'email', 'Feedback email failed to send', ['from_user_id' => $user_id]);
     http_response_code(500);
     echo json_encode(['ok' => false, 'error' => 'Something went wrong sending your message. Please try again.']);
 }

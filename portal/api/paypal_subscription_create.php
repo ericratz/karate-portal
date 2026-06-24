@@ -45,7 +45,7 @@ try {
     header('Location: ' . $sub['approve_url']);
     exit;
 } catch (RuntimeException $e) {
-    error_log('Subscription create error: ' . $e->getMessage());
+    log_event('error', 'payment', 'PayPal subscription create failed', ['message' => $e->getMessage(), 'student_id' => $student['id']]);
     header('Location: ' . SITE_URL . '/student/pay.php?autopay=error');
     exit;
 }

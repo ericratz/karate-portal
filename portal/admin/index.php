@@ -161,17 +161,6 @@ include __DIR__ . '/../includes/header.php';
 </div>
 <?php endif; ?>
 
-<div class="d-flex align-items-center justify-content-between mb-4">
-    <h3 class="mb-0"></h3>
-    <div class="d-flex gap-2 flex-wrap">
-        <a href="students.php"              class="btn btn-primary btn-sm">Roster</a>
-        <a href="payments.php"              class="btn btn-primary btn-sm">Payments</a>
-        <a href="../instructor/index.php"   class="btn btn-primary btn-sm">Instructor Dashboard</a>
-        <a href="email_students.php"        class="btn btn-primary btn-sm">Email Students</a>
-        <a href="users.php"                 class="btn btn-primary btn-sm">Users</a>
-        <a href="https://ericratz.atlassian.net/jira/software/projects/SCRUM/boards/1" target="_blank" class="btn btn-sm" style="background-color:#0052cc;border-color:#0052cc;color:#fff;">Jira</a>
-    </div>
-</div>
 
 <!-- ── Stat cards ── -->
 <div class="row g-3 mb-4">

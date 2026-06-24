@@ -9,15 +9,13 @@ $student->execute([current_user_id()]);
 $student = $student->fetch();
 if (!$student) { header('Location: index.php'); exit; }
 
-$paid_this_month = db()->prepare(
-    'SELECT COUNT(*) FROM payments
-     WHERE student_id = ?
-       AND payment_type = "monthly_tuition"
-       AND MONTH(payment_date) = MONTH(NOW())
-       AND YEAR(payment_date)  = YEAR(NOW())'
+$paid_months_q = db()->prepare(
+    "SELECT COALESCE(DATE_FORMAT(month_covered, '%Y-%m-01'), DATE_FORMAT(payment_date, '%Y-%m-01'))
+     FROM payments WHERE student_id = ? AND payment_type = 'monthly_tuition'"
 );
-$paid_this_month->execute([$student['id']]);
-$already_paid = (int)$paid_this_month->fetchColumn() > 0;
+$paid_months_q->execute([$student['id']]);
+$paid_months  = array_unique($paid_months_q->fetchAll(PDO::FETCH_COLUMN));
+$already_paid = in_array(date('Y-m-01'), $paid_months);
 
 $paid_reg = db()->prepare(
     'SELECT COUNT(*) FROM payments WHERE student_id = ? AND payment_type = "registration"'
@@ -67,12 +65,6 @@ include __DIR__ . '/../includes/header.php';
     <h4 class="mb-0">Make a Payment</h4>
 </div>
 
-<?php if ($already_paid): ?>
-<div class="alert alert-success">
-    ✓ Tuition for <?= date('F Y') ?> has already been paid.
-    You can still make other payments below.
-</div>
-<?php endif; ?>
 
 <div class="row g-4 justify-content-center">
     <div class="col-md-8 col-lg-6">
@@ -120,6 +112,12 @@ include __DIR__ . '/../includes/header.php';
                             </select>
                         </td>
                     </tr>
+                    <tr id="row-tuition-paid-notice" style="display:none">
+                        <td></td>
+                        <td colspan="2">
+                            <div id="tuitionAlreadyPaid" class="alert alert-info py-2 mb-0 small"></div>
+                        </td>
+                    </tr>
                     <?php endif; ?>
                     <?php endforeach; ?>
 
@@ -140,7 +138,6 @@ include __DIR__ . '/../includes/header.php';
                                 <input type="number" id="donationAmountInput" class="form-control"
                                        placeholder="0.00" step="0.01" min="1">
                             </div>
-                            <div class="form-text">Donations support the dojo and are recorded separately.</div>
                         </td>
                     </tr>
 
@@ -254,8 +251,9 @@ include __DIR__ . '/../includes/header.php';
 <script src="https://www.paypal.com/sdk/js?client-id=<?= htmlspecialchars(PAYPAL_CLIENT_ID) ?>&currency=USD"></script>
 
 <script>
-const FEES = <?= json_encode($fees) ?>;
-const CSRF = document.querySelector('meta[name="csrf-token"]').content;
+const FEES        = <?= json_encode($fees) ?>;
+const CSRF        = document.querySelector('meta[name="csrf-token"]').content;
+const PAID_MONTHS = <?= json_encode(array_values($paid_months)) ?>;
 
 var total = 0;
 
@@ -402,6 +400,8 @@ function updateRow(chk) {
     else             row.classList.remove('table-primary');
     if (chk.dataset.key === 'monthly_tuition') {
         document.getElementById('row-month-picker').style.display = chk.checked ? '' : 'none';
+        if (!chk.checked) document.getElementById('row-tuition-paid-notice').style.display = 'none';
+        else updateTuitionMonthNotice();
     }
     if (chk.dataset.key === 'registration') {
         var regRow = document.getElementById('row-reg-extra');
@@ -431,6 +431,22 @@ document.getElementById('customCheck').addEventListener('change', function() {
 });
 
 document.getElementById('customAmount').addEventListener('input', recalculate);
+
+function updateTuitionMonthNotice() {
+    var month = document.getElementById('tuitionMonth').value;
+    var row   = document.getElementById('row-tuition-paid-notice');
+    var msg   = document.getElementById('tuitionAlreadyPaid');
+    if (PAID_MONTHS.indexOf(month) !== -1) {
+        var d     = new Date(month);
+        var label = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+        msg.textContent = 'You have already paid tuition for ' + label + '.';
+        row.style.display = '';
+    } else {
+        row.style.display = 'none';
+    }
+}
+
+document.getElementById('tuitionMonth').addEventListener('change', updateTuitionMonthNotice);
 
 </script>
 

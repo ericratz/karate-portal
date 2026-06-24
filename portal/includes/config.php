@@ -63,5 +63,54 @@ function send_payment_receipt(string $to_email, string $to_name, array $items, f
     $headers = "From: " . DOJO_EMAIL . "\r\n"
              . "Reply-To: " . ADMIN_EMAIL . "\r\n"
              . "Content-Type: text/plain; charset=UTF-8\r\n";
-    @mail($to_email, '[' . SITE_NAME . '] Payment Receipt', $body, $headers);
+    log_email($to_email, '[' . SITE_NAME . '] Payment Receipt', $body, $headers, 'receipt');
+}
+
+function log_event(string $level, string $channel, string $message, array $context = []): void {
+    static $valid = ['debug', 'info', 'warning', 'error', 'critical'];
+    if (!in_array($level, $valid, true)) $level = 'info';
+    try {
+        db()->prepare(
+            'INSERT INTO error_log (level, channel, message, context, user_id, ip_address)
+             VALUES (?, ?, ?, ?, ?, ?)'
+        )->execute([
+            $level,
+            $channel,
+            substr($message, 0, 500),
+            $context ? json_encode($context) : null,
+            $_SESSION['user_id'] ?? null,
+            $_SERVER['REMOTE_ADDR'] ?? null,
+        ]);
+    } catch (Exception $e) {}
+}
+
+// Global PHP error handler — PHP warnings and user errors go to error_log
+set_error_handler(function(int $errno, string $errstr, string $errfile, int $errline): bool {
+    if (!(error_reporting() & $errno)) return false;
+    $level = ($errno === E_WARNING || $errno === E_USER_WARNING) ? 'warning'
+           : ($errno === E_USER_ERROR ? 'error' : null);
+    if ($level === null) return false; // skip notices, deprecated, strict
+    log_event($level, 'php', substr($errstr, 0, 490), [
+        'file' => basename($errfile), 'line' => $errline,
+    ]);
+    return false; // let PHP handle it normally too
+});
+
+register_shutdown_function(function(): void {
+    $e = error_get_last();
+    if ($e && in_array($e['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR], true)) {
+        log_event('critical', 'php', substr($e['message'], 0, 490), [
+            'file' => basename($e['file']), 'line' => $e['line'],
+        ]);
+    }
+});
+
+function log_email(string $to, string $subject, string $body, string $headers, string $type = 'other'): bool {
+    $result = mail($to, $subject, $body, $headers);
+    try {
+        db()->prepare(
+            'INSERT INTO email_log (to_email, subject, type, status) VALUES (?, ?, ?, ?)'
+        )->execute([$to, $subject, $type, $result ? 'sent' : 'failed']);
+    } catch (Exception $e) {}
+    return $result;
 }

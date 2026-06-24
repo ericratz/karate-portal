@@ -22,12 +22,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'link'
         db()->prepare('UPDATE students SET user_id = NULL WHERE user_id = ?')->execute([$uid]);
         db()->prepare('UPDATE students SET user_id = ? WHERE id = ?')->execute([$uid, $sid]);
 
-        $stype_stmt = db()->prepare('SELECT student_type FROM students WHERE id = ?');
-        $stype_stmt->execute([$sid]);
-        $stype = $stype_stmt->fetchColumn();
-        $role  = in_array($stype, ['instructor','admin']) ? $stype
-               : ($stype === 'parent' ? 'parent' : 'student');
-        db()->prepare('UPDATE users SET role=? WHERE id=?')->execute([$role, $uid]);
         audit('link_account', 'user', $uid, "student_id=$sid");
 
         if ($lrid) {
@@ -229,7 +223,7 @@ function cmp_class(string $a, string $b): string {
                         </tr>
                         <tr>
                             <td>Role</td>
-                            <td><?= htmlspecialchars($user['role']) ?></td>
+                            <td><?= $user['is_admin'] ? 'Admin' : 'User' ?></td>
                         </tr>
                         <tr>
                             <td>Status</td>

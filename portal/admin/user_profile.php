@@ -17,7 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'updat
     $first_name = trim($_POST['first_name'] ?? '');
     $last_name  = trim($_POST['last_name']  ?? '');
     $dob        = trim($_POST['date_of_birth'] ?? '');
-    $role       = in_array($_POST['role'] ?? '', ['student','instructor','admin','parent']) ? $_POST['role'] : 'student';
+    $is_admin   = ($id !== current_user_id()) ? (isset($_POST['is_admin']) ? 1 : 0) : (int)($user['is_admin'] ?? 0);
     if (!$username) {
         $error = 'Username is required.';
     } else {
@@ -28,8 +28,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'updat
             $error = 'That username is already taken.';
         } else {
             // Account details live entirely on users — student record is managed separately via student_edit
-            db()->prepare('UPDATE users SET username=?, email=?, role=?, first_name=?, last_name=?, date_of_birth=? WHERE id=?')
-                 ->execute([$username, $email ?: null, $role, $first_name ?: null, $last_name ?: null, $dob ?: null, $id]);
+            db()->prepare('UPDATE users SET username=?, email=?, is_admin=?, first_name=?, last_name=?, date_of_birth=? WHERE id=?')
+                 ->execute([$username, $email ?: null, $is_admin, $first_name ?: null, $last_name ?: null, $dob ?: null, $id]);
             audit('update_user', 'user', $id);
             header("Location: user_profile.php?id=$id&msg=saved");
             exit;
@@ -79,11 +79,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'link_
     if ($sid) {
         db()->prepare('UPDATE students SET user_id = NULL WHERE user_id = ?')->execute([$id]);
         db()->prepare('UPDATE students SET user_id = ? WHERE id = ?')->execute([$id, $sid]);
-        $stype = db()->prepare('SELECT student_type FROM students WHERE id = ?');
-        $stype->execute([$sid]);
-        $role = $stype->fetchColumn();
-        $role = in_array($role, ['instructor','admin']) ? $role : 'student';
-        db()->prepare('UPDATE users SET role=? WHERE id=?')->execute([$role, $id]);
         audit('link_user', 'user', $id, "student_id=$sid");
         header("Location: user_profile.php?id=$id&msg=linked");
         exit;
@@ -105,6 +100,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
             audit('delete_user', 'user', $id);
         } catch (\Throwable $e) {
             $pdo->rollBack();
+            log_event('error', 'system', 'User delete failed', ['user_id' => $id, 'message' => $e->getMessage()]);
             $error = 'Delete failed — no changes were made.';
         }
         if (!$error) {
@@ -153,6 +149,7 @@ $role_badges = [
     'parent'     => 'bg-info text-dark',
     'guest'      => 'bg-secondary',
 ];
+$effective_role = $user['is_admin'] ? 'admin' : ($user['student_type'] ?? 'student');
 
 $page_title = 'User Account — ' . htmlspecialchars($user['username']);
 include __DIR__ . '/../includes/header.php';
@@ -161,8 +158,8 @@ include __DIR__ . '/../includes/header.php';
 <div class="d-flex align-items-center gap-3 mb-4">
     <h4 class="mb-0">
         <?= htmlspecialchars($user['username']) ?>
-        <span class="badge <?= $role_badges[$user['role']] ?? 'bg-secondary' ?> ms-1">
-            <?= ucfirst($user['role']) ?>
+        <span class="badge <?= $role_badges[$effective_role] ?? 'bg-secondary' ?> ms-1">
+            <?= ucfirst($effective_role) ?>
         </span>
         <?= !$user['active'] ? '<span class="badge bg-danger ms-1">Deactivated</span>' : '' ?>
     </h4>
@@ -198,7 +195,7 @@ include __DIR__ . '/../includes/header.php';
                             'Date of Birth'   => !empty($user['date_of_birth']) ? date('d M Y', strtotime($user['date_of_birth'])) : '—',
                             'Username'        => htmlspecialchars($user['username']),
                             'Email'           => htmlspecialchars($user['email'] ?? '') ?: '—',
-                            'Role'            => ucfirst($user['role']),
+                            'Role'            => ucfirst($effective_role),
                             'Account Created' => date('d M Y', strtotime($user['created_at'])),
                             'Last Login'      => $user['last_login'] ? date('d M Y g:i a', strtotime($user['last_login'])) : 'Never',
                         ];
@@ -236,14 +233,13 @@ include __DIR__ . '/../includes/header.php';
                             <input type="email" name="email" class="form-control"
                                    value="<?= htmlspecialchars($user['email'] ?? '') ?>">
                         </div>
-                        <div class="col-6">
-                            <label class="form-label">Role</label>
-                            <select name="role" class="form-select">
-                                <option value="student"    <?= $user['role']==='student'    ? 'selected':'' ?>>Student</option>
-                                <option value="parent"     <?= $user['role']==='parent'     ? 'selected':'' ?>>Parent</option>
-                                <option value="instructor" <?= $user['role']==='instructor' ? 'selected':'' ?>>Instructor</option>
-                                <option value="admin"      <?= $user['role']==='admin'      ? 'selected':'' ?>>Admin</option>
-                            </select>
+                        <div class="col-6 d-flex align-items-end pb-1">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" name="is_admin" id="isAdminChk"
+                                       value="1" <?= $user['is_admin'] ? 'checked' : '' ?>
+                                       <?= $id === current_user_id() ? 'disabled' : '' ?>>
+                                <label class="form-check-label" for="isAdminChk">Administrator</label>
+                            </div>
                         </div>
                     </div>
                 </div>

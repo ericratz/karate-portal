@@ -49,6 +49,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['change_password'])) 
     $street       = trim($_POST['street_address'] ?? '');
     $csz          = trim($_POST['city_state_zip'] ?? '');
     $medical_note = trim($_POST['medical_note']  ?? '');
+    $uniform_size = trim($_POST['uniform_size']  ?? '');
+    $belt_size    = trim($_POST['belt_size']     ?? '');
 
     if (!$first || !$last || !$dob || !$email) {
         $error = 'First name, last name, date of birth, and email are required.';
@@ -60,9 +62,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['change_password'])) 
                     phone=?, email=?,
                     emergency_contact_name=?, emergency_contact_phone=?,
                     street_address=?, city_state_zip=?,
-                    medical_note=?
+                    medical_note=?, uniform_size=?, belt_size=?
                  WHERE user_id=?'
-            )->execute([$first,$last,$dob,$phone,$email,$ec_name,$ec_phone,$street?:null,$csz?:null,$medical_note?:null,$user_id]);
+            )->execute([$first,$last,$dob,$phone,$email,$ec_name,$ec_phone,$street?:null,$csz?:null,$medical_note?:null,$uniform_size?:null,$belt_size?:null,$user_id]);
         } else {
             db()->prepare(
                 'INSERT INTO students
@@ -159,6 +161,24 @@ include __DIR__ . '/../includes/header.php';
                 <label class="form-label">City, State, ZIP</label>
                 <input type="text" name="city_state_zip" class="form-control"
                        value="<?= htmlspecialchars($student['city_state_zip'] ?? '') ?>">
+            </div>
+            <div class="col-6">
+                <label class="form-label">Uniform Size</label>
+                <select name="uniform_size" class="form-select">
+                    <option value="">— not set —</option>
+                    <?php foreach (['000','00','0','1','2','3','4','5','6','7','8'] as $us): ?>
+                    <option value="<?= $us ?>" <?= ($student['uniform_size'] ?? '') === $us ? 'selected' : '' ?>><?= $us ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="col-6">
+                <label class="form-label">Belt Size</label>
+                <select name="belt_size" class="form-select">
+                    <option value="">— not set —</option>
+                    <?php foreach (['2','3','4','5','6','7','8'] as $bs): ?>
+                    <option value="<?= $bs ?>" <?= ($student['belt_size'] ?? '') === $bs ? 'selected' : '' ?>><?= $bs ?></option>
+                    <?php endforeach; ?>
+                </select>
             </div>
             <div class="col-12">
                 <label class="form-label">Medical Note</label>

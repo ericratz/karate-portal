@@ -15,8 +15,11 @@
         .navbar { background: #6f42c1 !important; }
         .navbar .navbar-brand,
         .navbar .nav-link,
-        .navbar .navbar-text { color: #fff !important; }
+        .navbar .navbar-text { color: #fff !important; font-size: 1rem; }
+        .navbar .navbar-brand,
+        .navbar .dropdown-toggle { font-size: 1.25rem; }
         .navbar .nav-link:hover { opacity: .8; }
+        .navbar .nav-link-lg { font-size: 1.25rem !important; }
         /* prevent navbar color from bleeding into page tabs */
         .nav-tabs .nav-link { color: #495057 !important; }
         .nav-tabs .nav-link.active { color: #6f42c1 !important; font-weight: 600; }
@@ -134,6 +137,8 @@
             color: #fff !important;
             border-color: #dc3545;
         }
+        a { text-decoration: none; }
+        a:hover { text-decoration: none; }
         .btn-outline-secondary, .btn-outline-primary {
             --bs-btn-bg: #198754;
             --bs-btn-color: #fff;
@@ -164,7 +169,7 @@
         else                            $dashboard_url = SITE_URL . '/student/';
         ?>
         <a class="navbar-brand fw-semibold" href="<?= $dashboard_url ?>">
-            &#9675; <?php
+            <?php
                 if (has_role('admin'))          echo 'Admin Dashboard';
                 elseif (has_role('instructor')) echo 'Instructor Dashboard';
                 elseif (has_role('parent'))     echo 'My Dashboard';
@@ -179,11 +184,20 @@
             <ul class="navbar-nav me-auto">
 
                 <?php if (has_role('admin')): ?>
+                <li class="nav-item">
+                    <a class="nav-link nav-link-lg" href="<?= SITE_URL ?>/admin/students.php">Roster</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link nav-link-lg" href="<?= SITE_URL ?>/instructor/attendance_sessions.php">Attendance</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link nav-link-lg" href="https://ericratz.atlassian.net/jira/software/projects/SCRUM/boards/1" target="_blank" style="color:#7ab3f5 !important;">Jira <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16" style="vertical-align:middle;margin-left:2px"><path fill-rule="evenodd" d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5"/><path fill-rule="evenodd" d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 1.707V5.5a.5.5 0 0 0 1 0z"/></svg></a>
+                </li>
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#"
                        data-bs-toggle="dropdown" role="button">Admin</a>
-                    <ul class="dropdown-menu">
-                        <li><h6 class="dropdown-header">Instructor</h6></li>
+                    <ul class="dropdown-menu dropdown-menu-end" style="max-height:calc(100vh - 120px);overflow-y:auto;">
+                        <li><h6 class="dropdown-header">Student Info</h6></li>
                         <li><a class="dropdown-item" href="<?= SITE_URL ?>/instructor/attendance_sessions.php">Attendance</a></li>
                         <li><a class="dropdown-item" href="<?= SITE_URL ?>/instructor/belt_tests_all.php">Belt Tests</a></li>
                         <li><a class="dropdown-item" href="<?= SITE_URL ?>/instructor/">Instructor Dashboard</a></li>
@@ -192,12 +206,12 @@
                         <li><hr class="dropdown-divider"></li>
                         <li><h6 class="dropdown-header">Finances</h6></li>
                         <li><a class="dropdown-item" href="<?= SITE_URL ?>/admin/donations.php">Donations</a></li>
+                        <li><a class="dropdown-item" href="<?= SITE_URL ?>/admin/waivers.php">Exemptions</a></li>
                         <li><a class="dropdown-item" href="<?= SITE_URL ?>/admin/expenses.php">Expenses</a></li>
-                        <li><a class="dropdown-item" href="<?= SITE_URL ?>/admin/waivers.php">Exempt</a></li>
                         <li><a class="dropdown-item" href="<?= SITE_URL ?>/admin/payments.php">Payments</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><h6 class="dropdown-header">Security</h6></li>
-                        <li><a class="dropdown-item" href="<?= SITE_URL ?>/admin/audit_log.php">Audit Log</a></li>
+                        <li><a class="dropdown-item" href="<?= SITE_URL ?>/admin/logs.php">Logs</a></li>
                         <li><a class="dropdown-item" href="<?= SITE_URL ?>/admin/users.php">Users</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><h6 class="dropdown-header">Communication</h6></li>
@@ -221,7 +235,7 @@
                 <span class="navbar-text">
                     <?= htmlspecialchars($_SESSION['username'] ?? '') ?>
                     <?php
-                    $_rt = $_SESSION['student_type'] ?? $_SESSION['role'] ?? '';
+                    $_rt = $_SESSION['role'] ?? '';
                     if ($_rt === 'student')     $_tip = 'Registration fee paid';
                     elseif ($_rt === 'parent')  $_tip = 'Family account';
                     elseif ($_rt === 'guest')   $_tip = 'Non-paying participant (registration fee not yet paid)';

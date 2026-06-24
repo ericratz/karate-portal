@@ -1,10 +1,24 @@
-# Shotokan Karate Portal — V2.5
+# Shotokan Karate Portal — V3.0
 
 A private membership portal for Noji Ratzlaff's Shotokan Karate dojo. Students track
 attendance, belt tests, and payments. Instructors manage classes and roster. The admin
 runs the full operation from one place.
 
 ---
+
+## What's New in V3.0
+
+- **Password reset** — self-service forgot-password flow (`forgot_password.php` → `reset_password.php`). Tokens expire in 1 hour, single-use, same confirm screen for unknown usernames (no enumeration)
+- **Email log** — admin can review all outgoing emails at `admin/email_log.php`, filterable by status, type, and date range. All `mail()` calls go through `log_email()` which records to `email_log`
+- **Uniform size and belt size** — new fields on the student record (`000`–`8` for uniforms, `2`–`8` for belts). Editable in admin student edit, instructor student profile, and the student's own profile edit page
+- **Attendance bar graph** — student dashboard shows a Chart.js bar chart of attendance for the last 12 months. Bars turn purple for any month in which a rank advancement was recorded
+- **Roster quick-view** — registration paid status shows a ✓ or ✗ directly in the roster table (no need to open the full student record)
+- **Roster and Attendance nav buttons** — quick-access links in the header bar for admin and instructor roles
+- **Link underlines removed** — global CSS in `portal/includes/header.php`; hover state also unstyled
+- **Security headers** — `.htaccess` sets `X-Frame-Options: SAMEORIGIN`, `X-Content-Type-Options: nosniff`, and a full `Content-Security-Policy` with `report-uri` pointing to `api/csp_report.php`
+- **CSP reporting** — `api/csp_report.php` receives browser Content Security Policy violation reports and logs them via `log_event()`
+- **Role system overhaul** — `users.role ENUM` removed. Role is now derived at login: `is_admin=1` → `admin`; otherwise `students.student_type` (fallback `guest` if no linked record). Stored as `$_SESSION['role']`
+- **Playwright test suite reorganized** — tests moved from flat feature files into role-based directories (`tests/roles/admin/`, `tests/roles/instructor/`, `tests/roles/student/`, `tests/roles/parent/`, `tests/auth/`, `tests/shared/`). 466 tests across 36 spec files. Output goes to `tests/report/` and `tests/results/`
 
 ## What's New in V2.5
 
@@ -55,19 +69,18 @@ runs the full operation from one place.
 
 ## Roles
 
-Five roles stored in `users.role`:
+Role is derived at login and stored in `$_SESSION['role']`. It is not a column.
 
-| Role | How assigned | Access |
+| Role | How it's derived | Access |
 |---|---|---|
-| `guest` | Automatically on registration | Full student portal |
-| `student` | Admin links account to roster entry | Student portal |
-| `parent` | Admin links account to a parent roster entry | Parent portal (tabbed per child) |
-| `instructor` | Admin manually promotes | Roster, attendance, belt tests |
-| `admin` | Seed account only | Everything |
+| `admin` | `users.is_admin = 1` | Everything |
+| `instructor` | `students.student_type = 'instructor'` (linked record) | Roster, attendance, belt tests |
+| `parent` | `students.student_type = 'parent'` (linked record) | Parent portal (tabbed per child) |
+| `student` | `students.student_type = 'student'` (linked record) | Student portal |
+| `guest` | No linked student record, or `student_type = 'guest'` | Full student portal |
 
-A separate `students.student_type` field controls how the roster groups a person
-(`guest` / `student` / `parent` / `instructor`). Recording a registration payment
-promotes `student_type` from `guest` to `student`.
+`students.student_type` controls how the roster groups a person. Recording a registration
+payment promotes `student_type` from `guest` to `student`.
 
 ---
 
@@ -141,10 +154,12 @@ npm install
 
 # 4. Create tests/credentials.js (gitignored)
 module.exports = {
-    ADMIN_USER: 'admin',  ADMIN_PASS: '...',
-    INST_USER:  '...',    INST_PASS:  '...',
-    STU_USER:   '...',    STU_PASS:   '...',
-    GUEST_USER: '...',    GUEST_PASS: '...',
+    ADMIN_USER:  'admin', ADMIN_PASS:  '...',
+    INST_USER:   '...',   INST_PASS:   '...',
+    STU_USER:    '...',   STU_PASS:    '...',
+    GUEST_USER:  '...',   GUEST_PASS:  '...',
+    PARENT_USER: '...',   PARENT_PASS: '...',
+    W_PASS:      '...',
 };
 
 # 5. Optional .env at project root
@@ -177,7 +192,7 @@ karate/
 │   ├── admin/          # Full management: payments, expenses, waivers,
 │   │                   #   users, audit log, email, donations, backup
 │   └── cron/           # Scheduled jobs
-├── tests/              # Playwright test suite (~30 spec files)
+├── tests/              # Playwright test suite (466 tests, 36 spec files)
 ├── migrations/         # SQL migration scripts
 ├── karate_schema.sql   # Fresh-install schema with seed data
 └── README.md

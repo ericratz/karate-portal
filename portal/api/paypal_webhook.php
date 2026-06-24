@@ -17,6 +17,7 @@ $headers = [
 ];
 
 if (!paypal_verify_webhook(PAYPAL_WEBHOOK_ID, $headers, $body)) {
+    log_event('warning', 'security', 'PayPal webhook signature verification failed');
     http_response_code(400);
     exit('Invalid signature');
 }

@@ -7,6 +7,7 @@ const AUTH = {
     admin:      path.join(__dirname, '.auth', 'admin.json'),
     instructor: path.join(__dirname, '.auth', 'instructor.json'),
     student:    path.join(__dirname, '.auth', 'student.json'),
+    parent:     path.join(__dirname, '.auth', 'parent.json'),
 };
 
 /**

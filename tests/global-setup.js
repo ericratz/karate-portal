@@ -6,7 +6,7 @@ const path = require('path');
 const fs   = require('fs');
 const http = require('http');
 const { getDbConfig, findMysqlBin } = require('./db-config');
-const { ADMIN_USER, ADMIN_PASS, INST_USER, INST_PASS, STU_USER, STU_PASS } = require('./credentials');
+const { ADMIN_USER, ADMIN_PASS, INST_USER, INST_PASS, STU_USER, STU_PASS, PARENT_USER, PARENT_PASS } = require('./credentials');
 
 const SNAPSHOT    = path.join(__dirname, '.db-snapshot.sql');
 const STATUS_FILE = path.join(__dirname, '.test-status.json');
@@ -14,7 +14,7 @@ const STATUS_FILE = path.join(__dirname, '.test-status.json');
 /** Clear rate-limit table so localhost tests can always log in. */
 function clearRateLimits() {
     return new Promise((resolve) => {
-        const req = http.get('http://localhost/karate/clear_rate_limit.php', (res) => {
+        const req = http.get('http://localhost/karate/tests/clear_rate_limit.php', (res) => {
             res.resume();
             res.on('end', () => resolve());
         });
@@ -27,9 +27,10 @@ async function createAuthStates(authDir) {
     const browser = await chromium.launch({ channel: 'chrome' });
     const BASE = 'http://localhost/karate/portal';
     const roles = [
-        ['admin',      ADMIN_USER, ADMIN_PASS],
-        ['instructor', INST_USER,  INST_PASS],
-        ['student',    STU_USER,   STU_PASS],
+        ['admin',      ADMIN_USER,   ADMIN_PASS],
+        ['instructor', INST_USER,    INST_PASS],
+        ['student',    STU_USER,     STU_PASS],
+        ['parent',     PARENT_USER,  PARENT_PASS],
     ];
     for (const [role, user, pass] of roles) {
         const ctx = await browser.newContext();
@@ -43,7 +44,7 @@ async function createAuthStates(authDir) {
         await ctx.close();
     }
     await browser.close();
-    console.log('[global-setup] Auth states saved for admin, instructor, student');
+    console.log('[global-setup] Auth states saved for admin, instructor, student, parent');
 }
 
 module.exports = async function globalSetup() {

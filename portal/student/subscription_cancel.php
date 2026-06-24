@@ -28,7 +28,9 @@ if ($row) {
            ->execute([$row['paypal_subscription_id']]);
         audit('subscription_cancel', 'student', $student_id, 'sub=' . $row['paypal_subscription_id']);
     } catch (RuntimeException $e) {
-        error_log('Subscription cancel error: ' . $e->getMessage());
+        log_event('error', 'payment', 'PayPal subscription cancel failed', [
+            'message' => $e->getMessage(), 'student_id' => $student_id,
+        ]);
     }
 }
 

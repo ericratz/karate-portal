@@ -52,12 +52,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['link_student'])) {
         // Clear any existing link for this student or user
         db()->prepare('UPDATE students SET user_id = NULL WHERE user_id = ?')->execute([$uid]);
         db()->prepare('UPDATE students SET user_id = ? WHERE id = ?')->execute([$uid, $sid]);
-        // Sync users.role from student_type
-        $stype_stmt = db()->prepare('SELECT student_type FROM students WHERE id = ?');
-        $stype_stmt->execute([$sid]);
-        $stype = $stype_stmt->fetchColumn();
-        $role  = in_array($stype, ['instructor', 'admin']) ? $stype : 'student';
-        db()->prepare('UPDATE users SET role=? WHERE id=?')->execute([$role, $uid]);
         $msg = 'Account linked to roster entry.';
     }
 }
@@ -73,11 +67,11 @@ if (isset($_GET['msg'])) {
 // ── Load all users with linked student if any ─────────────────
 $users = db()->query(
     'SELECT u.id, u.username, u.first_name AS u_first, u.last_name AS u_last,
-            u.email, u.role, u.active, u.last_login,
+            u.email, u.is_admin, u.active, u.last_login,
             s.first_name, s.last_name, s.id AS student_id, s.student_type
      FROM users u
      LEFT JOIN students s ON s.user_id = u.id
-     ORDER BY u.role, u.username'
+     ORDER BY u.is_admin DESC, u.username'
 )->fetchAll();
 
 // Unlinked roster entries (for the link dropdown)
@@ -108,7 +102,7 @@ $role_badges = [
 
 function user_row(array $u, bool $show_roster = true): void {
     global $role_tips, $role_badges;
-    $role_display = $u['student_type'] ?? $u['role'];
+    $role_display = $u['is_admin'] ? 'admin' : ($u['student_type'] ?? 'student');
     $cls = $role_badges[$role_display] ?? 'bg-secondary';
     $tip = $role_tips[$role_display]   ?? '';
     echo '<tr class="' . (!$u['active'] ? 'text-muted' : '') . '"'

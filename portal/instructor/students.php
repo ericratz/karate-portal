@@ -11,7 +11,7 @@ $order_sql = $sort === 'last_name' ? 's.last_name, s.first_name' : 's.first_name
 $all = db()->query(
     'SELECT s.id, s.first_name, s.last_name, s.student_type, s.active,
             s.active_override, s.injury_waiver, s.registration_date, s.medical_note,
-            r.kyu_dan, u.role AS user_role,
+            r.kyu_dan, u.id AS user_role,
             (SELECT MAX(cs.session_date)
              FROM attendance a JOIN class_sessions cs ON cs.id = a.session_id
              WHERE a.student_id = s.id AND a.present = 1) AS last_attended

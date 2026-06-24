@@ -75,7 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'toggl
 
 
 $student = db()->prepare(
-    'SELECT s.*, u.username, u.email AS login_email, u.last_login, u.role
+    'SELECT s.*, u.username, u.email AS login_email, u.last_login
      FROM students s LEFT JOIN users u ON u.id = s.user_id WHERE s.id = ?'
 );
 $student->execute([$id]);
@@ -105,6 +105,44 @@ $attendance = $attendance->fetchAll();
 $total    = count($attendance);
 $attended = array_sum(array_column($attendance, 'present'));
 $pct      = $total ? round($attended / $total * 100) : 0;
+
+// Monthly attendance — last 12 months
+$ac_q = db()->prepare(
+    "SELECT DATE_FORMAT(cs.session_date, '%Y-%m') AS month, COUNT(*) AS count
+     FROM attendance a
+     JOIN class_sessions cs ON cs.id = a.session_id
+     WHERE a.student_id = ? AND a.present = 1
+       AND cs.session_date >= DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 11 MONTH), '%Y-%m-01')
+     GROUP BY month
+     ORDER BY month ASC"
+);
+$ac_q->execute([$id]);
+$att_chart_by_month = $ac_q->fetchAll(PDO::FETCH_KEY_PAIR);
+$rm_q = db()->prepare(
+    "SELECT DATE_FORMAT(sr.achieved_date, '%Y-%m') AS month, r.name AS rank_name
+     FROM student_ranks sr
+     JOIN ranks r ON r.id = sr.rank_id
+     WHERE sr.student_id = ?
+       AND sr.achieved_date >= DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 11 MONTH), '%Y-%m-01')
+     ORDER BY sr.achieved_date"
+);
+$rm_q->execute([$id]);
+$rank_months = [];
+foreach ($rm_q->fetchAll() as $row) {
+    $rank_months[$row['month']][] = $row['rank_name'];
+}
+
+$chart_labels = [];
+$chart_data   = [];
+$chart_colors = [];
+$chart_ranks  = [];
+for ($i = 11; $i >= 0; $i--) {
+    $key            = date('Y-m', strtotime("-$i months"));
+    $chart_labels[] = date('M Y', strtotime("-$i months"));
+    $chart_data[]   = (int)($att_chart_by_month[$key] ?? 0);
+    $chart_colors[] = isset($rank_months[$key]) ? '#6f42c1' : '#198754';
+    $chart_ranks[]  = isset($rank_months[$key]) ? implode(', ', $rank_months[$key]) : null;
+}
 
 // Belt test history
 $belt_tests = db()->prepare(
@@ -144,8 +182,8 @@ if (has_role('instructor', 'admin')) {
 // Build a tab list if this student is a parent or is a child of a parent.
 $family_tabs = [];
 
-if ($student['student_type'] === 'parent') {
-    // Viewing a parent — load children via student_guardians
+if (in_array($student['student_type'], ['parent', 'instructor'], true)) {
+    // Viewing a parent or instructor — load children via student_guardians
     $ch_stmt = db()->prepare(
         'SELECT s.id, s.first_name, s.last_name
          FROM student_guardians sg JOIN students s ON s.id = sg.child_student_id
@@ -306,6 +344,14 @@ include __DIR__ . '/../includes/header.php';
                 <div class="d-flex py-1 border-bottom">
                     <div class="text-muted small" style="min-width:160px">Last Login</div>
                     <div><?= $student['last_login'] ? date('d M Y', strtotime($student['last_login'])) : '—' ?></div>
+                </div>
+                <div class="d-flex py-1">
+                    <div class="text-muted small" style="min-width:160px">Uniform Size</div>
+                    <div><?= htmlspecialchars($student['uniform_size'] ?? '') ?: '—' ?></div>
+                </div>
+                <div class="d-flex py-1">
+                    <div class="text-muted small" style="min-width:160px">Belt Size</div>
+                    <div><?= htmlspecialchars($student['belt_size'] ?? '') ?: '—' ?></div>
                 </div>
                 <div class="d-flex py-1">
                     <div class="text-muted small" style="min-width:160px">Medical Note</div>
@@ -480,6 +526,14 @@ include __DIR__ . '/../includes/header.php';
     </div>
 </div>
 
+<!-- ── Attendance bar graph ── -->
+<div class="card border-0 shadow-sm mt-4">
+    <div class="card-header bg-white fw-semibold border-bottom">Attendance — Last 12 Months</div>
+    <div class="card-body" style="height:220px;">
+        <canvas id="attChart"></canvas>
+    </div>
+</div>
+
 <!-- ── Bottom: Notes (full width) ── -->
 <?php if (has_role('admin')): ?>
 <div class="card border-0 shadow-sm mt-4">
@@ -540,6 +594,57 @@ function toggleAttEdit() {
 }
 </script>
 <?php endif; ?>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+    var chartInst = null;
+    var ranks     = <?= json_encode($chart_ranks) ?>;
+
+    function colors() {
+        var dark = document.getElementById('html-root').getAttribute('data-bs-theme') === 'dark';
+        return {
+            grid:  dark ? 'rgba(255,255,255,.12)' : 'rgba(0,0,0,.2)',
+            label: dark ? '#dee2e6' : '#000'
+        };
+    }
+
+    function buildChart() {
+        if (chartInst) chartInst.destroy();
+        var c = colors();
+        chartInst = new Chart(document.getElementById('attChart'), {
+            type: 'bar',
+            data: {
+                labels: <?= json_encode($chart_labels) ?>,
+                datasets: [{ data: <?= json_encode($chart_data) ?>, backgroundColor: <?= json_encode($chart_colors) ?>, borderRadius: 4 }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx) { return 'Classes: ' + ctx.parsed.y; },
+                            afterLabel: function(ctx) { return ranks[ctx.dataIndex] ? 'Belt: ' + ranks[ctx.dataIndex] : ''; }
+                        }
+                    }
+                },
+                scales: {
+                    x: { ticks: { color: c.label }, grid: { color: c.grid } },
+                    y: { beginAtZero: true, ticks: { stepSize: 1, color: c.label }, grid: { color: c.grid } }
+                }
+            }
+        });
+    }
+
+    buildChart();
+    new MutationObserver(buildChart).observe(
+        document.getElementById('html-root'),
+        { attributes: true, attributeFilter: ['data-bs-theme'] }
+    );
+})();
+</script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>
 

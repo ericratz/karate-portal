@@ -41,6 +41,7 @@ function verify_csrf(): void {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') return;
     $token = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
     if (!hash_equals(csrf_token(), $token)) {
+        log_event('warning', 'security', 'CSRF token mismatch', ['uri' => $_SERVER['REQUEST_URI'] ?? '']);
         http_response_code(403);
         exit('Security check failed. Please go back and try again.');
     }
@@ -100,7 +101,7 @@ function record_failed_login(string $username, string $ip): void {
 function audit(string $action, ?string $target_type = null, ?int $target_id = null, ?string $detail = null): void {
     try {
         db()->prepare(
-            'INSERT INTO audit_log (user_id, username, action, target_type, target_id, detail, ip_address)
+            'INSERT INTO activity_log (user_id, username, action, target_type, target_id, detail, ip_address)
              VALUES (?,?,?,?,?,?,?)'
         )->execute([
             $_SESSION['user_id'] ?? null,
@@ -120,11 +121,12 @@ function attempt_login(string $username, string $password): string {
     $ip = $_SERVER['REMOTE_ADDR'] ?? '';
 
     if (is_rate_limited($username, $ip)) {
+        log_event('warning', 'auth', 'Login rate limited', ['username' => $username, 'ip' => $ip]);
         return 'rate_limited';
     }
 
     $stmt = db()->prepare(
-        'SELECT id, password_hash, role, active FROM users WHERE username = ? LIMIT 1'
+        'SELECT id, password_hash, is_admin, active FROM users WHERE username = ? LIMIT 1'
     );
     $stmt->execute([$username]);
     $user = $stmt->fetch();
@@ -132,13 +134,13 @@ function attempt_login(string $username, string $password): string {
     // Wrong username or wrong password
     if (!$user || !password_verify($password, $user['password_hash'])) {
         record_failed_login($username, $ip);
-        audit('login_fail', null, null, $username);
+        log_event('warning', 'auth', 'Login failed', ['username' => $username, 'ip' => $ip]);
         return 'invalid';
     }
 
     // Correct credentials but account deactivated
     if (!$user['active']) {
-        audit('login_fail_inactive', null, null, $username);
+        log_event('warning', 'auth', 'Login attempt on inactive account', ['username' => $username]);
         return 'inactive';
     }
 
@@ -160,12 +162,12 @@ function attempt_login(string $username, string $password): string {
 
     session_regenerate_id(true);
     $_SESSION['user_id']  = $user['id'];
-    $_SESSION['role']     = $user['role'];
     $_SESSION['username'] = $username;
 
     $stype = db()->prepare('SELECT student_type FROM students WHERE user_id = ? LIMIT 1');
     $stype->execute([$user['id']]);
-    $_SESSION['student_type'] = $stype->fetchColumn() ?: $user['role'];
+    $stype_val = $stype->fetchColumn() ?: 'student';
+    $_SESSION['role'] = $user['is_admin'] ? 'admin' : $stype_val;
 
     audit('login_success');
     return 'ok';
@@ -180,17 +182,6 @@ function dashboard_url(string $role): string {
     }
 }
 
-// Maps a student_type value to the appropriate users.role.
-// Safety: 'admin' student_type → 'student' role (can never self-assign admin).
-function stype_to_role(string $stype): string {
-    switch ($stype) {
-        case 'instructor': return 'instructor';
-        case 'parent':     return 'parent';
-        case 'student':    return 'student';
-        case 'guest':      return 'guest';
-        default:           return 'student'; // 'admin' → 'student' for safety
-    }
-}
 
 function logout(): void {
     audit('logout');

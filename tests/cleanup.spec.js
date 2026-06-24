@@ -1,6 +1,6 @@
 // @ts-check
 // ONE-TIME CLEANUP — run this to remove accumulated test artifacts:
-//   npx playwright test tests/cleanup.spec.js --config cleanup.config.js --reporter=line
+//   npx playwright test tests/cleanup.spec.js --config tests/cleanup.config.js --reporter=line
 //
 // Safe to run against any state: each step checks before acting.
 // After running, all the junk from repeated test runs will be gone.

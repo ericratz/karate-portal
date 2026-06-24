@@ -39,7 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $headers       = "From: " . DOJO_EMAIL . "\r\n"
                            . "Reply-To: " . ADMIN_EMAIL . "\r\n"
                            . "Content-Type: text/plain; charset=UTF-8\r\n";
-            mail($to, $subject, $personal_body, $headers) ? $sent++ : $failed++;
+            log_email($to, $subject, $personal_body, $headers, 'bulk') ? $sent++ : $failed++;
         }
         $msg = "Sent to $sent recipient" . ($sent !== 1 ? 's' : '') . '.';
         if ($failed) $msg .= " $failed skipped (missing or invalid email).";
@@ -153,7 +153,10 @@ foreach ($all_students as $s) {
                         </label>
                     </td>
                     <td>
-                        <span class="badge bg-secondary"><?= $s['student_type'] ?></span>
+                        <?php
+                        $type_cls = ['student' => 'bg-primary', 'instructor' => 'bg-warning text-dark', 'parent' => 'bg-info text-dark', 'guest' => 'bg-secondary'];
+                        ?>
+                        <span class="badge <?= $type_cls[$s['student_type']] ?? 'bg-secondary' ?>"><?= ucfirst($s['student_type']) ?></span>
                     </td>
                     <td class="small">
                         <?php if ($hasEmail): ?>

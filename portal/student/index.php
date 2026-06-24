@@ -78,6 +78,46 @@ $att_summary = db()->prepare(
 $att_summary->execute([$student_id]);
 $att_summary = $att_summary->fetch();
 
+// Attendance counts per month — last 12 months
+$att_chart_stmt = db()->prepare(
+    "SELECT DATE_FORMAT(cs.session_date, '%Y-%m') AS month, COUNT(*) AS count
+     FROM attendance a
+     JOIN class_sessions cs ON cs.id = a.session_id
+     WHERE a.student_id = ? AND a.present = 1
+       AND cs.session_date >= DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 11 MONTH), '%Y-%m-01')
+     GROUP BY month
+     ORDER BY month ASC"
+);
+$att_chart_stmt->execute([$student_id]);
+$att_chart_by_month = $att_chart_stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+
+// Rank advancement months — last 12 months (with rank name)
+$rank_months_stmt = db()->prepare(
+    "SELECT DATE_FORMAT(sr.achieved_date, '%Y-%m') AS month, r.name AS rank_name
+     FROM student_ranks sr
+     JOIN ranks r ON r.id = sr.rank_id
+     WHERE sr.student_id = ?
+       AND sr.achieved_date >= DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 11 MONTH), '%Y-%m-01')
+     ORDER BY sr.achieved_date"
+);
+$rank_months_stmt->execute([$student_id]);
+$rank_months = [];
+foreach ($rank_months_stmt->fetchAll() as $row) {
+    $rank_months[$row['month']][] = $row['rank_name'];
+}
+
+$chart_labels = [];
+$chart_data   = [];
+$chart_colors = [];
+$chart_ranks  = [];
+for ($i = 11; $i >= 0; $i--) {
+    $key            = date('Y-m', strtotime("-$i months"));
+    $chart_labels[] = date('M Y', strtotime("-$i months"));
+    $chart_data[]   = (int)($att_chart_by_month[$key] ?? 0);
+    $chart_colors[] = isset($rank_months[$key]) ? '#6f42c1' : '#198754';
+    $chart_ranks[]  = isset($rank_months[$key]) ? implode(', ', $rank_months[$key]) : null;
+}
+
 // Belt test history for this student
 $tests = db()->prepare(
     'SELECT bt.test_date, r.kyu_dan, bt.result, bt.fee_paid
@@ -148,8 +188,8 @@ function badge_result(string $r): string {
         </small>
     </div>
     <div class="d-flex gap-2 flex-wrap">
-        <a href="https://noji.com/karate/class/homework/homework.php" target="_blank" class="btn" style="background-color:#0052cc;border-color:#0052cc;color:#fff;">Homework</a>
-        <a href="https://noji.com/karate/testing/testing.php" target="_blank" class="btn" style="background-color:#0052cc;border-color:#0052cc;color:#fff;">Tests &amp; Grading</a>
+        <a href="https://noji.com/karate/class/homework/homework.php" target="_blank" class="btn" style="background-color:#0052cc;border-color:#0052cc;color:#fff;">Homework <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16" style="vertical-align:middle;margin-left:2px"><path fill-rule="evenodd" d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5"/><path fill-rule="evenodd" d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 1.707V5.5a.5.5 0 0 0 1 0z"/></svg></a>
+        <a href="https://noji.com/karate/testing/testing.php" target="_blank" class="btn" style="background-color:#0052cc;border-color:#0052cc;color:#fff;">Tests &amp; Grading <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16" style="vertical-align:middle;margin-left:2px"><path fill-rule="evenodd" d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5"/><path fill-rule="evenodd" d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 1.707V5.5a.5.5 0 0 0 1 0z"/></svg></a>
         <a href="../instructor/student_profile.php?id=<?= $student_id ?>" class="btn btn-success">View Profile</a>
         <a href="pay.php" class="btn btn-success">Make a Payment</a>
     </div>
@@ -202,6 +242,14 @@ function badge_result(string $r): string {
 <div class="alert alert-success">✓ Profile saved successfully.</div>
 <?php endif; ?>
 
+
+<!-- ── Attendance bar graph ── -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white fw-semibold border-bottom">Attendance — Last 12 Months</div>
+    <div class="card-body" style="height:220px;">
+        <canvas id="attChart"></canvas>
+    </div>
+</div>
 
 <!-- ── Two-column layout ── -->
 <div class="row g-4">
@@ -321,6 +369,61 @@ function badge_result(string $r): string {
     </div>
 </div>
 
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+    var chartInst = null;
+    var ranks     = <?= json_encode($chart_ranks) ?>;
+
+    function colors() {
+        var dark = document.getElementById('html-root').getAttribute('data-bs-theme') === 'dark';
+        return {
+            grid:  dark ? 'rgba(255,255,255,.12)' : 'rgba(0,0,0,.2)',
+            label: dark ? '#dee2e6' : '#000'
+        };
+    }
+
+    function buildChart() {
+        if (chartInst) chartInst.destroy();
+        var c = colors();
+        chartInst = new Chart(document.getElementById('attChart'), {
+            type: 'bar',
+            data: {
+                labels: <?= json_encode($chart_labels) ?>,
+                datasets: [{
+                    data: <?= json_encode($chart_data) ?>,
+                    backgroundColor: <?= json_encode($chart_colors) ?>,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx) { return 'Classes: ' + ctx.parsed.y; },
+                            afterLabel: function(ctx) { return ranks[ctx.dataIndex] ? 'Belt: ' + ranks[ctx.dataIndex] : ''; }
+                        }
+                    }
+                },
+                scales: {
+                    x: { ticks: { color: c.label }, grid: { color: c.grid } },
+                    y: { beginAtZero: true, ticks: { stepSize: 1, color: c.label }, grid: { color: c.grid } }
+                }
+            }
+        });
+    }
+
+    buildChart();
+    new MutationObserver(buildChart).observe(
+        document.getElementById('html-root'),
+        { attributes: true, attributeFilter: ['data-bs-theme'] }
+    );
+})();
+</script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>
 

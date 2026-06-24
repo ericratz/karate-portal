@@ -2,7 +2,7 @@
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/config.php';
-require_role('parent');
+require_role('parent', 'instructor');
 
 $user_id = current_user_id();
 
@@ -40,7 +40,7 @@ foreach ($ch_stmt->fetchAll() as $c) {
 }
 
 if (empty($family)) {
-    header('Location: index.php');
+    header('Location: ' . dashboard_url($_SESSION['role'] ?? 'student'));
     exit;
 }
 
@@ -65,6 +65,21 @@ $tp_stmt = db()->prepare(
 );
 $tp_stmt->execute($family_ids);
 $tuition_paid_ids = array_map('intval', $tp_stmt->fetchAll(PDO::FETCH_COLUMN));
+
+// All paid tuition months per student (for per-month notice)
+$pm_stmt = db()->prepare(
+    "SELECT student_id, COALESCE(DATE_FORMAT(month_covered, '%Y-%m-01'), DATE_FORMAT(payment_date, '%Y-%m-01')) AS paid_month
+     FROM payments WHERE student_id IN ($placeholders) AND payment_type = 'monthly_tuition'"
+);
+$pm_stmt->execute($family_ids);
+$paid_months_by_student = [];
+foreach ($pm_stmt->fetchAll() as $row) {
+    $paid_months_by_student[(int)$row['student_id']][] = $row['paid_month'];
+}
+foreach ($family_ids as $fid) {
+    if (!isset($paid_months_by_student[$fid])) $paid_months_by_student[$fid] = [];
+    else $paid_months_by_student[$fid] = array_values(array_unique($paid_months_by_student[$fid]));
+}
 $family_tuition_paid = !empty($tuition_paid_ids);
 
 // Names of family members who have paid tuition (for warning message)
@@ -177,6 +192,12 @@ include __DIR__ . '/../includes/header.php';
                             </select>
                         </td>
                     </tr>
+                    <tr id="row-tuition-paid-notice" style="display:none">
+                        <td></td>
+                        <td colspan="2">
+                            <div id="tuitionAlreadyPaid" class="alert alert-info py-2 mb-0 small"></div>
+                        </td>
+                    </tr>
                     <?php endif; ?>
                     <?php if ($key === 'registration'): ?>
                     <tr id="row-reg-extra" style="display:none">
@@ -207,7 +228,6 @@ include __DIR__ . '/../includes/header.php';
                                 <input type="number" id="donationAmountInput" class="form-control"
                                        placeholder="0.00" step="0.01" min="1">
                             </div>
-                            <div class="form-text">Donations support the dojo and are recorded separately.</div>
                         </td>
                     </tr>
                     </tbody>
@@ -266,7 +286,7 @@ include __DIR__ . '/../includes/header.php';
                         <span>$<span id="paidAmountDisplay"></span></span>
                     </div>
                     <div class="text-muted small mt-1">Transaction ID: <code id="txnIdDisplay"></code></div>
-                    <a href="index.php" class="btn btn-sm btn-success mt-2">Back to Dashboard</a>
+                    <a href="<?= dashboard_url($_SESSION['role'] ?? 'student') ?>" class="btn btn-sm btn-success mt-2">Back to Dashboard</a>
                 </div>
 
                 <!-- Error -->
@@ -295,15 +315,16 @@ include __DIR__ . '/../includes/header.php';
 <script src="https://www.paypal.com/sdk/js?client-id=<?= htmlspecialchars(PAYPAL_CLIENT_ID) ?>&currency=USD"></script>
 
 <script>
-const FEES                   = <?= json_encode($fees) ?>;
-const CSRF                   = document.querySelector('meta[name="csrf-token"]').content;
-const TUITION_PAID_IDS       = <?= json_encode($tuition_paid_ids) ?>;
-const REG_PAID_IDS           = <?= json_encode($reg_paid_ids) ?>;
-const FAMILY_PAID            = <?= json_encode($family_tuition_paid) ?>;
-const MONTH_OPTIONS          = <?= json_encode($month_options) ?>;
-const OWN_ID                 = <?= json_encode($own_id) ?>;
-const CHILD_TUITION_PAID_IDS = <?= json_encode($child_tuition_paid_ids) ?>;
-const STUDENT_LABELS         = <?= json_encode(array_column($family, 'label', 'id')) ?>;
+const FEES                    = <?= json_encode($fees) ?>;
+const CSRF                    = document.querySelector('meta[name="csrf-token"]').content;
+const TUITION_PAID_IDS        = <?= json_encode($tuition_paid_ids) ?>;
+const REG_PAID_IDS            = <?= json_encode($reg_paid_ids) ?>;
+const FAMILY_PAID             = <?= json_encode($family_tuition_paid) ?>;
+const MONTH_OPTIONS           = <?= json_encode($month_options) ?>;
+const OWN_ID                  = <?= json_encode($own_id) ?>;
+const CHILD_TUITION_PAID_IDS  = <?= json_encode($child_tuition_paid_ids) ?>;
+const STUDENT_LABELS          = <?= json_encode(array_column($family, 'label', 'id')) ?>;
+const PAID_MONTHS_BY_STUDENT  = <?= json_encode($paid_months_by_student) ?>;
 
 var total = 0;
 
@@ -324,7 +345,8 @@ function itemLabel(item) {
 function updateTuitionWarning() {
     var el = document.getElementById('tuitionFamilyWarning');
     if (!el) return;
-    var show = OWN_ID > 0 && getSelectedStudentId() === OWN_ID && CHILD_TUITION_PAID_IDS.length > 0;
+    var tuitionChecked = document.getElementById('chk-monthly_tuition').checked;
+    var show = tuitionChecked && OWN_ID > 0 && getSelectedStudentId() === OWN_ID && CHILD_TUITION_PAID_IDS.length > 0;
     el.classList.toggle('d-none', !show);
 }
 
@@ -445,6 +467,7 @@ function onStudentChange() {
         if (row) row.classList.remove('table-primary');
     });
     hide('row-month-picker');
+    hide('row-tuition-paid-notice');
     hide('row-donation-amount');
     hide('row-reg-extra');
     var twEl = document.getElementById('tuitionFamilyWarning');
@@ -464,6 +487,24 @@ function onStudentChange() {
 }
 
 document.getElementById('studentSelect').addEventListener('change', onStudentChange);
+
+function updateTuitionMonthNotice() {
+    var month = document.getElementById('tuitionMonth').value;
+    var row   = document.getElementById('row-tuition-paid-notice');
+    var msg   = document.getElementById('tuitionAlreadyPaid');
+    var sid   = getSelectedStudentId();
+    var paid  = PAID_MONTHS_BY_STUDENT[sid] || [];
+    if (paid.indexOf(month) !== -1) {
+        var d     = new Date(month);
+        var label = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+        msg.textContent = 'You have already paid tuition for ' + label + '.';
+        row.style.display = '';
+    } else {
+        row.style.display = 'none';
+    }
+}
+
+document.getElementById('tuitionMonth').addEventListener('change', updateTuitionMonthNotice);
 
 // ── Wire up fee checkboxes ────────────────────────────────────────
 document.querySelectorAll('.fee-chk').forEach(function(chk) {
@@ -488,6 +529,8 @@ function updateRow(chk) {
     if (chk.dataset.key === 'monthly_tuition') {
         document.getElementById('row-month-picker').style.display = chk.checked ? '' : 'none';
         updateTuitionWarning();
+        if (!chk.checked) document.getElementById('row-tuition-paid-notice').style.display = 'none';
+        else updateTuitionMonthNotice();
     }
     if (chk.dataset.key === 'registration') {
         var regRow = document.getElementById('row-reg-extra');
