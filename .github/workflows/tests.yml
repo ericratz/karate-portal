@@ -52,6 +52,11 @@ jobs:
           $src = "C:\Users\ericratz\XAMPP\htdocs\karate\.env"
           if (Test-Path $src) { Copy-Item $src .env }
 
+      - name: Install Composer dependencies
+        shell: powershell
+        run: |
+          & "C:\Users\ericratz\XAMPP\php\php.exe" "$env:GITHUB_WORKSPACE\portal\composer.phar" install --working-dir="$env:GITHUB_WORKSPACE\portal" --no-interaction
+
       - name: Run PHPUnit tests
         shell: powershell
         run: |
