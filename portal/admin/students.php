@@ -11,6 +11,7 @@ $order_sql = $sort === 'last_name' ? 's.last_name, s.first_name' : 's.first_name
 $all = db()->query(
     'SELECT s.id, s.first_name, s.last_name, s.student_type, s.active,
             s.active_override, s.injury_waiver, s.registration_date, s.medical_note,
+            s.email, s.phone,
             r.kyu_dan, u.id AS user_role,
             (SELECT MAX(cs.session_date)
              FROM attendance a JOIN class_sessions cs ON cs.id = a.session_id
@@ -58,12 +59,14 @@ function student_row($s, $id_col = true) {
     $status = $s['active'] ? 'active' : 'inactive';
     $login  = $s['user_role'] ? 'yes' : 'no';
     echo '<tr'
-       . ' data-name="'          . htmlspecialchars($search_name)               . '"'
-       . ' data-status="'        . $status                                       . '"'
-       . ' data-login="'         . $login                                        . '"'
-       . ' data-rank="'          . htmlspecialchars($s['kyu_dan'] ?? '')         . '"'
-       . ' data-waiver="'        . ($s['injury_waiver'] ? 'yes' : 'no')         . '"'
-       . ' data-last-attended="' . htmlspecialchars($s['last_attended'] ?? '')   . '"'
+       . ' data-name="'          . htmlspecialchars($search_name)                        . '"'
+       . ' data-email="'         . htmlspecialchars(strtolower($s['email'] ?? ''))       . '"'
+       . ' data-phone="'         . preg_replace('/\D/', '', $s['phone'] ?? '')           . '"'
+       . ' data-status="'        . $status                                                . '"'
+       . ' data-login="'         . $login                                                 . '"'
+       . ' data-rank="'          . htmlspecialchars($s['kyu_dan'] ?? '')                 . '"'
+       . ' data-waiver="'        . ($s['injury_waiver'] ? 'yes' : 'no')                 . '"'
+       . ' data-last-attended="' . htmlspecialchars($s['last_attended'] ?? '')           . '"'
        . '>';
     $med = trim($s['medical_note'] ?? '');
     echo '<td class="fw-semibold"><a href="../instructor/student_profile.php?id=' . $s['id'] . '" class="text-decoration-none">' . htmlspecialchars($display_name) . '</a>'
@@ -124,7 +127,7 @@ function student_table($rows, $empty_msg) {
     <a href="?sort=last_name"  class="btn btn-sm btn-filter <?= $sort === 'last_name'  ? 'active' : '' ?>">Last Name</a>
     <span class="text-muted small ms-2">|</span>
     <input type="text" id="rosterSearch" class="form-control form-control-sm"
-           placeholder="Search name…" style="width:180px" oninput="filterRoster()">
+           placeholder="Search name, email, phone…" style="width:220px" oninput="filterRoster()">
     <select id="filterStatus" class="form-select form-select-sm" style="width:130px" onchange="filterRoster()">
         <option value="">All Statuses</option>
         <option value="active">Active</option>
@@ -224,7 +227,8 @@ function filterRoster() {
                 if (att === 'year') { attMatch = d.getFullYear() === now.getFullYear(); }
             }
         }
-        var match = (!q      || row.dataset.name.includes(q))
+        var qDigits = q.replace(/\D/g, '');
+        var match = (!q      || row.dataset.name.includes(q) || row.dataset.email.includes(q) || (qDigits && row.dataset.phone.includes(qDigits)))
                  && (!status || row.dataset.status === status)
                  && (!login  || row.dataset.login  === login)
                  && (!rank   || row.dataset.rank   === rank)

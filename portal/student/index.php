@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../includes/belt_helpers.php';
 require_login();
 
 $user_id = current_user_id();
@@ -54,6 +55,8 @@ $rank = db()->prepare(
 );
 $rank->execute([$student_id]);
 $rank = $rank->fetch();
+
+$next_rank = belt_next_rank($rank['kyu_dan'] ?? null, $student['date_of_birth'] ?? null);
 
 // Last 10 sessions the student actually attended
 $attendance = db()->prepare(
@@ -188,23 +191,24 @@ function badge_result(string $r): string {
         </small>
     </div>
     <div class="d-flex gap-2 flex-wrap">
-        <a href="https://noji.com/karate/class/homework/homework.php" target="_blank" class="btn" style="background-color:#0052cc;border-color:#0052cc;color:#fff;">Homework <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16" style="vertical-align:middle;margin-left:2px"><path fill-rule="evenodd" d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5"/><path fill-rule="evenodd" d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 1.707V5.5a.5.5 0 0 0 1 0z"/></svg></a>
-        <a href="https://noji.com/karate/testing/testing.php" target="_blank" class="btn" style="background-color:#0052cc;border-color:#0052cc;color:#fff;">Tests &amp; Grading <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16" style="vertical-align:middle;margin-left:2px"><path fill-rule="evenodd" d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5"/><path fill-rule="evenodd" d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 1.707V5.5a.5.5 0 0 0 1 0z"/></svg></a>
+        <a href="https://noji.com/karate/class/homework/homework.php" target="_blank" class="btn" style="background-color:#0052cc;border-color:#0052cc;color:#fff;">All Homework <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16" style="vertical-align:middle;margin-left:2px"><path fill-rule="evenodd" d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5"/><path fill-rule="evenodd" d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 1.707V5.5a.5.5 0 0 0 1 0z"/></svg></a>
+        <a href="https://noji.com/karate/testing/testing.php" target="_blank" class="btn" style="background-color:#0052cc;border-color:#0052cc;color:#fff;">Test Info <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16" style="vertical-align:middle;margin-left:2px"><path fill-rule="evenodd" d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5"/><path fill-rule="evenodd" d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 1.707V5.5a.5.5 0 0 0 1 0z"/></svg></a>
         <a href="../instructor/student_profile.php?id=<?= $student_id ?>" class="btn btn-success">View Profile</a>
         <a href="pay.php" class="btn btn-success">Make a Payment</a>
     </div>
 
 </div>
 
+<?php
+$ext_icon = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="currentColor" viewBox="0 0 16 16" style="vertical-align:middle;margin-left:3px"><path fill-rule="evenodd" d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5"/><path fill-rule="evenodd" d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 1.707V5.5a.5.5 0 0 0 1 0z"/></svg>';
+?>
 <!-- ── Summary cards ── -->
 <div class="row g-3 mb-4">
 
     <div class="col-sm-6 col-lg-3">
         <div class="card text-center h-100 border-0 shadow-sm">
-            <div class="card-body">
-                <div class="display-6 fw-bold text-primary">
-                    <?= $att_summary['attended'] ?? 0 ?>
-                </div>
+            <div class="card-body d-flex flex-column align-items-center justify-content-center gap-1">
+                <div class="fs-3 fw-bold text-primary"><?= $att_summary['attended'] ?? 0 ?></div>
                 <div class="text-muted small">Classes Attended</div>
             </div>
         </div>
@@ -212,23 +216,46 @@ function badge_result(string $r): string {
 
     <div class="col-sm-6 col-lg-3">
         <div class="card text-center h-100 border-0 shadow-sm">
-            <div class="card-body">
-                <div class="display-6 fw-bold" style="color:#6f42c1">
-                    <?= $rank ? htmlspecialchars($rank['name']) : '—' ?>
-                </div>
+            <div class="card-body d-flex flex-column align-items-center justify-content-center gap-1">
+                <div class="fw-bold fs-3" style="color:#6f42c1"><?= $rank ? htmlspecialchars($rank['name']) : '—' ?></div>
                 <div class="text-muted small">Current Rank</div>
             </div>
         </div>
     </div>
 
+    <?php if ($next_rank && $next_rank['hw_url']): ?>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card text-center h-100 border-0 shadow-sm">
+            <div class="card-body d-flex flex-column align-items-center justify-content-center gap-1">
+                <a href="<?= $next_rank['hw_url'] ?>" target="_blank" class="fw-bold fs-3 text-decoration-none">
+                    <?= htmlspecialchars($next_rank['name']) ?><?= $ext_icon ?>
+                </a>
+                <div class="text-muted small">Next Belt Homework</div>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <?php if ($next_rank && $next_rank['test_url']): ?>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card text-center h-100 border-0 shadow-sm">
+            <div class="card-body d-flex flex-column align-items-center justify-content-center gap-1">
+                <a href="<?= $next_rank['test_url'] ?>" target="_blank" class="fw-bold fs-3 text-decoration-none">
+                    <?= htmlspecialchars($next_rank['name']) ?><?= $ext_icon ?>
+                </a>
+                <div class="text-muted small">Next Belt Test</div>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
+
     <?php if (!$student['injury_waiver']): ?>
     <div class="col-sm-6 col-lg-3">
         <div class="card text-center h-100 border-0 shadow-sm">
-            <div class="card-body d-flex flex-column align-items-center justify-content-center">
-                <div class="display-6 fw-bold text-danger">✗</div>
-                <div class="text-muted small mb-2">Waiver</div>
-                <a href="waiver.php" class="btn btn-sm btn-warning mt-1">Complete Waiver</a>
-            </div>
+            <a href="waiver.php" class="card-body d-flex flex-column align-items-center justify-content-center gap-1 text-decoration-none">
+                <span class="fs-3 fw-bold text-danger">✗</span>
+                <span class="text-muted small">Complete Waiver</span>
+            </a>
         </div>
     </div>
     <?php endif; ?>

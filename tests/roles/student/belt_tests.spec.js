@@ -72,7 +72,7 @@ test.describe('Student belt test history page', () => {
         await expect(failCell.first()).toBeVisible();
     });
 
-    test('pending belt test shows â€” dash in Test Passed column', async ({ page }) => {
+    test('pending belt test shows - dash in Test Passed column', async ({ page }) => {
         await page.goto(BASE + '/student/belt_tests.php');
         // Pending result = neither pass nor fail â†’ last <td> shows "â€”" in a text-muted span
         const pendingCell = page.locator('tbody td:last-child span.text-muted');
@@ -112,7 +112,7 @@ test.describe('Student belt test history page', () => {
 
     // â”€â”€ ACCESS CONTROL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-    test('belt_tests.php requires login â€” redirects unauthenticated users', async ({ page }) => {
+    test('belt_tests.php requires login - redirects unauthenticated users', async ({ page }) => {
         await page.context().clearCookies();
         await page.goto(BASE + '/student/belt_tests.php');
         await page.waitForLoadState('domcontentloaded');

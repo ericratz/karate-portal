@@ -1,4 +1,4 @@
-﻿// @ts-check
+// @ts-check
 // Tests for V0.2 features:
 //   - Parent category on roster/attendance/student-notes/email
 //   - Notify Noji registration flow (option cards, skip, notify)
@@ -24,7 +24,7 @@ test.describe('Parent category on roster views', () => {
         await expect(page.locator('.card-header').filter({ hasText: 'Parents' })).toBeVisible();
     });
 
-    test('admin students.php card order: Instructors â†’ Parents â†’ Students â†’ Guests', async ({ page }) => {
+    test('admin students.php card order: Instructors -> Parents -> Students -> Guests', async ({ page }) => {
         await page.goto(BASE + '/admin/students.php');
         const headers = await page.locator('.card-header').allTextContents();
         const order = headers.map(h => h.trim());
@@ -334,7 +334,7 @@ test.describe('Users page parent role filter', () => {
 
 });
 
-// â”€â”€ WAIVER LABEL (renamed: Injury Waiver â†’ Liability Waiver â†’ Waiver) â”€â”€â”€â”€â”€â”€â”€â”€
+// â”€â”€ WAIVER LABEL (renamed: Injury Waiver â†' Liability Waiver â†' Waiver) â”€â”€â”€â”€â”€â”€â”€â”€
 
 test.describe('Waiver label', () => {
     test.use({ storageState: AUTH.admin });

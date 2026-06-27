@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/db.php';
-require_role('parent');
+require_role('parent', 'instructor', 'admin');
 
 $user_id = current_user_id();
 
@@ -122,10 +122,14 @@ include __DIR__ . '/../includes/header.php';
 <div class="col-md-7">
 
 <!-- Profile card -->
-<div class="card border-0 shadow-sm">
+<div id="profile-card" class="card border-0 shadow-sm">
     <div class="card-header bg-white fw-semibold">Profile</div>
     <div class="card-body">
-        <form method="post" class="row g-3">
+        <?php if ($msg):   ?><div class="alert alert-success py-2 mb-3"><?= htmlspecialchars($msg) ?></div><?php endif; ?>
+        <?php if ($error): ?><div class="alert alert-danger py-2 mb-3"><?= htmlspecialchars($error) ?></div><?php endif; ?>
+        <form method="post" class="row g-3"
+              hx-post="profile_edit.php?student_id=<?= $student_id ?>"
+              hx-target="#profile-card" hx-swap="outerHTML" hx-select="#profile-card">
             <?= csrf_input() ?>
             <input type="hidden" name="student_id" value="<?= $student_id ?>">
 
@@ -193,7 +197,7 @@ include __DIR__ . '/../includes/header.php';
 
 <?php if ($student_id === $own_student_id): ?>
 <!-- Change Password card (applies to the parent's own login) -->
-<div class="card border-0 shadow-sm">
+<div id="password-card" class="card border-0 shadow-sm">
     <div class="card-header bg-white d-flex justify-content-between align-items-center">
         <span class="fw-semibold">Change Password</span>
         <button class="btn btn-sm btn-danger" type="button"
@@ -203,8 +207,12 @@ include __DIR__ . '/../includes/header.php';
     </div>
     <div class="collapse <?= $pw_error || $pw_msg ? 'show' : '' ?>" id="changePasswordForm">
         <div class="card-body">
+            <?php if ($pw_msg):   ?><div class="alert alert-success py-2 mb-3"><?= htmlspecialchars($pw_msg) ?></div><?php endif; ?>
+            <?php if ($pw_error): ?><div class="alert alert-danger py-2 mb-3"><?= htmlspecialchars($pw_error) ?></div><?php endif; ?>
             <p class="text-muted small mb-3">This changes your own login password.</p>
-            <form method="post" class="row g-3">
+            <form method="post" class="row g-3"
+                  hx-post="profile_edit.php?student_id=<?= $student_id ?>"
+                  hx-target="#password-card" hx-swap="outerHTML" hx-select="#password-card">
                 <?= csrf_input() ?>
                 <input type="hidden" name="student_id" value="<?= $student_id ?>">
                 <input type="hidden" name="change_password" value="1">

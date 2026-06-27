@@ -55,7 +55,7 @@ test('saving profile with address fields redirects to dashboard with success ban
     await expect(page.locator('.alert-success').first()).toContainText('Profile saved successfully');
 });
 
-test('address fields persist after save â€” pre-fill on reload', async ({ page }) => {
+test('address fields persist after save - pre-fill on reload', async ({ page }) => {
     await page.goto(BASE + '/student/profile_edit.php');
     await assertNoPhpErrors(page, 'profile edit after save');
     await expect(page.locator('input[name="street_address"]')).toHaveValue(TEST_STREET);

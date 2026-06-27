@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "npx playwright test",
+    "test": "chcp 65001 >nul && npx playwright test",
     "test:admin": "npx playwright test tests/admin.spec.js",
     "test:instructor": "npx playwright test tests/instructor.spec.js",
     "test:student": "npx playwright test tests/student.spec.js",

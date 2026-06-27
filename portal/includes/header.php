@@ -150,6 +150,11 @@
             --bs-btn-active-color: #fff;
         }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.3/dist/htmx.min.js"></script>
+    <style>
+        /* htmx delete-row fade */
+        .htmx-swapping { opacity: 0 !important; transition: opacity 300ms ease !important; }
+    </style>
     <script>
         (function() {
             if (localStorage.getItem('theme') === 'dark') {

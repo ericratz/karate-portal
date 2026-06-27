@@ -45,7 +45,11 @@ include __DIR__ . '/../includes/header.php';
 
 <?php if ($own_student_id): ?>
 <div class="d-flex justify-content-end gap-2 mb-3">
+    <?php if ($has_children): ?>
+    <a href="../parent/index.php" class="btn btn-outline-secondary">View Profile</a>
+    <?php else: ?>
     <a href="student_profile.php?id=<?= (int)$own_student_id ?>" class="btn btn-outline-secondary">View Profile</a>
+    <?php endif; ?>
     <a href="../parent/pay.php?student_id=<?= (int)$own_student_id ?>" class="btn btn-success">Make a Payment</a>
 </div>
 <?php endif; ?>

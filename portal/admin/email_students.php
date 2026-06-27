@@ -137,6 +137,7 @@ foreach ($all_students as $s) {
                 <?php foreach ($all_students as $s):
                     $email = $s['email'] ?: $s['login_email'];
                     $hasEmail = $email && filter_var($email, FILTER_VALIDATE_EMAIL);
+                    if (!$hasEmail) continue;
                 ?>
                 <tr class="recipient-row" data-type="<?= $s['student_type'] ?>"
                     data-group="<?= in_array($s['student_type'], ['instructor','admin']) ? 'instructors' : ($s['student_type'] === 'student' ? 'students' : ($s['student_type'] === 'parent' ? 'parents' : 'guests')) ?>">
@@ -145,7 +146,7 @@ foreach ($all_students as $s) {
                                name="send_to[]" value="<?= $s['id'] ?>"
                                id="r<?= $s['id'] ?>"
                                onchange="updateCount()"
-                               <?= !$hasEmail ? 'disabled title="No valid email"' : '' ?>>
+>
                     </td>
                     <td class="small">
                         <label for="r<?= $s['id'] ?>" class="mb-0 cursor-pointer">
@@ -158,13 +159,7 @@ foreach ($all_students as $s) {
                         ?>
                         <span class="badge <?= $type_cls[$s['student_type']] ?? 'bg-secondary' ?>"><?= ucfirst($s['student_type']) ?></span>
                     </td>
-                    <td class="small">
-                        <?php if ($hasEmail): ?>
-                            <?= htmlspecialchars($email) ?>
-                        <?php else: ?>
-                            <span class="text-danger">⚠ no email</span>
-                        <?php endif; ?>
-                    </td>
+                    <td class="small"><?= htmlspecialchars($email) ?></td>
                 </tr>
                 <?php endforeach; ?>
             </tbody>

@@ -1,7 +1,7 @@
 // @ts-check
 // Tests for instructor/student_profile.php — viewable by instructor and admin.
 const { test, expect } = require('@playwright/test');
-const { assertNoPhpErrors, BASE, AUTH } = require('../../helpers');
+const { assertNoPhpErrors, apiPost, BASE, AUTH } = require('../../helpers');
 
 const STUDENT_ID = 2; // Sarah Johnson — stable student in test DB
 
@@ -31,18 +31,6 @@ test.describe('Student profile — instructor', () => {
     test('has Belt Test History card', async ({ page }) => {
         await page.goto(BASE + `/instructor/student_profile.php?id=${STUDENT_ID}`);
         await expect(page.locator('.card-header').filter({ hasText: 'Belt Test History' })).toBeVisible();
-    });
-
-    test('has attendance chart canvas', async ({ page }) => {
-        await page.goto(BASE + `/instructor/student_profile.php?id=${STUDENT_ID}`);
-        await expect(page.locator('#attChart')).toBeVisible();
-    });
-
-    test('Chart.js script is loaded', async ({ page }) => {
-        await page.goto(BASE + `/instructor/student_profile.php?id=${STUDENT_ID}`);
-        // Use page.content() — Playwright locators don't reliably query <script> elements.
-        const html = await page.content();
-        expect(html).toContain('chart.js');
     });
 
     test('missing id redirects to instructor index', async ({ page }) => {
@@ -82,5 +70,90 @@ test.describe('Student profile — access control', () => {
         // We test this indirectly — an unauthenticated hit redirects to login (above).
         // A student logged in who owns id=STUDENT_ID CAN see it; another student cannot.
         // That scenario is covered by the access_control spec.
+    });
+});
+
+// ── INSTRUCTOR OWN-PROFILE INLINE EDIT ───────────────────────────────────────
+// When an instructor views their own student record, an inline Edit button appears.
+
+test.describe('Student profile — instructor own-profile edit', () => {
+    test.use({ storageState: AUTH.instructor });
+
+    test('View Profile link on instructor dashboard leads to own profile', async ({ page }) => {
+        await page.goto(BASE + '/instructor/');
+        await assertNoPhpErrors(page, 'instructor index');
+        await expect(page.locator('a:has-text("View Profile")')).toBeVisible();
+    });
+
+    test('own profile page shows inline Edit button', async ({ page }) => {
+        await page.goto(BASE + '/instructor/');
+        const href = await page.locator('a:has-text("View Profile")').getAttribute('href');
+        await page.goto(BASE + '/instructor/' + href);
+        await assertNoPhpErrors(page, 'instructor own profile');
+        await expect(page.locator('#profileEditBtn')).toBeVisible();
+    });
+
+    test('Edit toggles to form, Cancel restores view', async ({ page }) => {
+        await page.goto(BASE + '/instructor/');
+        const href = await page.locator('a:has-text("View Profile")').getAttribute('href');
+        await page.goto(BASE + '/instructor/' + href);
+
+        await expect(page.locator('#profile-edit')).toBeHidden();
+        await page.click('#profileEditBtn');
+        await expect(page.locator('#profile-edit')).toBeVisible();
+        await expect(page.locator('#profile-view')).toBeHidden();
+
+        await page.click('#profileCancelBtn');
+        await expect(page.locator('#profile-edit')).toBeHidden();
+        await expect(page.locator('#profile-view')).toBeVisible();
+    });
+
+    test('Save updates own profile via HTMX without page reload', async ({ page }) => {
+        await page.goto(BASE + '/instructor/');
+        const href = await page.locator('a:has-text("View Profile")').getAttribute('href');
+        await page.goto(BASE + '/instructor/' + href);
+
+        // Record original phone value from view section
+        await page.click('#profileEditBtn');
+        const originalPhone = await page.inputValue('input[name="phone"]');
+
+        await page.fill('input[name="phone"]', '555-9999');
+
+        let navigated = false;
+        page.on('framenavigated', () => { navigated = true; });
+
+        await page.click('#profileEditBtn'); // Save
+        await page.waitForLoadState('networkidle');
+
+        expect(navigated).toBe(false);
+        await expect(page.locator('#profile-card')).toContainText('555-9999');
+
+        // Restore
+        await page.click('#profileEditBtn');
+        await page.fill('input[name="phone"]', originalPhone);
+        await page.click('#profileEditBtn');
+        await page.waitForLoadState('networkidle');
+    });
+
+    test('instructor cannot update another student profile via API', async ({ page }) => {
+        // Load own profile page to get a valid CSRF token
+        await page.goto(BASE + '/instructor/');
+        const href = await page.locator('a:has-text("View Profile")').getAttribute('href');
+        await page.goto(BASE + '/instructor/' + href);
+
+        // Extract own student ID from URL
+        const ownId = new URL(page.url()).searchParams.get('id');
+
+        // Try posting update_profile targeting a DIFFERENT student (Sarah Johnson, id=2)
+        const targetId = ownId === '2' ? '3' : '2';
+        await apiPost(page, `/instructor/student_profile.php?id=${targetId}`, {
+            action:     'update_profile',
+            first_name: 'HACKED',
+            last_name:  'HACKED',
+        });
+
+        // Verify the other student's name is unchanged
+        await page.goto(BASE + `/instructor/student_profile.php?id=${targetId}`);
+        await expect(page.locator('body')).not.toContainText('HACKED');
     });
 });

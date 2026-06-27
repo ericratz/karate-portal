@@ -1,10 +1,19 @@
-# Shotokan Karate Portal — V3.0
+# Shotokan Karate Portal — V3.1
 
 A private membership portal for Noji Ratzlaff's Shotokan Karate dojo. Students track
 attendance, belt tests, and payments. Instructors manage classes and roster. The admin
 runs the full operation from one place.
 
 ---
+
+## What's New in V3.1
+
+- **HTMX partial card swaps** — all edit cards across `admin/student_edit.php` save in-place without a page reload. Edit → Save → card updates, scroll position preserved
+- **Inline profile editing** — students, instructors, and parents can edit their own profile directly on the dashboard card (no separate edit page navigation). Implemented via HTMX on `parent/index.php` and `instructor/student_profile.php`
+- **Roster search by email and phone** — the admin roster search bar (`admin/students.php`) now matches email addresses and phone numbers in addition to name
+- **Next belt requirements** — student and parent dashboards show the next rank, minimum time-in-rank, and test score threshold needed to advance (`portal/includes/belt_helpers.php`)
+- **Belt tests delete confirmation** — `instructor/belt_tests_all.php` delete uses `onsubmit` confirm instead of `hx-confirm` (eliminates double-confirm dialogs)
+- **Test coverage expanded** — 483 tests across 37 spec files (Playwright) plus 34 PHPUnit unit/integration tests. New tests cover HTMX inline-edit flows, HTMX card swaps without page reload, and auth boundary checks for `update_profile` handlers
 
 ## What's New in V3.0
 
@@ -14,42 +23,10 @@ runs the full operation from one place.
 - **Attendance bar graph** — student dashboard shows a Chart.js bar chart of attendance for the last 12 months. Bars turn purple for any month in which a rank advancement was recorded
 - **Roster quick-view** — registration paid status shows a ✓ or ✗ directly in the roster table (no need to open the full student record)
 - **Roster and Attendance nav buttons** — quick-access links in the header bar for admin and instructor roles
-- **Link underlines removed** — global CSS in `portal/includes/header.php`; hover state also unstyled
 - **Security headers** — `.htaccess` sets `X-Frame-Options: SAMEORIGIN`, `X-Content-Type-Options: nosniff`, and a full `Content-Security-Policy` with `report-uri` pointing to `api/csp_report.php`
 - **CSP reporting** — `api/csp_report.php` receives browser Content Security Policy violation reports and logs them via `log_event()`
 - **Role system overhaul** — `users.role ENUM` removed. Role is now derived at login: `is_admin=1` → `admin`; otherwise `students.student_type` (fallback `guest` if no linked record). Stored as `$_SESSION['role']`
-- **Playwright test suite reorganized** — tests moved from flat feature files into role-based directories (`tests/roles/admin/`, `tests/roles/instructor/`, `tests/roles/student/`, `tests/roles/parent/`, `tests/auth/`, `tests/shared/`). 466 tests across 36 spec files. Output goes to `tests/report/` and `tests/results/`
-
-## What's New in V2.5
-
-- **API endpoints moved** — PayPal and feedback endpoints live in `portal/api/` (cleaner root directory)
-- **Payment receipts** — students receive an email receipt after any PayPal or manually-recorded payment
-- **Google registration** — now runs the same multi-step matching flow as standard registration (find existing record → confirm → create account)
-- **Rate limiting on registration** — max 5 attempts per hour per IP
-- **Belt test → rank sync** — awarding a belt test (score ≥ 80%) automatically updates the student's rank history from both the admin and instructor edit forms
-- **Donation payment type** — admins can now record donations manually alongside other payment types
-- **Venmo removed** — no longer a valid payment method for new entries (legacy records still display correctly)
-- **Hardcoded paths replaced** — all `/karate/portal/` paths now use `SITE_URL` from `.env`
-- **Student dashboard** — added Homework and Tests & Grading buttons linking to the karate website
-
-## What's New in V2.4
-
-- **Multi-step registration** — form → match existing roster record → confirm. Nothing written to DB until final confirm. Users get full portal access immediately.
-- **Automatic record matching** — registration searches for existing roster entries by name, DOB, or email. Match cards show name, belt rank, masked email, and birth day/month (year hidden).
-- **Admin registration alerts** — three dashboard cards replace the old Link Requests card: Needs Manual Linking, Claimed Existing Records, New Registrations.
-- **Resolve link page** — `admin/resolve_link.php` lets admin manually link a user to a roster entry when no match was found during registration.
-- **Guest role** — assigned at registration; replaced with the correct role once the record is linked.
-- **`last_login` on registration** — populated immediately so "Last login: Never" never appears for new accounts.
-- **`parent_students` removed** — superseded by `student_guardians` in V2.3.
-- **Cron job fix** — removed spurious `-f php` that caused "Could not open input file: php" errors.
-
-## What's New in V2.3
-
-- **Student guardians** — parent roster entries can be linked to child roster entries via `student_guardians`. No user account required for either party.
-- **Data ownership separation** — user account fields (`first_name`, `last_name`, `date_of_birth`, `email`) live on the `users` table. Roster entries are admin-managed separately.
-- **Date of birth on user accounts** — users can enter and update their DOB from their profile.
-- **Date format** — all dates display with a leading zero (03 Jun 2026).
-- **Dojo email updated** — outgoing mail sends from `noreply@noji.com`.
+- **Playwright test suite reorganized** — tests moved from flat feature files into role-based directories (`tests/roles/admin/`, `tests/roles/instructor/`, `tests/roles/student/`, `tests/roles/parent/`, `tests/auth/`, `tests/shared/`)
 
 ---
 
@@ -63,7 +40,7 @@ runs the full operation from one place.
 | Payments | PayPal JS SDK (one-time + subscriptions) |
 | Auth | Username/password + Google OAuth |
 | Local dev | XAMPP at `C:\Users\ericratz\XAMPP` |
-| Tests | Playwright 1.60 (`npm test`) |
+| Tests | Playwright 1.60 (`npm test`) + PHPUnit 9.6 (`cd portal && vendor/bin/phpunit`) |
 
 ---
 
@@ -192,7 +169,7 @@ karate/
 │   ├── admin/          # Full management: payments, expenses, waivers,
 │   │                   #   users, audit log, email, donations, backup
 │   └── cron/           # Scheduled jobs
-├── tests/              # Playwright test suite (466 tests, 36 spec files)
+├── tests/              # Playwright test suite (483 tests, 37 spec files)
 ├── migrations/         # SQL migration scripts
 ├── karate_schema.sql   # Fresh-install schema with seed data
 └── README.md

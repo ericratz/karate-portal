@@ -9,6 +9,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
     $del_id = (int)$_POST['id'];
     db()->prepare('DELETE FROM belt_tests WHERE id=?')->execute([$del_id]);
     audit('delete_belt_test', 'belt_test', $del_id);
+    if (!empty($_SERVER['HTTP_HX_REQUEST'])) { exit; }
     header('Location: belt_tests_all.php?' . http_build_query(array_diff_key($_GET, [])));
     exit;
 }
@@ -55,7 +56,8 @@ include __DIR__ . '/../includes/header.php';
 <!-- Filter bar -->
 <div class="card border-0 shadow-sm mb-3">
     <div class="card-body py-2">
-        <form method="get" class="row g-2 align-items-end">
+        <form method="get" class="row g-2 align-items-end"
+              hx-get="belt_tests_all.php" hx-target="#belt-tests-results" hx-select="#belt-tests-results" hx-swap="outerHTML" hx-push-url="true">
             <div class="col-md-3">
                 <label class="form-label small mb-1">Student</label>
                 <select name="student_id" class="form-select form-select-sm">
@@ -90,17 +92,21 @@ include __DIR__ . '/../includes/header.php';
                 <button class="btn btn-filter btn-sm w-100">Filter</button>
             </div>
             <div class="col-md-1">
-                <a href="belt_tests_all.php" class="btn btn-filter btn-sm w-100">Clear</a>
+                <a href="belt_tests_all.php"
+                   hx-get="belt_tests_all.php" hx-target="#belt-tests-results" hx-select="#belt-tests-results"
+                   hx-swap="outerHTML" hx-push-url="true"
+                   class="btn btn-filter btn-sm w-100">Clear</a>
             </div>
         </form>
     </div>
 </div>
 
-<div class="card border-0 shadow-sm">
+<div id="belt-tests-results" class="card border-0 shadow-sm">
     <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
         <span><?= count($belt_tests) ?> test<?= count($belt_tests) !== 1 ? 's' : '' ?></span>
         <?php if (!empty($belt_tests)): ?>
-        <button id="editToggle" class="btn btn-sm btn-outline-secondary" onclick="toggleEdit()">Edit</button>
+        <button id="editToggle" class="btn btn-sm btn-outline-secondary"
+                onclick="(function(btn){var t=document.getElementById('beltTestsTable');var e=t.classList.toggle('editing');btn.textContent=e?'Done':'Edit';btn.className=e?'btn btn-sm btn-danger':'btn btn-sm btn-outline-secondary';})(this)">Edit</button>
         <?php endif; ?>
     </div>
     <div class="card-body p-0">
@@ -156,6 +162,8 @@ include __DIR__ . '/../includes/header.php';
                     </td>
                     <td class="delete-col">
                         <form method="post" class="d-inline"
+                              hx-post="belt_tests_all.php" hx-target="closest tr"
+                              hx-swap="delete swap:300ms"
                               onsubmit="return confirm('Delete this belt test record? This cannot be undone.')">
                             <?= csrf_input() ?>
                             <input type="hidden" name="action" value="delete">
@@ -176,15 +184,6 @@ include __DIR__ . '/../includes/header.php';
     .delete-col { display: none; }
     table.editing .delete-col { display: table-cell; }
 </style>
-<script>
-function toggleEdit() {
-    var table = document.getElementById('beltTestsTable');
-    var btn   = document.getElementById('editToggle');
-    var on    = table.classList.toggle('editing');
-    btn.textContent = on ? 'Done' : 'Edit';
-    btn.className   = on ? 'btn btn-sm btn-danger' : 'btn btn-sm btn-outline-secondary';
-}
-</script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>
 

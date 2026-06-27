@@ -7,7 +7,8 @@ const { login, logout, visit, assertNoPhpErrors, deleteTestStudent, BASE } = req
 
 test.describe.configure({ mode: 'serial' });
 
-const { ADMIN_USER, ADMIN_PASS, W_PASS } = require('../credentials');
+const { ADMIN_USER, ADMIN_PASS } = require('../credentials');
+const W_PASS = 'TestPass1!';
 const TS         = Date.now();
 const W_USER     = `waiver${TS}`;   // fresh account used only in this suite
 

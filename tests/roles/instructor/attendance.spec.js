@@ -33,7 +33,7 @@ test.describe('student view', () => {
     test.use({ storageState: AUTH.student });
     test('student sees attended session reflected on dashboard', async ({ page }) => {
         await visit(page, '/student/', 'dashboard after attendance');
-        expect(parseInt(await page.locator('.display-6.text-primary').first().textContent() ?? '0')).toBeGreaterThanOrEqual(0);
+        expect(parseInt(await page.locator('.fs-3.fw-bold.text-primary').first().textContent() ?? '0')).toBeGreaterThanOrEqual(0);
     });
 });
 

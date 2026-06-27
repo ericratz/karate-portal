@@ -57,6 +57,13 @@
     });
 })();
 
+// Re-init Bootstrap tooltips after HTMX partial swaps
+document.addEventListener('htmx:afterSettle', function(e) {
+    e.detail.elt.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
+        new bootstrap.Tooltip(el);
+    });
+});
+
 // Reload on back-navigation to prevent stale bfcache data
 window.addEventListener('pageshow', function(e) {
     if (e.persisted) window.location.reload();

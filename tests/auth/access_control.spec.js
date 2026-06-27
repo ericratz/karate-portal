@@ -2,7 +2,7 @@
 // Access control â€” verifies every role is blocked from pages above their level.
 const { test, expect } = require('@playwright/test');
 const { login, logout, BASE } = require('../helpers');
-const { ADMIN_USER, ADMIN_PASS, INST_USER, INST_PASS, STU_USER, STU_PASS, GUEST_USER, GUEST_PASS } = require('../credentials');
+const { ADMIN_USER, ADMIN_PASS, INST_USER, INST_PASS, STU_USER, STU_PASS, PARENT_USER, PARENT_PASS } = require('../credentials');
 
 test('unauthenticated user is redirected to login', async ({ page }) => {
     await page.goto(BASE + '/student/', { waitUntil: 'domcontentloaded' });
@@ -12,7 +12,7 @@ test('unauthenticated user is redirected to login', async ({ page }) => {
 });
 
 test('guest cannot reach admin or instructor pages', async ({ page }) => {
-    await login(page, GUEST_USER, GUEST_PASS);
+    await login(page, PARENT_USER, PARENT_PASS);
     await page.goto(BASE + '/admin/payments.php', { waitUntil: 'domcontentloaded' });
     expect(await page.textContent('body')).toContain('Access denied');
     await page.goto(BASE + '/instructor/', { waitUntil: 'domcontentloaded' });
@@ -60,7 +60,7 @@ test('admin audit log denied to non-admin', async ({ page }) => {
     await page.goto(BASE + '/admin/audit_log.php');
     expect(await page.textContent('body')).toContain('Access denied');
     await logout(page);
-    await login(page, GUEST_USER, GUEST_PASS);
+    await login(page, PARENT_USER, PARENT_PASS);
     await page.goto(BASE + '/admin/audit_log.php');
     expect(await page.textContent('body')).toContain('Access denied');
     await logout(page);

@@ -27,7 +27,7 @@ test.describe('Parent pages â€” unauthenticated', () => {
 
 // â”€â”€ STUDENT ROLE DENIED â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-test.describe('Parent pages â€” student role denied', () => {
+test.describe('Parent pages - student role denied', () => {
     test.use({ storageState: AUTH.student });
 
     for (const path of PARENT_PAGES) {
@@ -46,11 +46,11 @@ test.describe('Parent pages â€” student role denied', () => {
 test.describe('Parent pages â€” instructor role denied', () => {
     test.use({ storageState: AUTH.instructor });
 
-    test('parent/index.php shows Access denied for instructor role', async ({ page }) => {
+    test('parent/index.php is accessible to instructor role (shows own student data)', async ({ page }) => {
         await page.goto(BASE + '/parent/');
         await page.waitForLoadState('domcontentloaded');
         const body = await page.textContent('body');
-        expect(body).toContain('Access denied');
+        expect(body).not.toContain('Access denied');
     });
 
     test('parent/pay.php is accessible to instructor role', async ({ page }) => {
@@ -63,14 +63,14 @@ test.describe('Parent pages â€” instructor role denied', () => {
 
 // â”€â”€ ADMIN ROLE DENIED â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-test.describe('Parent pages â€” admin role denied', () => {
+test.describe('Parent pages - admin role denied', () => {
     test.use({ storageState: AUTH.admin });
 
-    test('parent/index.php shows Access denied for admin role', async ({ page }) => {
+    test('parent/index.php is accessible to admin role (shows own student data or no-profile message)', async ({ page }) => {
         await page.goto(BASE + '/parent/');
         await page.waitForLoadState('domcontentloaded');
         const body = await page.textContent('body');
-        expect(body).toContain('Access denied');
+        expect(body).not.toContain('Access denied');
     });
 });
 

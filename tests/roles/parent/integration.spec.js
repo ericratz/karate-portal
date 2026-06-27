@@ -68,9 +68,9 @@ test.describe('Parent portal — integration', () => {
         await expect(page.locator('a[href*="pay.php"]').first()).toBeVisible();
     });
 
-    test('dashboard shows Edit Profile button linking to profile_edit.php', async ({ page }) => {
+    test('dashboard shows inline Edit Profile button', async ({ page }) => {
         await page.goto(BASE + `/parent/?student_id=${CHILD_EMILY}`);
-        await expect(page.locator('a[href*="profile_edit.php"]').first()).toBeVisible();
+        await expect(page.locator('#profileEditBtn')).toBeVisible();
     });
 
     // ── BELT TESTS PAGE ───────────────────────────────────────────────────────

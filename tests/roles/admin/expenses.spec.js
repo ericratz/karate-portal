@@ -25,7 +25,7 @@ test('toggle paid status changes button label', async ({ page }) => {
     const toggleBtn = row.locator('form:has(input[value="toggle_paid"]) button');
     const before = await toggleBtn.textContent();
     await toggleBtn.click();
-    await page.waitForLoadState('domcontentloaded');
+    await page.waitForLoadState('networkidle');
     const after = await page.locator('tr').filter({ hasText: `Toggle test ${TS}` }).locator('form:has(input[value="toggle_paid"]) button').textContent();
     expect(after?.trim()).not.toBe(before?.trim());
 });

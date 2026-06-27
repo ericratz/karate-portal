@@ -138,7 +138,7 @@ test('delete button removes the belt test', async ({ page }) => {
 // PHP logic: score >= 80 â†’ result='pass' AND belt_awarded=1 automatically,
 // which triggers INSERT IGNORE INTO student_ranks. Verified via admin/student_edit.php.
 
-test('create a passing belt test (score â‰¥ 80) for student 2', async ({ page }) => {
+test('create a passing belt test (score >= 80) for student 2', async ({ page }) => {
     await page.goto(BASE + '/instructor/belt_test_edit.php');
     await page.waitForLoadState('domcontentloaded');
     const today = new Date().toISOString().slice(0, 10);

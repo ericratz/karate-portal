@@ -131,7 +131,7 @@ test('registration server rejects password shorter than 8 chars', async ({ page 
 });
 
 test('profile edit minlength=8 on new password field', async ({ page }) => {
-    await login(page, STU_USER, STU_PASS);
+    await login(page, INST_USER, INST_PASS);
     await page.goto(BASE + '/student/profile_edit.php');
     const min = await page.getAttribute('input[name="new_password"]', 'minlength');
     expect(min).toBe('8');
@@ -286,7 +286,7 @@ test('audit log is accessible via admin nav dropdown', async ({ page }) => {
     await logout(page);
 });
 
-test('audit log requires admin role â€” non-admin is denied', async ({ page }) => {
+test('audit log requires admin role - non-admin is denied', async ({ page }) => {
     // Use the guest account â€” never modified by other tests, role='student' in users table
     await login(page, 'test', 'testing');
     await page.goto(BASE + '/admin/audit_log.php');
@@ -295,7 +295,7 @@ test('audit log requires admin role â€” non-admin is denied', async ({ page
     await logout(page);
 });
 
-test('audit log requires admin role â€” instructor is denied', async ({ page }) => {
+test('audit log requires admin role - instructor is denied', async ({ page }) => {
     await login(page, INST_USER, INST_PASS);
     await page.goto(BASE + '/admin/audit_log.php');
     const body = await page.textContent('body');

@@ -12,6 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
     $del_id = (int)$_POST['id'];
     db()->prepare('DELETE FROM donations WHERE id=?')->execute([$del_id]);
     audit('delete_donation', 'donation', $del_id);
+    if (!empty($_SERVER['HTTP_HX_REQUEST'])) { exit; }
     header('Location: donations.php?' . http_build_query(array_diff_key($_GET, [])));
     exit;
 }
@@ -137,7 +138,8 @@ include __DIR__ . '/../includes/header.php';
 <!-- ── Filters ── -->
 <div class="card border-0 shadow-sm mb-3">
     <div class="card-body py-2">
-        <form method="get" class="row g-2 align-items-end">
+        <form method="get" class="row g-2 align-items-end"
+              hx-get="donations.php" hx-target="#donations-results" hx-select="#donations-results" hx-swap="outerHTML" hx-push-url="true">
             <div class="col-md-2">
                 <label class="form-label small mb-1">Method</label>
                 <select name="method" class="form-select form-select-sm">
@@ -162,15 +164,22 @@ include __DIR__ . '/../includes/header.php';
             </div>
             <div class="col-auto">
                 <a href="donations.php?from=<?= date('Y-m-01') ?>&to=<?= date('Y-m-d') ?>"
+                   hx-get="donations.php?from=<?= date('Y-m-01') ?>&to=<?= date('Y-m-d') ?>"
+                   hx-target="#donations-results" hx-select="#donations-results" hx-swap="outerHTML" hx-push-url="true"
                    class="btn btn-filter btn-sm <?= ($f_from === date('Y-m-01') && $f_to === date('Y-m-d')) ? 'active' : '' ?>">This Month</a>
             </div>
             <div class="col-auto">
                 <a href="donations.php?from=<?= date('Y-01-01') ?>&to=<?= date('Y-m-d') ?>"
+                   hx-get="donations.php?from=<?= date('Y-01-01') ?>&to=<?= date('Y-m-d') ?>"
+                   hx-target="#donations-results" hx-select="#donations-results" hx-swap="outerHTML" hx-push-url="true"
                    class="btn btn-filter btn-sm <?= ($f_from === date('Y-01-01') && $f_to === date('Y-m-d')) ? 'active' : '' ?>">This Year</a>
             </div>
             <?php if ($f_from || $f_to || $f_method): ?>
             <div class="col-auto">
-                <a href="donations.php" class="btn btn-filter btn-sm">Clear</a>
+                <a href="donations.php"
+                   hx-get="donations.php" hx-target="#donations-results" hx-select="#donations-results"
+                   hx-swap="outerHTML" hx-push-url="true"
+                   class="btn btn-filter btn-sm">Clear</a>
             </div>
             <?php endif; ?>
         </form>
@@ -178,13 +187,14 @@ include __DIR__ . '/../includes/header.php';
 </div>
 
 <!-- ── Results ── -->
-<div class="card border-0 shadow-sm">
+<div id="donations-results" class="card border-0 shadow-sm">
     <div class="card-header bg-white d-flex justify-content-between align-items-center">
         <span class="fw-semibold"><?= count($donations) ?> donation<?= count($donations)!==1?'s':'' ?></span>
         <div class="d-flex align-items-center gap-3">
             <span class="text-success fw-semibold">Total: $<?= number_format($total_shown, 2) ?></span>
             <?php if (!empty($donations)): ?>
-            <button id="editToggle" class="btn btn-sm btn-outline-secondary" onclick="toggleEdit()">Edit</button>
+            <button id="editToggle" class="btn btn-sm btn-outline-secondary"
+                    onclick="(function(btn){var t=document.getElementById('donationsTable');var e=t.classList.toggle('editing');btn.textContent=e?'Done':'Edit';btn.className=e?'btn btn-sm btn-danger':'btn btn-sm btn-outline-secondary';})(this)">Edit</button>
             <?php endif; ?>
         </div>
     </div>
@@ -216,7 +226,9 @@ include __DIR__ . '/../includes/header.php';
                     <td class="text-end fw-semibold">$<?= number_format($d['amount'], 2) ?></td>
                     <td class="delete-col">
                         <form method="post" class="d-inline"
-                              onsubmit="return confirm('Delete this donation record? This cannot be undone.')">
+                              hx-post="donations.php" hx-target="closest tr"
+                              hx-swap="delete swap:300ms"
+                              hx-confirm="Delete this donation record? This cannot be undone.">
                             <?= csrf_input() ?>
                             <input type="hidden" name="action" value="delete">
                             <input type="hidden" name="id" value="<?= $d['id'] ?>">
@@ -236,15 +248,6 @@ include __DIR__ . '/../includes/header.php';
     .delete-col { display: none; }
     table.editing .delete-col { display: table-cell; }
 </style>
-<script>
-function toggleEdit() {
-    const table = document.querySelector('#donationsTable');
-    const btn   = document.getElementById('editToggle');
-    const on    = table.classList.toggle('editing');
-    btn.textContent = on ? 'Done' : 'Edit';
-    btn.className   = on ? 'btn btn-sm btn-danger' : 'btn btn-sm btn-outline-secondary';
-}
-</script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>
 

@@ -38,6 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
     $del_id = (int)$_POST['id'];
     db()->prepare('DELETE FROM expenses WHERE id=?')->execute([$del_id]);
     audit('delete_expense', 'expense', $del_id);
+    if (!empty($_SERVER['HTTP_HX_REQUEST'])) { exit; }
     header('Location: expenses.php?' . $filter_qs);
     exit;
 }
@@ -48,6 +49,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'toggl
     $tog_id = (int)$_POST['id'];
     db()->prepare('UPDATE expenses SET paid = IF(paid=1,0,1) WHERE id=?')->execute([$tog_id]);
     audit('toggle_expense_paid', 'expense', $tog_id);
+    if (!empty($_SERVER['HTTP_HX_REQUEST'])) {
+        $row = db()->prepare('SELECT paid FROM expenses WHERE id=?');
+        $row->execute([$tog_id]);
+        $new_paid = (bool)$row->fetchColumn();
+        ?><form method="post" class="d-inline" hx-post="expenses.php" hx-target="this" hx-swap="outerHTML">
+            <?= csrf_input() ?>
+            <input type="hidden" name="action" value="toggle_paid">
+            <input type="hidden" name="id" value="<?= $tog_id ?>">
+            <button type="submit" class="btn btn-sm <?= $new_paid ? 'btn-success' : 'btn-outline-secondary' ?>">
+                <?= $new_paid ? '✓ Paid' : 'Unpaid' ?>
+            </button>
+        </form><?php
+        exit;
+    }
     header('Location: expenses.php?' . $filter_qs);
     exit;
 }
@@ -140,7 +155,8 @@ include __DIR__ . '/../includes/header.php';
 <!-- Filters -->
 <div class="card border-0 shadow-sm mb-3">
     <div class="card-body py-2">
-        <form method="get" class="row g-2 align-items-end">
+        <form method="get" class="row g-2 align-items-end"
+              hx-get="expenses.php" hx-target="#expenses-results" hx-select="#expenses-results" hx-swap="outerHTML" hx-push-url="true">
             <div class="col-md-2">
                 <label class="form-label small mb-1">Type</label>
                 <select name="type" class="form-select form-select-sm">
@@ -171,21 +187,29 @@ include __DIR__ . '/../includes/header.php';
             </div>
             <div class="col-auto">
                 <a href="expenses.php?from=<?= date('Y-m-01') ?>&to=<?= date('Y-m-d') ?>"
+                   hx-get="expenses.php?from=<?= date('Y-m-01') ?>&to=<?= date('Y-m-d') ?>"
+                   hx-target="#expenses-results" hx-select="#expenses-results" hx-swap="outerHTML" hx-push-url="true"
                    class="btn btn-filter btn-sm <?= ($f_from === date('Y-m-01') && $f_to === date('Y-m-d') && !$f_type && $f_paid === '') ? 'active' : '' ?>">This Month</a>
             </div>
             <div class="col-auto">
                 <a href="expenses.php?from=<?= date('Y-01-01') ?>&to=<?= date('Y-m-d') ?>"
+                   hx-get="expenses.php?from=<?= date('Y-01-01') ?>&to=<?= date('Y-m-d') ?>"
+                   hx-target="#expenses-results" hx-select="#expenses-results" hx-swap="outerHTML" hx-push-url="true"
                    class="btn btn-filter btn-sm <?= ($f_from === date('Y-01-01') && $f_to === date('Y-m-d') && !$f_type && $f_paid === '') ? 'active' : '' ?>">This Year</a>
             </div>
             <?php if ($filtering): ?>
             <div class="col-auto">
-                <a href="expenses.php" class="btn btn-filter btn-sm">Clear</a>
+                <a href="expenses.php"
+                   hx-get="expenses.php" hx-target="#expenses-results" hx-select="#expenses-results"
+                   hx-swap="outerHTML" hx-push-url="true"
+                   class="btn btn-filter btn-sm">Clear</a>
             </div>
             <?php endif; ?>
         </form>
     </div>
 </div>
 
+<div id="expenses-results">
 <div class="d-flex align-items-center gap-3 mb-3">
     <span class="ms-auto">
         Total: <strong>$<?= number_format($total, 2) ?></strong>
@@ -200,7 +224,8 @@ include __DIR__ . '/../includes/header.php';
     <div class="card-header bg-white d-flex justify-content-between align-items-center">
         <span class="fw-semibold"><?= count($expenses) ?> expense<?= count($expenses)!==1?'s':'' ?></span>
         <?php if (!empty($expenses)): ?>
-        <button id="editToggle" class="btn btn-sm btn-outline-secondary" onclick="toggleEdit()">Edit</button>
+        <button id="editToggle" class="btn btn-sm btn-outline-secondary"
+                onclick="(function(btn){var t=document.getElementById('expensesTable');var e=t.classList.toggle('editing');btn.textContent=e?'Done':'Edit';btn.className=e?'btn btn-sm btn-danger':'btn btn-sm btn-outline-secondary';})(this)">Edit</button>
         <?php endif; ?>
     </div>
     <div class="card-body p-0">
@@ -227,7 +252,8 @@ include __DIR__ . '/../includes/header.php';
                     <td><?= htmlspecialchars($e['description'] ?? '—') ?></td>
                     <td class="text-end">$<?= number_format($e['amount'], 2) ?></td>
                     <td class="text-center">
-                        <form method="post" class="d-inline">
+                        <form method="post" class="d-inline"
+                              hx-post="expenses.php" hx-target="this" hx-swap="outerHTML">
                             <?= csrf_input() ?>
                             <input type="hidden" name="action" value="toggle_paid">
                             <input type="hidden" name="id" value="<?= $e['id'] ?>">
@@ -240,7 +266,9 @@ include __DIR__ . '/../includes/header.php';
                     <td><?= htmlspecialchars($e['username'] ?? '—') ?></td>
                     <td class="delete-col">
                         <form method="post" class="d-inline"
-                              onsubmit="return confirm('Delete this expense? This cannot be undone.')">
+                              hx-post="expenses.php" hx-target="closest tr"
+                              hx-swap="delete swap:300ms"
+                              hx-confirm="Delete this expense? This cannot be undone.">
                             <?= csrf_input() ?>
                             <input type="hidden" name="action" value="delete">
                             <input type="hidden" name="id" value="<?= $e['id'] ?>">
@@ -254,20 +282,12 @@ include __DIR__ . '/../includes/header.php';
         <?php endif; ?>
     </div>
 </div>
+</div>
 
 <style>
     .delete-col { display: none; }
     table.editing .delete-col { display: table-cell; }
 </style>
-<script>
-function toggleEdit() {
-    const table = document.getElementById('expensesTable');
-    const btn   = document.getElementById('editToggle');
-    const on    = table.classList.toggle('editing');
-    btn.textContent = on ? 'Done' : 'Edit';
-    btn.className   = on ? 'btn btn-sm btn-danger' : 'btn btn-sm btn-outline-secondary';
-}
-</script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>
 

@@ -119,6 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
     verify_csrf();
     db()->prepare('DELETE FROM student_notes WHERE id = ? AND student_id = ?')
          ->execute([(int)$_POST['id'], $student_id]);
+    if (!empty($_SERVER['HTTP_HX_REQUEST'])) { exit; }
     header("Location: student_notes.php?student_id=$student_id");
     exit;
 }
@@ -165,7 +166,12 @@ include __DIR__ . '/../includes/header.php';
         <div class="card border-0 shadow-sm">
             <div class="card-header bg-white fw-semibold">Add Note</div>
             <div class="card-body">
-                <form method="post">
+                <form method="post"
+                      hx-post="student_notes.php?student_id=<?= $student_id ?>"
+                      hx-target="#student-notes-card"
+                      hx-select="#student-notes-card"
+                      hx-swap="outerHTML"
+                      hx-on::after-request="if(event.detail.successful)this.reset()">
                     <?= csrf_input() ?>
                     <div class="mb-3">
                         <textarea name="content" class="form-control" rows="5"
@@ -179,11 +185,12 @@ include __DIR__ . '/../includes/header.php';
 
     <!-- Existing notes -->
     <div class="col-md-7">
-        <div class="card border-0 shadow-sm">
+        <div id="student-notes-card" class="card border-0 shadow-sm">
             <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
                 <span>All Notes (<?= count($notes) ?>)</span>
                 <?php if (!empty($notes)): ?>
-                <button id="editToggle" class="btn btn-sm btn-outline-secondary" onclick="toggleEdit()">Edit</button>
+                <button id="editToggle" class="btn btn-sm btn-outline-secondary"
+                        onclick="(function(btn){var c=document.getElementById('notesContainer');var e=c.classList.toggle('editing');btn.textContent=e?'Done':'Edit';btn.className=e?'btn btn-sm btn-danger':'btn btn-sm btn-outline-secondary';})(this)">Edit</button>
                 <?php endif; ?>
             </div>
             <div id="notesContainer" class="card-body p-0" style="max-height:500px;overflow-y:auto">
@@ -191,14 +198,17 @@ include __DIR__ . '/../includes/header.php';
                     <p class="p-3 text-muted">No notes yet.</p>
                 <?php else: ?>
                 <?php foreach ($notes as $n): ?>
-                <div class="border-bottom p-3">
+                <div class="note-entry border-bottom p-3">
                     <div class="d-flex justify-content-between align-items-start">
                         <span>
                             <?= date('d M Y g:i a', strtotime($n['created_at'])) ?>
                             by <strong><?= htmlspecialchars($n['username'] ?? 'unknown') ?></strong>
                         </span>
                         <form method="post" class="d-inline delete-btn"
-                              onsubmit="return confirm('Delete this note?')">
+                              hx-post="student_notes.php?student_id=<?= $student_id ?>"
+                              hx-target="closest .note-entry"
+                              hx-swap="delete swap:300ms"
+                              hx-confirm="Delete this note?">
                             <?= csrf_input() ?>
                             <input type="hidden" name="action" value="delete">
                             <input type="hidden" name="id" value="<?= $n['id'] ?>">
@@ -219,15 +229,6 @@ include __DIR__ . '/../includes/header.php';
     .delete-btn { display: none !important; }
     #notesContainer.editing .delete-btn { display: inline-block !important; }
 </style>
-<script>
-function toggleEdit() {
-    const container = document.getElementById('notesContainer');
-    const btn       = document.getElementById('editToggle');
-    const on        = container.classList.toggle('editing');
-    btn.textContent = on ? 'Done' : 'Edit';
-    btn.className   = on ? 'btn btn-sm btn-danger' : 'btn btn-sm btn-outline-secondary';
-}
-</script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>
 

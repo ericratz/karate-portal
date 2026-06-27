@@ -33,8 +33,10 @@ if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ===
         $upsert->execute([$id, (int)$sid, in_array((int)$sid, $present_ids) ? 1 : 0, current_user_id()]);
     }
     audit('update_attendance', 'student', $id);
-    header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
-    exit;
+    if (empty($_SERVER['HTTP_HX_REQUEST'])) {
+        header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
+        exit;
+    }
 }
 
 // Add a note
@@ -45,8 +47,10 @@ if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ===
         db()->prepare('INSERT INTO student_notes (student_id, content, created_by) VALUES (?,?,?)')
              ->execute([$id, $content, current_user_id()]);
     }
-    header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
-    exit;
+    if (empty($_SERVER['HTTP_HX_REQUEST'])) {
+        header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
+        exit;
+    }
 }
 
 // Edit a note
@@ -58,8 +62,10 @@ if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ===
         db()->prepare('UPDATE student_notes SET content=? WHERE id=? AND student_id=?')
              ->execute([$content, $note_id, $id]);
     }
-    header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
-    exit;
+    if (empty($_SERVER['HTTP_HX_REQUEST'])) {
+        header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
+        exit;
+    }
 }
 
 // Delete a note
@@ -70,8 +76,10 @@ if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ===
         db()->prepare('DELETE FROM student_notes WHERE id=? AND student_id=?')
              ->execute([$note_id, $id]);
     }
-    header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
-    exit;
+    if (empty($_SERVER['HTTP_HX_REQUEST'])) {
+        header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
+        exit;
+    }
 }
 
 // Delete payment waiver
@@ -80,8 +88,10 @@ if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ===
     $wid = (int)$_POST['waiver_id'];
     db()->prepare('DELETE FROM payment_waivers WHERE id=? AND student_id=?')->execute([$wid, $id]);
     audit('delete_waiver', 'waiver', $wid);
-    header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
-    exit;
+    if (empty($_SERVER['HTTP_HX_REQUEST'])) {
+        header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
+        exit;
+    }
 }
 
 // Edit payment waiver
@@ -98,8 +108,10 @@ if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ===
         )->execute([$type, $date, $reason ?: null, $wid, $id]);
         audit('edit_waiver', 'waiver', $wid, "type=$type");
     }
-    header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
-    exit;
+    if (empty($_SERVER['HTTP_HX_REQUEST'])) {
+        header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
+        exit;
+    }
 }
 
 // Delete payment
@@ -109,8 +121,10 @@ if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ===
     db()->prepare('DELETE FROM payments WHERE id=? AND student_id=?')->execute([$pid, $id]);
     audit('delete_payment', 'payment', $pid);
     sync_registration_status($id);
-    header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
-    exit;
+    if (empty($_SERVER['HTTP_HX_REQUEST'])) {
+        header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
+        exit;
+    }
 }
 
 // Edit payment
@@ -134,8 +148,10 @@ if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ===
         }
         sync_registration_status($id);
     }
-    header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
-    exit;
+    if (empty($_SERVER['HTTP_HX_REQUEST'])) {
+        header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
+        exit;
+    }
 }
 
 // Add payment
@@ -157,8 +173,10 @@ if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ===
                  ->execute([$id]);
         }
     }
-    header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
-    exit;
+    if (empty($_SERVER['HTTP_HX_REQUEST'])) {
+        header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
+        exit;
+    }
 }
 
 // Delete student profile + linked user account
@@ -217,8 +235,10 @@ if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ===
                  ->execute([$first, $last, $email ?: null, $lu]);
         }
         audit('update_student', 'student', $id);
-        header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
-        exit;
+        if (empty($_SERVER['HTTP_HX_REQUEST'])) {
+            header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
+            exit;
+        }
     }
 }
 
@@ -241,8 +261,10 @@ if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ===
     db()->prepare('UPDATE students SET active=?, active_override=? WHERE id=?')
          ->execute([$active, $active_override, $id]);
     audit('update_student', 'student', $id);
-    header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
-    exit;
+    if (empty($_SERVER['HTTP_HX_REQUEST'])) {
+        header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
+        exit;
+    }
 }
 
 // Update existing ranks (bulk)
@@ -255,8 +277,10 @@ if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ===
         }
     }
     audit('update_student', 'student', $id);
-    header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
-    exit;
+    if (empty($_SERVER['HTTP_HX_REQUEST'])) {
+        header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
+        exit;
+    }
 }
 
 // Add rank
@@ -269,8 +293,10 @@ if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ===
              ->execute([$id, $new_rank_id, $new_rank_date]);
         audit('update_student', 'student', $id);
     }
-    header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
-    exit;
+    if (empty($_SERVER['HTTP_HX_REQUEST'])) {
+        header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
+        exit;
+    }
 }
 
 // Delete rank
@@ -281,8 +307,10 @@ if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ===
         db()->prepare('DELETE FROM student_ranks WHERE id=? AND student_id=?')->execute([$sr_id, $id]);
         audit('update_student', 'student', $id);
     }
-    header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
-    exit;
+    if (empty($_SERVER['HTTP_HX_REQUEST'])) {
+        header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
+        exit;
+    }
 }
 
 // Add belt test (inline)
@@ -308,8 +336,10 @@ if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ===
         }
         audit('add_belt_test', 'student', $id);
     }
-    header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
-    exit;
+    if (empty($_SERVER['HTTP_HX_REQUEST'])) {
+        header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
+        exit;
+    }
 }
 
 // Update belt test
@@ -336,8 +366,10 @@ if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ===
         }
         audit('update_belt_test', 'student', $id);
     }
-    header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
-    exit;
+    if (empty($_SERVER['HTTP_HX_REQUEST'])) {
+        header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
+        exit;
+    }
 }
 
 // Delete belt test
@@ -348,8 +380,10 @@ if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ===
         db()->prepare('DELETE FROM belt_tests WHERE id=? AND student_id=?')->execute([$bt_id, $id]);
         audit('delete_belt_test', 'student', $id);
     }
-    header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
-    exit;
+    if (empty($_SERVER['HTTP_HX_REQUEST'])) {
+        header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
+        exit;
+    }
 }
 
 // Add payment waiver (inline)
@@ -366,8 +400,10 @@ if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ===
         )->execute([$id, $type, $reason ?: null, current_user_id(), $date]);
         audit('grant_waiver', 'waiver', null, "student_id=$id type=$type");
     }
-    header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
-    exit;
+    if (empty($_SERVER['HTTP_HX_REQUEST'])) {
+        header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
+        exit;
+    }
 }
 
 // Add guardian link (student_guardians — no user account needed)
@@ -383,8 +419,10 @@ if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ===
              ->execute([$parent_sid, $child_sid]);
         audit('add_guardian', 'student', $id, "linked=$other_id");
     }
-    header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
-    exit;
+    if (empty($_SERVER['HTTP_HX_REQUEST'])) {
+        header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
+        exit;
+    }
 }
 
 // Remove guardian link
@@ -396,8 +434,10 @@ if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ===
              ->execute([$link_id, $id, $id]);
         audit('remove_guardian', 'student', $id, "link_id=$link_id");
     }
-    header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
-    exit;
+    if (empty($_SERVER['HTTP_HX_REQUEST'])) {
+        header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
+        exit;
+    }
 }
 
 // Add new student (only when id=0)
@@ -593,7 +633,9 @@ $injury_date = $student['injury_waiver_date'] ?? null;
 
         <?php if ($id): ?>
         <!-- Profile Info — view/edit card -->
-        <form id="profile-form" method="post">
+        <form id="profile-form" method="post"
+              hx-post="student_edit.php?id=<?= $id ?>"
+              hx-target="#profile-form" hx-swap="outerHTML" hx-select="#profile-form">
             <?= csrf_input() ?>
             <input type="hidden" name="action" value="update_profile">
             <input type="hidden" name="ref"    value="<?= htmlspecialchars($ref) ?>">
@@ -608,6 +650,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                     </div>
                 </div>
                 <div class="card-body">
+                    <?php if ($error): ?><div class="alert alert-danger py-2 mb-3"><?= htmlspecialchars($error) ?></div><?php endif; ?>
                     <!-- View mode -->
                     <div id="profile-view">
                         <?php
@@ -872,7 +915,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
 
         <?php if ($id): ?>
         <!-- Attendance -->
-        <div class="card border-0 shadow-sm">
+        <div id="att-card" class="card border-0 shadow-sm">
             <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
                 <span>
                     Recent Attendance
@@ -886,7 +929,9 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                 </div>
                 <?php endif; ?>
             </div>
-            <form id="att-form" method="post">
+            <form id="att-form" method="post"
+                  hx-post="student_edit.php?id=<?= $id ?>"
+                  hx-target="#att-card" hx-swap="outerHTML" hx-select="#att-card">
                 <?= csrf_input() ?>
                 <input type="hidden" name="action" value="update_attendance">
                 <div class="card-body p-0" style="max-height:320px;overflow-y:auto">
@@ -925,7 +970,9 @@ $injury_date = $student['injury_waiver_date'] ?? null;
 
         <!-- Active Status -->
         <?php if ($id): ?>
-        <form id="active-form" method="post">
+        <form id="active-form" method="post"
+              hx-post="student_edit.php?id=<?= $id ?>"
+              hx-target="#active-form" hx-swap="outerHTML" hx-select="#active-form">
             <?= csrf_input() ?>
             <input type="hidden" name="action" value="update_active_status">
             <div class="card border-0 shadow-sm">
@@ -979,7 +1026,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
     <?php if ($id): ?>
 
         <!-- Payment History -->
-        <div class="card border-0 shadow-sm">
+        <div id="pay-card" class="card border-0 shadow-sm">
             <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
                 <span>Payment History</span>
                 <div class="d-flex gap-2">
@@ -993,7 +1040,9 @@ $injury_date = $student['injury_waiver_date'] ?? null;
             </div>
             <div id="pay-add-box" style="display:none">
                 <div class="card-body border-bottom pb-3">
-                    <form method="post">
+                    <form method="post"
+                          hx-post="student_edit.php?id=<?= $id ?>"
+                          hx-target="#pay-card" hx-swap="outerHTML" hx-select="#pay-card">
                         <?= csrf_input() ?>
                         <input type="hidden" name="action" value="add_payment">
                         <div class="row g-2 mb-2">
@@ -1062,6 +1111,8 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                                 <button type="button" class="btn btn-sm btn-outline-primary py-0 me-1"
                                         onclick="togglePayRow(<?= $p['id'] ?>)">Edit</button>
                                 <form method="post" class="d-inline"
+                                      hx-post="student_edit.php?id=<?= $id ?>"
+                                      hx-target="#pay-card" hx-swap="outerHTML" hx-select="#pay-card"
                                       onsubmit="return confirm('Delete this payment?')">
                                     <?= csrf_input() ?>
                                     <input type="hidden" name="action" value="delete_payment">
@@ -1072,7 +1123,9 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                         </tr>
                         <tr id="pay-edit-<?= $p['id'] ?>" class="pay-edit-row" style="display:none">
                             <td colspan="5">
-                                <form method="post" class="row g-2 align-items-end py-1">
+                                <form method="post" class="row g-2 align-items-end py-1"
+                                      hx-post="student_edit.php?id=<?= $id ?>"
+                                      hx-target="#pay-card" hx-swap="outerHTML" hx-select="#pay-card">
                                     <?= csrf_input() ?>
                                     <input type="hidden" name="action" value="edit_payment">
                                     <input type="hidden" name="payment_id" value="<?= $p['id'] ?>">
@@ -1121,7 +1174,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
         </div>
 
         <!-- Rank History -->
-        <div class="card border-0 shadow-sm">
+        <div id="rank-card" class="card border-0 shadow-sm">
             <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
                 <span>Rank History</span>
                 <div class="d-flex gap-2">
@@ -1136,7 +1189,9 @@ $injury_date = $student['injury_waiver_date'] ?? null;
             <!-- Record rank form (collapsed) -->
             <div id="rank-add-box" style="display:none">
                 <div class="card-body border-bottom pb-3">
-                    <form method="post">
+                    <form method="post"
+                          hx-post="student_edit.php?id=<?= $id ?>"
+                          hx-target="#rank-card" hx-swap="outerHTML" hx-select="#rank-card">
                         <?= csrf_input() ?>
                         <input type="hidden" name="action" value="add_rank">
                         <div class="row g-2 mb-2">
@@ -1165,9 +1220,11 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                     </form>
                 </div>
             </div>
-            <!-- Detached delete forms for each rank row -->
+            <!-- Detached delete forms — display:none keeps them out of layout -->
             <?php foreach ($ranks as $r): ?>
-            <form id="rankDeleteForm-<?= $r['sr_id'] ?>" method="post"
+            <form id="rankDeleteForm-<?= $r['sr_id'] ?>" method="post" style="display:none"
+                  hx-post="student_edit.php?id=<?= $id ?>"
+                  hx-target="#rank-card" hx-swap="outerHTML" hx-select="#rank-card"
                   onsubmit="return confirm('Delete this rank?')">
                 <?= csrf_input() ?>
                 <input type="hidden" name="action" value="delete_rank">
@@ -1175,7 +1232,9 @@ $injury_date = $student['injury_waiver_date'] ?? null;
             </form>
             <?php endforeach; ?>
             <!-- Rank edit form (existing rows) -->
-            <form id="rank-edit-form" method="post">
+            <form id="rank-edit-form" method="post"
+                  hx-post="student_edit.php?id=<?= $id ?>"
+                  hx-target="#rank-card" hx-swap="outerHTML" hx-select="#rank-card">
                 <?= csrf_input() ?>
                 <input type="hidden" name="action" value="update_ranks">
                 <div class="card-body p-0">
@@ -1192,7 +1251,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                                 <td>
                                     <span class="rank-view-cell"><?= htmlspecialchars($r['kyu_dan'].' — '.$r['name']) ?></span>
                                     <select name="rank_updates[<?= $r['sr_id'] ?>][rank_id]"
-                                            class="form-select form-select-sm rank-edit-cell" style="display:none;width:auto">
+                                            class="form-select form-select-sm rank-edit-cell" style="display:none;width:auto;max-width:160px">
                                         <?php foreach ($all_ranks as $ar): ?>
                                         <option value="<?= $ar['id'] ?>" <?= $ar['id']==$r['rank_id'] ? 'selected':'' ?>>
                                             <?= htmlspecialchars($ar['kyu_dan'].' — '.$ar['name']) ?>
@@ -1220,7 +1279,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
         </div>
 
         <!-- Belt Test History -->
-        <div class="card border-0 shadow-sm">
+        <div id="bt-card" class="card border-0 shadow-sm">
             <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
                 <span>Belt Test History</span>
                 <div class="d-flex gap-2">
@@ -1235,7 +1294,9 @@ $injury_date = $student['injury_waiver_date'] ?? null;
             <!-- Record test form (collapsed) -->
             <div id="bt-add-box" style="display:none">
                 <div class="card-body border-bottom pb-3">
-                    <form method="post">
+                    <form method="post"
+                          hx-post="student_edit.php?id=<?= $id ?>"
+                          hx-target="#bt-card" hx-swap="outerHTML" hx-select="#bt-card">
                         <?= csrf_input() ?>
                         <input type="hidden" name="action" value="add_belt_test">
                         <div class="row g-2 mb-2">
@@ -1289,7 +1350,9 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                     <p class="p-3 text-muted">No belt tests on record.</p>
                 <?php else: ?>
                 <?php foreach ($belt_tests as $bt): ?>
-                <form id="btEditForm-<?= $bt['id'] ?>" method="post">
+                <form id="btEditForm-<?= $bt['id'] ?>" method="post"
+                      hx-post="student_edit.php?id=<?= $id ?>"
+                      hx-target="#bt-card" hx-swap="outerHTML" hx-select="#bt-card">
                     <?= csrf_input() ?>
                     <input type="hidden" name="action" value="update_belt_test">
                     <input type="hidden" name="bt_id" value="<?= $bt['id'] ?>">
@@ -1316,6 +1379,8 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                             <button type="button" onclick="btRowEdit(<?= $bt['id'] ?>)"
                                     class="btn btn-sm btn-success py-0">Edit</button>
                             <form method="post" class="d-inline bt-delete-btn"
+                                  hx-post="student_edit.php?id=<?= $id ?>"
+                                  hx-target="#bt-card" hx-swap="outerHTML" hx-select="#bt-card"
                                   onsubmit="return confirm('Delete this belt test?')">
                                 <?= csrf_input() ?>
                                 <input type="hidden" name="action" value="delete_belt_test">
@@ -1382,7 +1447,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
         </div>
 
         <!-- Payment Waiver -->
-        <div class="card border-0 shadow-sm">
+        <div id="pw-card" class="card border-0 shadow-sm">
             <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
                 <span>Exempt</span>
                 <div class="d-flex gap-2">
@@ -1397,7 +1462,9 @@ $injury_date = $student['injury_waiver_date'] ?? null;
             <!-- Add waiver form (collapsed) -->
             <div id="pw-add-box" style="display:none">
                 <div class="card-body border-bottom pb-3">
-                    <form method="post">
+                    <form method="post"
+                          hx-post="student_edit.php?id=<?= $id ?>"
+                          hx-target="#pw-card" hx-swap="outerHTML" hx-select="#pw-card">
                         <?= csrf_input() ?>
                         <input type="hidden" name="action" value="add_waiver">
                         <div class="row g-2 mb-2">
@@ -1450,6 +1517,8 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                                 <button type="button" class="btn btn-sm btn-outline-primary py-0 me-1"
                                         onclick="togglePwRow(<?= $pw['id'] ?>)">Edit</button>
                                 <form method="post" class="d-inline"
+                                      hx-post="student_edit.php?id=<?= $id ?>"
+                                      hx-target="#pw-card" hx-swap="outerHTML" hx-select="#pw-card"
                                       onsubmit="return confirm('Delete this waiver?')">
                                     <?= csrf_input() ?>
                                     <input type="hidden" name="action" value="delete_waiver">
@@ -1460,7 +1529,9 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                         </tr>
                         <tr id="pw-edit-<?= $pw['id'] ?>" class="pw-edit-row" style="display:none">
                             <td colspan="3">
-                                <form method="post" class="row g-2 align-items-end py-1">
+                                <form method="post" class="row g-2 align-items-end py-1"
+                                      hx-post="student_edit.php?id=<?= $id ?>"
+                                      hx-target="#pw-card" hx-swap="outerHTML" hx-select="#pw-card">
                                     <?= csrf_input() ?>
                                     <input type="hidden" name="action" value="edit_waiver">
                                     <input type="hidden" name="waiver_id" value="<?= $pw['id'] ?>">
@@ -1498,7 +1569,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
         </div>
 
         <!-- Guardian / Children -->
-        <div class="card border-0 shadow-sm">
+        <div id="guardian-card" class="card border-0 shadow-sm">
             <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
                 <span><?= $is_guardian_type ? 'Linked Children' : 'Guardian / Parent' ?></span>
                 <div class="d-flex gap-2">
@@ -1512,7 +1583,9 @@ $injury_date = $student['injury_waiver_date'] ?? null;
             </div>
             <div id="guardian-add-box" style="display:none">
                 <div class="card-body border-bottom pb-3">
-                    <form method="post" class="d-flex gap-2 align-items-center flex-wrap">
+                    <form method="post" class="d-flex gap-2 align-items-center flex-wrap"
+                          hx-post="student_edit.php?id=<?= $id ?>"
+                          hx-target="#guardian-card" hx-swap="outerHTML" hx-select="#guardian-card">
                         <?= csrf_input() ?>
                         <input type="hidden" name="action" value="add_guardian">
                         <?php if (!empty($guardian_candidates)): ?>
@@ -1552,6 +1625,8 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                             </td>
                             <td class="guardian-delete-col text-end">
                                 <form method="post" class="d-inline"
+                                      hx-post="student_edit.php?id=<?= $id ?>"
+                                      hx-target="#guardian-card" hx-swap="outerHTML" hx-select="#guardian-card"
                                       onsubmit="return confirm('Remove this link?')">
                                     <?= csrf_input() ?>
                                     <input type="hidden" name="action" value="remove_guardian">
@@ -1631,7 +1706,8 @@ function cardToggle(cardId) {
     } else {
         // Programmatic submit doesn't fire the submit event, so clear dirty manually
         if (typeof setFormClean === 'function') setFormClean();
-        document.getElementById(cardId + '-form').submit();
+        var form = document.getElementById(cardId + '-form');
+        form.dispatchEvent(new SubmitEvent('submit', {bubbles: true, cancelable: true}));
     }
 }
 function cardCancel(cardId) {
@@ -1664,7 +1740,9 @@ function toggleAttEdit() {
         document.querySelectorAll('.att-edit').forEach(function(el) { el.style.display = ''; });
     } else {
         if (typeof setFormClean === 'function') setFormClean();
-        document.getElementById('att-form').submit();
+        attEditing = false;
+        var form = document.getElementById('att-form');
+        form.dispatchEvent(new SubmitEvent('submit', {bubbles: true, cancelable: true}));
     }
 }
 function attCancel() {
@@ -1798,14 +1876,16 @@ function rankEdit() {
         document.querySelectorAll('.rank-edit-cell').forEach(function(el) { el.style.display = ''; });
     } else {
         if (typeof setFormClean === 'function') setFormClean();
-        document.getElementById('rank-edit-form').submit();
+        rankEditing = false;
+        var form = document.getElementById('rank-edit-form');
+        form.dispatchEvent(new SubmitEvent('submit', {bubbles: true, cancelable: true}));
     }
 }
 </script>
 
 <?php if ($id): ?>
 <!-- ── Notes (full width) ── -->
-<div class="card border-0 shadow-sm mt-4">
+<div id="notes-card" class="card border-0 shadow-sm mt-4">
     <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
         <span>Student Notes</span>
         <div class="d-flex gap-2">
@@ -1819,7 +1899,9 @@ function rankEdit() {
     <!-- Add note (always visible) -->
     <div id="addNoteBox">
         <div class="card-body border-bottom pb-3">
-            <form method="post" id="addNoteForm">
+            <form method="post" id="addNoteForm"
+                  hx-post="student_edit.php?id=<?= $id ?>"
+                  hx-target="#notes-card" hx-swap="outerHTML" hx-select="#notes-card">
                 <?= csrf_input() ?>
                 <input type="hidden" name="action" value="add_note">
                 <textarea name="note_content" id="addNoteText" class="form-control form-control-sm mb-2"
@@ -1848,6 +1930,8 @@ function rankEdit() {
                     <button type="button" class="btn btn-sm btn-success py-0"
                             onclick="noteEdit(<?= $n['id'] ?>)">Edit</button>
                     <form method="post" class="d-inline note-delete"
+                          hx-post="student_edit.php?id=<?= $id ?>"
+                          hx-target="#notes-card" hx-swap="outerHTML" hx-select="#notes-card"
                           onsubmit="return confirm('Delete this note?')">
                         <?= csrf_input() ?>
                         <input type="hidden" name="action" value="delete_note">
@@ -1857,7 +1941,9 @@ function rankEdit() {
                 </div>
             </div>
             <p class="mb-0 mt-1 note-view-<?= $n['id'] ?>"><?= nl2br(htmlspecialchars($n['content'])) ?></p>
-            <form method="post" class="mt-2 note-edit-<?= $n['id'] ?>" style="display:none">
+            <form method="post" class="mt-2 note-edit-<?= $n['id'] ?>" style="display:none"
+                  hx-post="student_edit.php?id=<?= $id ?>"
+                  hx-target="#notes-card" hx-swap="outerHTML" hx-select="#notes-card">
                 <?= csrf_input() ?>
                 <input type="hidden" name="action" value="edit_note">
                 <input type="hidden" name="note_id" value="<?= $n['id'] ?>">

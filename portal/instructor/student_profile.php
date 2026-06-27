@@ -27,8 +27,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add_n
              ->execute([$id, $content, current_user_id()]);
         audit('add_note', 'student', $id);
     }
-    header("Location: student_profile.php?id=$id&noted=1");
-    exit;
+    if (empty($_SERVER['HTTP_HX_REQUEST'])) {
+        header("Location: student_profile.php?id=$id&noted=1");
+        exit;
+    }
+    $note_just_added = true;
 }
 
 // Instructor/Admin: bulk update attendance from checkboxes
@@ -46,8 +49,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'updat
         $upsert->execute([$id, (int)$sid, in_array((int)$sid, $present_ids) ? 1 : 0, current_user_id()]);
     }
     audit('update_attendance', 'student', $id);
-    header("Location: student_profile.php?id=$id");
-    exit;
+    if (empty($_SERVER['HTTP_HX_REQUEST'])) {
+        header("Location: student_profile.php?id=$id");
+        exit;
+    }
 }
 
 // Instructor/Admin: toggle attendance present/absent (AJAX)
@@ -82,6 +87,50 @@ $student->execute([$id]);
 $student = $student->fetch();
 if (!$student) { header('Location: index.php'); exit; }
 
+$profile_error  = '';
+$profile_saved  = false;
+$note_just_added = $note_just_added ?? false;
+
+// Own-profile edit (student or instructor viewing their own record)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'update_profile') {
+    verify_csrf();
+    if ((int)($student['user_id'] ?? 0) !== current_user_id()) {
+        header("Location: student_profile.php?id=$id"); exit;
+    }
+    $first    = trim($_POST['first_name']     ?? '');
+    $last     = trim($_POST['last_name']      ?? '');
+    $dob      = $_POST['date_of_birth']       ?? '';
+    $phone    = trim($_POST['phone']          ?? '');
+    $email    = trim($_POST['email']          ?? '');
+    $ec_name  = trim($_POST['ec_name']        ?? '');
+    $ec_phone = trim($_POST['ec_phone']       ?? '');
+    $street   = trim($_POST['street_address'] ?? '');
+    $csz      = trim($_POST['city_state_zip'] ?? '');
+    $medical  = trim($_POST['medical_note']   ?? '');
+    if (!$first || !$last) {
+        $profile_error = 'First and last name are required.';
+    } else {
+        db()->prepare(
+            'UPDATE students SET first_name=?, last_name=?, date_of_birth=?,
+             phone=?, email=?, emergency_contact_name=?, emergency_contact_phone=?,
+             street_address=?, city_state_zip=?, medical_note=? WHERE id=?'
+        )->execute([$first, $last, $dob ?: null, $phone, $email, $ec_name, $ec_phone,
+                    $street ?: null, $csz ?: null, $medical ?: null, $id]);
+        if ($student['user_id']) {
+            db()->prepare('UPDATE users SET first_name=?, last_name=?, email=? WHERE id=?')
+                 ->execute([$first, $last, $email ?: null, (int)$student['user_id']]);
+        }
+        audit('update_student', 'student', $id, 'by_self');
+        $profile_saved = true;
+        $sq = db()->prepare('SELECT s.*, u.username, u.email AS login_email, u.last_login FROM students s LEFT JOIN users u ON u.id = s.user_id WHERE s.id = ?');
+        $sq->execute([$id]);
+        $student = $sq->fetch();
+    }
+    if (empty($_SERVER['HTTP_HX_REQUEST'])) {
+        header("Location: student_profile.php?id=$id"); exit;
+    }
+}
+
 // Full rank history
 $ranks = db()->prepare(
     'SELECT sr.id AS sr_id, sr.rank_id, r.name, r.kyu_dan, sr.achieved_date, sr.notes
@@ -106,43 +155,6 @@ $total    = count($attendance);
 $attended = array_sum(array_column($attendance, 'present'));
 $pct      = $total ? round($attended / $total * 100) : 0;
 
-// Monthly attendance — last 12 months
-$ac_q = db()->prepare(
-    "SELECT DATE_FORMAT(cs.session_date, '%Y-%m') AS month, COUNT(*) AS count
-     FROM attendance a
-     JOIN class_sessions cs ON cs.id = a.session_id
-     WHERE a.student_id = ? AND a.present = 1
-       AND cs.session_date >= DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 11 MONTH), '%Y-%m-01')
-     GROUP BY month
-     ORDER BY month ASC"
-);
-$ac_q->execute([$id]);
-$att_chart_by_month = $ac_q->fetchAll(PDO::FETCH_KEY_PAIR);
-$rm_q = db()->prepare(
-    "SELECT DATE_FORMAT(sr.achieved_date, '%Y-%m') AS month, r.name AS rank_name
-     FROM student_ranks sr
-     JOIN ranks r ON r.id = sr.rank_id
-     WHERE sr.student_id = ?
-       AND sr.achieved_date >= DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 11 MONTH), '%Y-%m-01')
-     ORDER BY sr.achieved_date"
-);
-$rm_q->execute([$id]);
-$rank_months = [];
-foreach ($rm_q->fetchAll() as $row) {
-    $rank_months[$row['month']][] = $row['rank_name'];
-}
-
-$chart_labels = [];
-$chart_data   = [];
-$chart_colors = [];
-$chart_ranks  = [];
-for ($i = 11; $i >= 0; $i--) {
-    $key            = date('Y-m', strtotime("-$i months"));
-    $chart_labels[] = date('M Y', strtotime("-$i months"));
-    $chart_data[]   = (int)($att_chart_by_month[$key] ?? 0);
-    $chart_colors[] = isset($rank_months[$key]) ? '#6f42c1' : '#198754';
-    $chart_ranks[]  = isset($rank_months[$key]) ? implode(', ', $rank_months[$key]) : null;
-}
 
 // Belt test history
 $belt_tests = db()->prepare(
@@ -244,12 +256,7 @@ include __DIR__ . '/../includes/header.php';
     <?php if (has_role('admin')): ?>
     <div class="ms-auto d-flex gap-2">
         <a href="../admin/student_edit.php?id=<?= $id ?>&ref=profile"
-           class="btn btn-sm btn-success">Edit Profile</a>
-    </div>
-    <?php elseif (has_role('student') && !has_role('instructor')): ?>
-    <div class="ms-auto">
-        <a href="../student/profile_edit.php"
-           class="btn btn-sm btn-success">Edit Profile</a>
+           class="btn btn-sm btn-success">Full Edit</a>
     </div>
     <?php endif; ?>
 </div>
@@ -276,92 +283,171 @@ include __DIR__ . '/../includes/header.php';
     <div class="col-md-6 d-flex flex-column gap-4">
 
         <!-- Profile Info -->
-        <div class="card border-0 shadow-sm">
-            <div class="card-header bg-white fw-semibold">Profile Info</div>
-            <div class="card-body py-2 px-3">
-                <?php
-                $acct_tips = [
-                    'student'    => 'Registration fee paid',
-                    'guest'      => 'Non-paying participant (registration fee not yet paid)',
-                    'parent'     => 'Family account',
-                    'instructor' => 'Teaches or assists with classes',
-                    'admin'      => 'Full administrative access',
-                ];
-                $type_badges = [
-                    'admin'      => '<span class="badge bg-danger">Admin</span>',
-                    'instructor' => '<span class="badge bg-warning text-dark">Instructor</span>',
-                    'student'    => '<span class="badge bg-primary">Student</span>',
-                    'parent'     => '<span class="badge bg-info text-dark">Parent</span>',
-                    'guest'      => '<span class="badge bg-secondary">Guest</span>',
-                ];
-                $tip = $acct_tips[$student['student_type']] ?? '';
-                if ($student['injury_waiver']) {
-                    $waiver_url = has_role('instructor', 'admin')
-                        ? '../admin/waiver_view.php?student_id=' . $student['id']
-                        : '../student/waiver.php';
-                    $waiver_val = '<span class="text-success">✓</span> '
-                        . ($student['injury_waiver_date'] ? date('d M Y', strtotime($student['injury_waiver_date'])) : '')
-                        . ' <a href="' . $waiver_url . '" class="btn btn-sm btn-outline-secondary ms-2">View</a>';
-                } else {
-                    $waiver_val = '—';
-                }
-                $addr_parts = array_filter([
-                    htmlspecialchars($student['street_address'] ?? ''),
-                    htmlspecialchars($student['city_state_zip'] ?? ''),
-                ]);
-                $pv = [
-                    'Date of Birth'     => $student['date_of_birth'] ? date('d M Y', strtotime($student['date_of_birth'])) : '—',
-                    'Phone'             => ($student['phone'] ?? '') ? fmt_phone($student['phone']) : '—',
-                    'Email'             => htmlspecialchars($student['email'] ?? '') ?: '—',
-                    'Emergency Contact' => htmlspecialchars($student['emergency_contact_name']  ?? '') ?: '—',
-                    'Emergency Phone'   => ($student['emergency_contact_phone'] ?? '') ? fmt_phone($student['emergency_contact_phone']) : '—',
-                    'Address'           => $addr_parts ? implode('<br>', $addr_parts) : '—',
-                    'Member Since'      => date('d M Y', strtotime($student['registration_date'])),
-                ];
-                foreach ($pv as $lbl => $val): ?>
-                <div class="d-flex py-1 border-bottom">
-                    <div class="text-muted small" style="min-width:160px"><?= $lbl ?></div>
-                    <div><?= $val ?></div>
+        <?php
+        $can_edit_profile = (has_role('student') || has_role('instructor'))
+                            && (int)($student['user_id'] ?? 0) === current_user_id();
+        $acct_tips = [
+            'student'    => 'Registration fee paid',
+            'guest'      => 'Non-paying participant (registration fee not yet paid)',
+            'parent'     => 'Family account',
+            'instructor' => 'Teaches or assists with classes',
+            'admin'      => 'Full administrative access',
+        ];
+        $type_badges = [
+            'admin'      => '<span class="badge bg-danger">Admin</span>',
+            'instructor' => '<span class="badge bg-warning text-dark">Instructor</span>',
+            'student'    => '<span class="badge bg-primary">Student</span>',
+            'parent'     => '<span class="badge bg-info text-dark">Parent</span>',
+            'guest'      => '<span class="badge bg-secondary">Guest</span>',
+        ];
+        $tip = $acct_tips[$student['student_type']] ?? '';
+        if ($student['injury_waiver']) {
+            $waiver_url = has_role('instructor', 'admin')
+                ? '../admin/waiver_view.php?student_id=' . $student['id']
+                : '../student/waiver.php';
+            $waiver_val = '<span class="text-success">✓</span> '
+                . ($student['injury_waiver_date'] ? date('d M Y', strtotime($student['injury_waiver_date'])) : '')
+                . ' <a href="' . $waiver_url . '" class="btn btn-sm btn-outline-secondary ms-2">View</a>';
+        } else {
+            $waiver_val = '—';
+        }
+        $addr_parts = array_filter([
+            htmlspecialchars($student['street_address'] ?? ''),
+            htmlspecialchars($student['city_state_zip'] ?? ''),
+        ]);
+        ?>
+        <div id="profile-card" class="card border-0 shadow-sm">
+            <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
+                <span>Profile Info</span>
+                <?php if ($can_edit_profile): ?>
+                <div class="d-flex gap-2">
+                    <button type="button" id="profileCancelBtn" class="btn btn-sm btn-secondary" style="display:none"
+                            onclick="cardCancel('profile')">Cancel</button>
+                    <button type="button" id="profileEditBtn" class="btn btn-sm btn-success"
+                            onclick="cardToggle('profile')">Edit</button>
                 </div>
-                <?php endforeach; ?>
-                <div class="d-flex py-1 border-bottom">
-                    <div class="text-muted small" style="min-width:160px">Account Type</div>
-                    <div>
-                        <?= $type_badges[$student['student_type']] ?? '<span class="badge bg-secondary">Guest</span>' ?>
-                        <?php if ($tip): ?>
-                        <span class="text-muted ms-1" data-bs-toggle="tooltip" title="<?= htmlspecialchars($tip) ?>">ⓘ</span>
-                        <?php endif; ?>
+                <?php endif; ?>
+            </div>
+            <div class="card-body py-2 px-3">
+                <?php if ($profile_error): ?><div class="alert alert-danger py-2 mb-3"><?= htmlspecialchars($profile_error) ?></div><?php endif; ?>
+                <?php if ($profile_saved): ?><div class="alert alert-success py-2 mb-3">Profile saved.</div><?php endif; ?>
+                <!-- View mode -->
+                <div id="profile-view">
+                    <?php
+                    $pv = [
+                        'Date of Birth'     => $student['date_of_birth'] ? date('d M Y', strtotime($student['date_of_birth'])) : '—',
+                        'Phone'             => ($student['phone'] ?? '') ? fmt_phone($student['phone']) : '—',
+                        'Email'             => htmlspecialchars($student['email'] ?? '') ?: '—',
+                        'Emergency Contact' => htmlspecialchars($student['emergency_contact_name']  ?? '') ?: '—',
+                        'Emergency Phone'   => ($student['emergency_contact_phone'] ?? '') ? fmt_phone($student['emergency_contact_phone']) : '—',
+                        'Address'           => $addr_parts ? implode('<br>', $addr_parts) : '—',
+                        'Member Since'      => date('d M Y', strtotime($student['registration_date'])),
+                    ];
+                    foreach ($pv as $lbl => $val): ?>
+                    <div class="d-flex py-1 border-bottom">
+                        <div class="text-muted small" style="min-width:160px"><?= $lbl ?></div>
+                        <div><?= $val ?></div>
+                    </div>
+                    <?php endforeach; ?>
+                    <div class="d-flex py-1 border-bottom">
+                        <div class="text-muted small" style="min-width:160px">Account Type</div>
+                        <div>
+                            <?= $type_badges[$student['student_type']] ?? '<span class="badge bg-secondary">Guest</span>' ?>
+                            <?php if ($tip): ?>
+                            <span class="text-muted ms-1" data-bs-toggle="tooltip" title="<?= htmlspecialchars($tip) ?>">ⓘ</span>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    <div class="d-flex py-1 border-bottom">
+                        <div class="text-muted small" style="min-width:160px">Waiver</div>
+                        <div><?= $waiver_val ?></div>
+                    </div>
+                    <div class="d-flex py-1 border-bottom">
+                        <div class="text-muted small" style="min-width:160px">Account</div>
+                        <div><?= $student['username'] ? htmlspecialchars($student['username']) : '<span class="text-muted">No login</span>' ?></div>
+                    </div>
+                    <div class="d-flex py-1 border-bottom">
+                        <div class="text-muted small" style="min-width:160px">Last Login</div>
+                        <div><?= $student['last_login'] ? date('d M Y', strtotime($student['last_login'])) : '—' ?></div>
+                    </div>
+                    <div class="d-flex py-1 border-bottom">
+                        <div class="text-muted small" style="min-width:160px">Uniform Size</div>
+                        <div><?= htmlspecialchars($student['uniform_size'] ?? '') ?: '—' ?></div>
+                    </div>
+                    <div class="d-flex py-1 border-bottom">
+                        <div class="text-muted small" style="min-width:160px">Belt Size</div>
+                        <div><?= htmlspecialchars($student['belt_size'] ?? '') ?: '—' ?></div>
+                    </div>
+                    <div class="d-flex py-1">
+                        <div class="text-muted small" style="min-width:160px">Medical Note</div>
+                        <div><?= !empty($student['medical_note']) ? nl2br(htmlspecialchars($student['medical_note'])) : '—' ?></div>
                     </div>
                 </div>
-                <div class="d-flex py-1 border-bottom">
-                    <div class="text-muted small" style="min-width:160px">Waiver</div>
-                    <div><?= $waiver_val ?></div>
+                <?php if ($can_edit_profile): ?>
+                <!-- Edit mode (hidden) -->
+                <div id="profile-edit" style="display:none">
+                    <form id="profile-form" method="post" class="row g-3"
+                          hx-post="student_profile.php?id=<?= $id ?>"
+                          hx-target="#profile-card" hx-swap="outerHTML" hx-select="#profile-card">
+                        <?= csrf_input() ?>
+                        <input type="hidden" name="action" value="update_profile">
+                        <div class="col-6">
+                            <label class="form-label">First Name *</label>
+                            <input type="text" name="first_name" class="form-control" required
+                                   value="<?= htmlspecialchars($student['first_name'] ?? '') ?>">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">Last Name *</label>
+                            <input type="text" name="last_name" class="form-control" required
+                                   value="<?= htmlspecialchars($student['last_name'] ?? '') ?>">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">Date of Birth</label>
+                            <input type="date" name="date_of_birth" class="form-control"
+                                   value="<?= htmlspecialchars($student['date_of_birth'] ?? '') ?>">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">Phone</label>
+                            <input type="tel" name="phone" class="form-control"
+                                   value="<?= htmlspecialchars($student['phone'] ?? '') ?>">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Email</label>
+                            <input type="email" name="email" class="form-control"
+                                   value="<?= htmlspecialchars($student['email'] ?? '') ?>">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">Emergency Contact</label>
+                            <input type="text" name="ec_name" class="form-control"
+                                   value="<?= htmlspecialchars($student['emergency_contact_name'] ?? '') ?>">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">Emergency Phone</label>
+                            <input type="tel" name="ec_phone" class="form-control"
+                                   value="<?= htmlspecialchars($student['emergency_contact_phone'] ?? '') ?>">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Street Address</label>
+                            <input type="text" name="street_address" class="form-control"
+                                   value="<?= htmlspecialchars($student['street_address'] ?? '') ?>">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">City, State, ZIP</label>
+                            <input type="text" name="city_state_zip" class="form-control"
+                                   value="<?= htmlspecialchars($student['city_state_zip'] ?? '') ?>">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Medical Note</label>
+                            <textarea name="medical_note" class="form-control" rows="2"><?= htmlspecialchars($student['medical_note'] ?? '') ?></textarea>
+                        </div>
+                    </form>
                 </div>
-                <div class="d-flex py-1 border-bottom">
-                    <div class="text-muted small" style="min-width:160px">Account</div>
-                    <div><?= $student['username'] ? htmlspecialchars($student['username']) : '<span class="text-muted">No login</span>' ?></div>
-                </div>
-                <div class="d-flex py-1 border-bottom">
-                    <div class="text-muted small" style="min-width:160px">Last Login</div>
-                    <div><?= $student['last_login'] ? date('d M Y', strtotime($student['last_login'])) : '—' ?></div>
-                </div>
-                <div class="d-flex py-1">
-                    <div class="text-muted small" style="min-width:160px">Uniform Size</div>
-                    <div><?= htmlspecialchars($student['uniform_size'] ?? '') ?: '—' ?></div>
-                </div>
-                <div class="d-flex py-1">
-                    <div class="text-muted small" style="min-width:160px">Belt Size</div>
-                    <div><?= htmlspecialchars($student['belt_size'] ?? '') ?: '—' ?></div>
-                </div>
-                <div class="d-flex py-1">
-                    <div class="text-muted small" style="min-width:160px">Medical Note</div>
-                    <div><?= !empty($student['medical_note']) ? nl2br(htmlspecialchars($student['medical_note'])) : '—' ?></div>
-                </div>
+                <?php endif; ?>
             </div>
         </div>
 
         <!-- Attendance -->
-        <div class="card border-0 shadow-sm">
+        <div id="att-card" class="card border-0 shadow-sm">
             <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
                 <span>
                     Recent Attendance
@@ -372,14 +458,16 @@ include __DIR__ . '/../includes/header.php';
                        class="btn btn-sm btn-success">+ Record Attendance</a>
                     <?php endif; ?>
                     <?php if (has_role('instructor') && !has_role('admin') && !empty($attendance)): ?>
-                    <button type="button" class="btn btn-sm btn-outline-secondary" id="attEditBtn"
-                            onclick="toggleAttEdit()">Edit</button>
-                    <button type="submit" form="att-form" class="btn btn-sm btn-success" id="attConfirmBtn"
+                    <button type="button" id="attEditBtn" class="btn btn-sm btn-outline-secondary"
+                            onclick="document.getElementById('attEditBtn').style.display='none';document.getElementById('attConfirmBtn').style.display='';document.querySelectorAll('.att-edit').forEach(function(e){e.style.display=''})">Edit</button>
+                    <button type="submit" id="attConfirmBtn" form="att-form" class="btn btn-sm btn-success"
                             style="display:none">Confirm</button>
                     <?php endif; ?>
                 </div>
             </div>
-            <form id="att-form" method="post">
+            <form id="att-form" method="post"
+                  hx-post="student_profile.php?id=<?= $id ?>"
+                  hx-target="#att-card" hx-swap="outerHTML" hx-select="#att-card">
                 <?= csrf_input() ?>
                 <input type="hidden" name="action" value="update_attendance">
                 <div class="card-body p-0" style="max-height:320px;overflow-y:auto">
@@ -418,13 +506,15 @@ include __DIR__ . '/../includes/header.php';
 
     </div>
 
+    </div>
+
     <!-- ── Right: Belt Tests + Rank History + Payments ── -->
     <div class="col-md-6 d-flex flex-column gap-4">
 
         <!-- Payments -->
         <div class="card border-0 shadow-sm">
             <div class="card-header bg-white fw-semibold">Payment History</div>
-            <div class="card-body p-0">
+            <div class="card-body p-0" style="max-height:320px;overflow-y:auto">
                 <?php if (empty($payments)): ?>
                     <p class="p-3 text-muted">No payments on record.</p>
                 <?php else: ?>
@@ -455,7 +545,7 @@ include __DIR__ . '/../includes/header.php';
         <!-- Rank History -->
         <div class="card border-0 shadow-sm">
             <div class="card-header bg-white fw-semibold">Rank History</div>
-            <div class="card-body p-0">
+            <div class="card-body p-0" style="max-height:320px;overflow-y:auto">
                 <?php if (empty($ranks)): ?>
                     <p class="p-3 text-muted">No ranks recorded.</p>
                 <?php else: ?>
@@ -479,7 +569,7 @@ include __DIR__ . '/../includes/header.php';
         <!-- Belt Tests -->
         <div class="card border-0 shadow-sm">
             <div class="card-header bg-white fw-semibold">Belt Test History</div>
-            <div class="card-body p-0">
+            <div class="card-body p-0" style="max-height:320px;overflow-y:auto">
                 <?php if (empty($belt_tests)): ?>
                     <p class="p-3 text-muted">No belt tests on record.</p>
                 <?php else: ?>
@@ -526,17 +616,9 @@ include __DIR__ . '/../includes/header.php';
     </div>
 </div>
 
-<!-- ── Attendance bar graph ── -->
-<div class="card border-0 shadow-sm mt-4">
-    <div class="card-header bg-white fw-semibold border-bottom">Attendance — Last 12 Months</div>
-    <div class="card-body" style="height:220px;">
-        <canvas id="attChart"></canvas>
-    </div>
-</div>
-
 <!-- ── Bottom: Notes (full width) ── -->
 <?php if (has_role('admin')): ?>
-<div class="card border-0 shadow-sm mt-4">
+<div id="notes-card" class="card border-0 shadow-sm mt-4">
     <div class="card-header bg-white fw-semibold">
         Student Notes
         <span class="text-muted fw-normal small ms-2">(<?= count($notes) ?>)</span>
@@ -558,13 +640,15 @@ include __DIR__ . '/../includes/header.php';
     </div>
 </div>
 <?php elseif (has_role('instructor')): ?>
-<div class="card border-0 shadow-sm mt-4">
+<div id="notes-card" class="card border-0 shadow-sm mt-4">
     <div class="card-header bg-white fw-semibold">Add Note</div>
     <div class="card-body">
-        <?php if (isset($_GET['noted'])): ?>
+        <?php if (isset($_GET['noted']) || $note_just_added): ?>
         <div class="alert alert-success py-2 mb-3">Note saved.</div>
         <?php endif; ?>
-        <form method="post">
+        <form method="post"
+              hx-post="student_profile.php?id=<?= $id ?>"
+              hx-target="#notes-card" hx-swap="outerHTML" hx-select="#notes-card">
             <?= csrf_input() ?>
             <input type="hidden" name="action" value="add_note">
             <textarea name="note_content" class="form-control form-control-sm mb-2"
@@ -579,72 +663,41 @@ include __DIR__ . '/../includes/header.php';
 document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
     new bootstrap.Tooltip(el);
 });
-</script>
-
-<?php if (has_role('instructor', 'admin')): ?>
-<script>
-function toggleAttEdit() {
-    const btn     = document.getElementById('attEditBtn');
-    const confirm = document.getElementById('attConfirmBtn');
-    const on      = btn.dataset.editing === '1';
-    document.querySelectorAll('.att-edit').forEach(el => el.style.display = on ? 'none' : '');
-    btn.dataset.editing  = on ? '0' : '1';
-    btn.style.display    = on ? '' : 'none';
-    confirm.style.display = on ? 'none' : '';
+function cardToggle(cardId) {
+    var btn    = document.getElementById(cardId + 'EditBtn');
+    var cancel = document.getElementById(cardId + 'CancelBtn');
+    var view   = document.getElementById(cardId + '-view');
+    var edit   = document.getElementById(cardId + '-edit');
+    if (btn.dataset.editing !== 'true') {
+        btn.dataset.editing = 'true';
+        btn.textContent = 'Save';
+        btn.classList.replace('btn-success', 'btn-warning');
+        if (cancel) cancel.style.display = '';
+        if (view) view.style.display = 'none';
+        if (edit) edit.style.display = '';
+    } else {
+        if (typeof setFormClean === 'function') setFormClean();
+        var form = document.getElementById(cardId + '-form');
+        form.dispatchEvent(new SubmitEvent('submit', {bubbles: true, cancelable: true}));
+    }
+}
+function cardCancel(cardId) {
+    var btn    = document.getElementById(cardId + 'EditBtn');
+    var cancel = document.getElementById(cardId + 'CancelBtn');
+    var view   = document.getElementById(cardId + '-view');
+    var edit   = document.getElementById(cardId + '-edit');
+    btn.dataset.editing = 'false';
+    btn.textContent = 'Edit';
+    btn.classList.replace('btn-warning', 'btn-success');
+    if (cancel) cancel.style.display = 'none';
+    if (view) view.style.display = '';
+    if (edit) edit.style.display = 'none';
+    var form = document.getElementById(cardId + '-form');
+    if (form) form.reset();
+    if (typeof setFormClean === 'function') setFormClean();
 }
 </script>
-<?php endif; ?>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-<script>
-(function () {
-    var chartInst = null;
-    var ranks     = <?= json_encode($chart_ranks) ?>;
-
-    function colors() {
-        var dark = document.getElementById('html-root').getAttribute('data-bs-theme') === 'dark';
-        return {
-            grid:  dark ? 'rgba(255,255,255,.12)' : 'rgba(0,0,0,.2)',
-            label: dark ? '#dee2e6' : '#000'
-        };
-    }
-
-    function buildChart() {
-        if (chartInst) chartInst.destroy();
-        var c = colors();
-        chartInst = new Chart(document.getElementById('attChart'), {
-            type: 'bar',
-            data: {
-                labels: <?= json_encode($chart_labels) ?>,
-                datasets: [{ data: <?= json_encode($chart_data) ?>, backgroundColor: <?= json_encode($chart_colors) ?>, borderRadius: 4 }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        callbacks: {
-                            label: function(ctx) { return 'Classes: ' + ctx.parsed.y; },
-                            afterLabel: function(ctx) { return ranks[ctx.dataIndex] ? 'Belt: ' + ranks[ctx.dataIndex] : ''; }
-                        }
-                    }
-                },
-                scales: {
-                    x: { ticks: { color: c.label }, grid: { color: c.grid } },
-                    y: { beginAtZero: true, ticks: { stepSize: 1, color: c.label }, grid: { color: c.grid } }
-                }
-            }
-        });
-    }
-
-    buildChart();
-    new MutationObserver(buildChart).observe(
-        document.getElementById('html-root'),
-        { attributes: true, attributeFilter: ['data-bs-theme'] }
-    );
-})();
-</script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>
 

@@ -28,6 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
     db()->prepare('DELETE FROM payments WHERE id=?')->execute([$del_id]);
     audit('delete_payment', 'payment', $del_id);
     if ($del_sid) sync_registration_status($del_sid);
+    if (!empty($_SERVER['HTTP_HX_REQUEST'])) { exit; }
     header('Location: payments.php?' . http_build_query($_GET));
     exit;
 }
@@ -291,7 +292,8 @@ include __DIR__ . '/../includes/header.php';
 <!-- ── Filters ── -->
 <div class="card border-0 shadow-sm mb-3">
     <div class="card-body py-2">
-        <form method="get" class="row g-2 align-items-end">
+        <form method="get" class="row g-2 align-items-end"
+              hx-get="payments.php" hx-target="#payments-results" hx-select="#payments-results" hx-swap="outerHTML" hx-push-url="true">
             <div class="col-md-3">
                 <label class="form-label small mb-1">Student</label>
                 <select name="student_id" class="form-select form-select-sm">
@@ -338,27 +340,35 @@ include __DIR__ . '/../includes/header.php';
             </div>
             <div class="col-auto">
                 <a href="payments.php?from=<?= date('Y-m-01') ?>&to=<?= date('Y-m-d') ?>"
+                   hx-get="payments.php?from=<?= date('Y-m-01') ?>&to=<?= date('Y-m-d') ?>"
+                   hx-target="#payments-results" hx-select="#payments-results" hx-swap="outerHTML" hx-push-url="true"
                    class="btn btn-filter btn-sm <?= ($f_from === date('Y-m-01') && $f_to === date('Y-m-d') && !$f_student && !$f_type && !$f_method) ? 'active' : '' ?>">This Month</a>
             </div>
             <div class="col-auto">
                 <a href="payments.php?from=<?= date('Y-01-01') ?>&to=<?= date('Y-m-d') ?>"
+                   hx-get="payments.php?from=<?= date('Y-01-01') ?>&to=<?= date('Y-m-d') ?>"
+                   hx-target="#payments-results" hx-select="#payments-results" hx-swap="outerHTML" hx-push-url="true"
                    class="btn btn-filter btn-sm <?= ($f_from === date('Y-01-01') && $f_to === date('Y-m-d') && !$f_student && !$f_type && !$f_method) ? 'active' : '' ?>">This Year</a>
             </div>
             <div class="col-auto">
-                <a href="payments.php?from=&to=" class="btn btn-filter btn-sm">Clear</a>
+                <a href="payments.php?from=&to="
+                   hx-get="payments.php?from=&to=" hx-target="#payments-results" hx-select="#payments-results"
+                   hx-swap="outerHTML" hx-push-url="true"
+                   class="btn btn-filter btn-sm">Clear</a>
             </div>
         </form>
     </div>
 </div>
 
 <!-- ── Results ── -->
-<div class="card border-0 shadow-sm">
+<div id="payments-results" class="card border-0 shadow-sm">
     <div class="card-header bg-white d-flex justify-content-between align-items-center">
         <span class="fw-semibold"><?= count($payments) ?> payment<?= count($payments)!==1?'s':'' ?></span>
         <div class="d-flex align-items-center gap-3">
             <span class="text-success fw-semibold">Total: $<?= number_format($total_shown, 2) ?></span>
             <?php if (!empty($payments)): ?>
-            <button id="editToggle" class="btn btn-sm btn-outline-secondary" onclick="toggleEdit()">Edit</button>
+            <button id="editToggle" class="btn btn-sm btn-outline-secondary"
+                    onclick="(function(btn){var t=document.getElementById('paymentsTable');var e=t.classList.toggle('editing');btn.textContent=e?'Done':'Edit';btn.className=e?'btn btn-sm btn-warning':'btn btn-sm btn-outline-secondary';if(!e)closeEditRows();})(this)">Edit</button>
             <?php endif; ?>
         </div>
     </div>
@@ -421,7 +431,9 @@ include __DIR__ . '/../includes/header.php';
                     </td>
                     <td class="delete-col">
                         <form method="post" class="d-inline"
-                              onsubmit="return confirm('Delete this payment? This cannot be undone.')">
+                              hx-post="payments.php" hx-target="closest tr"
+                              hx-swap="delete swap:300ms"
+                              hx-confirm="Delete this payment? This cannot be undone.">
                             <?= csrf_input() ?>
                             <input type="hidden" name="action" value="delete">
                             <input type="hidden" name="id" value="<?= $p['id'] ?>">
@@ -502,17 +514,9 @@ include __DIR__ . '/../includes/header.php';
     table.editing .edit-col   { display: table-cell; }
 </style>
 <script>
-function toggleEdit() {
-    const table = document.querySelector('#paymentsTable');
-    const btn   = document.getElementById('editToggle');
-    const on    = table.classList.toggle('editing');
-    btn.textContent = on ? 'Done' : 'Edit';
-    btn.className   = on ? 'btn btn-sm btn-warning' : 'btn btn-sm btn-outline-secondary';
-    // Collapse any open edit rows when toggling off
-    if (!on) {
-        table.querySelectorAll('tr[id^="edit-row-"]').forEach(function(r) { r.style.display = 'none'; });
-        if (typeof setFormClean === 'function') setFormClean();
-    }
+function closeEditRows() {
+    document.querySelectorAll('#paymentsTable tr[id^="edit-row-"]').forEach(function(r) { r.style.display = 'none'; });
+    if (typeof setFormClean === 'function') setFormClean();
 }
 function toggleEditRow(pid) {
     var row = document.getElementById('edit-row-' + pid);

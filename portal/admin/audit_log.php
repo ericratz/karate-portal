@@ -9,7 +9,7 @@ $f_from   = $_GET['from']   ?? '';
 $f_to     = $_GET['to']     ?? '';
 $f_user   = trim($_GET['user'] ?? '');
 
-$where  = ['1=1'];
+$where  = ["al.action != 'logout'"];
 $params = [];
 if ($f_action) { $where[] = 'al.action = ?';            $params[] = $f_action; }
 if ($f_from)   { $where[] = 'DATE(al.created_at) >= ?'; $params[] = $f_from; }
@@ -26,9 +26,9 @@ $stmt = db()->prepare(
 $stmt->execute($params);
 $entries = $stmt->fetchAll();
 
-// Distinct actions for filter dropdown
+// Distinct actions for filter dropdown (exclude logout — too noisy to be useful)
 $actions = db()->query(
-    'SELECT DISTINCT action FROM activity_log ORDER BY action'
+    "SELECT DISTINCT action FROM activity_log WHERE action != 'logout' ORDER BY action"
 )->fetchAll(PDO::FETCH_COLUMN);
 
 $page_title = 'Activity Log';
@@ -45,7 +45,8 @@ include __DIR__ . '/../includes/header.php';
 <!-- Filter bar -->
 <div class="card border-0 shadow-sm mb-3">
     <div class="card-body py-2">
-        <form method="get" class="row g-2 align-items-end">
+        <form method="get" class="row g-2 align-items-end"
+              hx-get="audit_log.php" hx-target="#audit-results" hx-select="#audit-results" hx-swap="outerHTML" hx-push-url="true">
             <div class="col-md-2">
                 <label class="form-label small mb-1">Action</label>
                 <select name="action" class="form-select form-select-sm">
@@ -76,13 +77,16 @@ include __DIR__ . '/../includes/header.php';
                 <button class="btn btn-filter btn-sm w-100">Filter</button>
             </div>
             <div class="col-md-1">
-                <a href="audit_log.php" class="btn btn-filter btn-sm w-100">Clear</a>
+                <a href="audit_log.php"
+                   hx-get="audit_log.php" hx-target="#audit-results" hx-select="#audit-results"
+                   hx-swap="outerHTML" hx-push-url="true"
+                   class="btn btn-filter btn-sm w-100">Clear</a>
             </div>
         </form>
     </div>
 </div>
 
-<div class="card border-0 shadow-sm">
+<div id="audit-results" class="card border-0 shadow-sm">
     <div class="card-header bg-white fw-semibold d-flex align-items-center justify-content-between">
         <span><?= count($entries) ?> entr<?= count($entries) !== 1 ? 'ies' : 'y' ?></span>
         <?php if (count($entries) === 500): ?>

@@ -106,7 +106,7 @@ register_shutdown_function(function(): void {
 });
 
 function log_email(string $to, string $subject, string $body, string $headers, string $type = 'other'): bool {
-    $result = mail($to, $subject, $body, $headers);
+    $result = @mail($to, $subject, $body, $headers);
     try {
         db()->prepare(
             'INSERT INTO email_log (to_email, subject, type, status) VALUES (?, ?, ?, ?)'
