@@ -55,6 +55,7 @@ jobs:
       - name: Install Composer dependencies
         shell: powershell
         run: |
+          Invoke-WebRequest -Uri https://getcomposer.org/composer.phar -OutFile "$env:GITHUB_WORKSPACE\portal\composer.phar"
           & "C:\Users\ericratz\XAMPP\php\php.exe" "$env:GITHUB_WORKSPACE\portal\composer.phar" install --working-dir="$env:GITHUB_WORKSPACE\portal" --no-interaction
 
       - name: Run PHPUnit tests
