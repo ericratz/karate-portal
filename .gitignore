@@ -11,6 +11,7 @@ memory/
 tests/clear_rate_limit.php
 tests/cleanup.config.js
 portal/vendor/
+portal/.phpunit.result.cache
 portal/composer.phar
 portal/composer-setup.php
 migrations/

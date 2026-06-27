@@ -1,8 +1,6 @@
 # Shotokan Karate Portal — V3.1
 
-A private membership portal for Noji Ratzlaff's Shotokan Karate dojo. Students track
-attendance, belt tests, and payments. Instructors manage classes and roster. The admin
-runs the full operation from one place.
+A private membership portal for Noji Ratzlaff's Shotokan Karate dojo. Students, parents, and instructors each get a tailored dashboard — tracking attendance, belt tests, payments, and waivers. The admin runs the full operation from one place. A Playwright + PHPUnit test suite runs automatically on every push via GitHub Actions.
 
 ---
 
@@ -14,6 +12,7 @@ runs the full operation from one place.
 - **Next belt requirements** — student and parent dashboards show the next rank, minimum time-in-rank, and test score threshold needed to advance (`portal/includes/belt_helpers.php`)
 - **Belt tests delete confirmation** — `instructor/belt_tests_all.php` delete uses `onsubmit` confirm instead of `hx-confirm` (eliminates double-confirm dialogs)
 - **Test coverage expanded** — 483 tests across 37 spec files (Playwright) plus 34 PHPUnit unit/integration tests. New tests cover HTMX inline-edit flows, HTMX card swaps without page reload, and auth boundary checks for `update_profile` handlers
+- **GitHub Actions CI** — a self-hosted Windows runner executes the full PHPUnit and Playwright suites on every push to `main`, reporting a pass/fail checkmark directly on GitHub
 
 ## What's New in V3.0
 
@@ -41,6 +40,7 @@ runs the full operation from one place.
 | Auth | Username/password + Google OAuth |
 | Local dev | XAMPP at `C:\Users\ericratz\XAMPP` |
 | Tests | Playwright 1.60 (`npm test`) + PHPUnit 9.6 (`cd portal && vendor/bin/phpunit`) |
+| CI | GitHub Actions — self-hosted Windows runner, runs on every push to `main` |
 
 ---
 
