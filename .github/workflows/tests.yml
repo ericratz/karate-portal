@@ -31,18 +31,19 @@ jobs:
           PARENT_USER: ${{ secrets.PARENT_USER }}
           PARENT_PASS: ${{ secrets.PARENT_PASS }}
         run: |
-          Set-Content tests\credentials.js -Encoding utf8NoBOM -Value @(
-            "module.exports = {",
-            "    ADMIN_USER:  '$env:ADMIN_USER',",
-            "    ADMIN_PASS:  '$env:ADMIN_PASS',",
-            "    INST_USER:   '$env:INST_USER',",
-            "    INST_PASS:   '$env:INST_PASS',",
-            "    STU_USER:    '$env:STU_USER',",
-            "    STU_PASS:    '$env:STU_PASS',",
-            "    PARENT_USER: '$env:PARENT_USER',",
-            "    PARENT_PASS: '$env:PARENT_PASS',",
-            "};"
-          )
+          $content = @"
+          module.exports = {
+              ADMIN_USER:  '$env:ADMIN_USER',
+              ADMIN_PASS:  '$env:ADMIN_PASS',
+              INST_USER:   '$env:INST_USER',
+              INST_PASS:   '$env:INST_PASS',
+              STU_USER:    '$env:STU_USER',
+              STU_PASS:    '$env:STU_PASS',
+              PARENT_USER: '$env:PARENT_USER',
+              PARENT_PASS: '$env:PARENT_PASS',
+          };
+          "@
+          [System.IO.File]::WriteAllText("$PWD\tests\credentials.js", $content, [System.Text.UTF8Encoding]::new($false))
 
       # .env is gitignored — copy from the live htdocs directory (same machine)
       - name: Copy .env for database access
