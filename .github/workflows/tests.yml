@@ -55,7 +55,7 @@ jobs:
       - name: Run PHPUnit tests
         shell: powershell
         run: |
-          & "C:\Users\ericratz\XAMPP\php\php.exe" portal/vendor/bin/phpunit --configuration portal/phpunit.xml
+          & "C:\Users\ericratz\XAMPP\php\php.exe" "$env:GITHUB_WORKSPACE\portal\vendor\bin\phpunit" --configuration "$env:GITHUB_WORKSPACE\portal\phpunit.xml"
 
       - name: Run Playwright tests
         run: npm test
