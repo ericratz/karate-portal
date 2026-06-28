@@ -1086,7 +1086,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                     </form>
                 </div>
             </div>
-            <div class="card-body p-0">
+            <div class="card-body p-0" style="max-height:300px;overflow-y:auto">
                 <?php if (empty($payments)): ?>
                     <p class="p-3 text-muted">No payments on record.</p>
                 <?php else: ?>
@@ -1237,7 +1237,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                   hx-target="#rank-card" hx-swap="outerHTML" hx-select="#rank-card">
                 <?= csrf_input() ?>
                 <input type="hidden" name="action" value="update_ranks">
-                <div class="card-body p-0">
+                <div class="card-body p-0" style="max-height:300px;overflow-y:auto">
                     <?php if (empty($ranks)): ?>
                         <p class="p-3 text-muted">No ranks recorded.</p>
                     <?php else: ?>
@@ -1345,7 +1345,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                     </form>
                 </div>
             </div>
-            <div class="card-body p-0">
+            <div class="card-body p-0" style="max-height:300px;overflow-y:auto">
                 <?php if (empty($belt_tests)): ?>
                     <p class="p-3 text-muted">No belt tests on record.</p>
                 <?php else: ?>
@@ -1498,7 +1498,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                     </form>
                 </div>
             </div>
-            <div class="card-body<?= empty($payment_waivers) ? '' : ' p-0' ?>">
+            <div class="card-body<?= empty($payment_waivers) ? '' : ' p-0' ?>" style="max-height:260px;overflow-y:auto">
                 <?php if (empty($payment_waivers)): ?>
                     <p class="text-muted mb-0">No exemptions on record.</p>
                 <?php else: ?>
@@ -1609,7 +1609,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                     </form>
                 </div>
             </div>
-            <div class="card-body<?= empty($guardian_links) ? '' : ' p-0' ?>">
+            <div class="card-body<?= empty($guardian_links) ? '' : ' p-0' ?>" style="max-height:260px;overflow-y:auto">
                 <?php if (empty($guardian_links)): ?>
                     <p class="text-muted mb-0">None linked.</p>
                 <?php else: ?>
@@ -1914,7 +1914,7 @@ function rankEdit() {
     </div>
 
     <!-- Existing notes -->
-    <div class="card-body p-0">
+    <div class="card-body p-0" style="max-height:300px;overflow-y:auto">
         <?php if (empty($notes)): ?>
             <p class="p-3 text-muted">No notes yet.</p>
         <?php else: ?>

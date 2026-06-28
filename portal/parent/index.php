@@ -501,7 +501,7 @@ $ext_icon = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill
                 <a href="attendance.php?student_id=<?= $tab_id ?>" class="btn btn-sm btn-outline-secondary">Show All</a>
                 <?php endif; ?>
             </div>
-            <div class="card-body p-0">
+            <div class="card-body p-0" style="max-height:300px;overflow-y:auto">
                 <?php if (empty($attendance)): ?>
                     <p class="p-3 text-muted">No attendance recorded yet.</p>
                 <?php else: ?>
@@ -533,7 +533,7 @@ $ext_icon = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill
                 <a href="payment_history.php?student_id=<?= $tab_id ?>" class="btn btn-sm btn-outline-secondary">Show All</a>
                 <?php endif; ?>
             </div>
-            <div class="card-body p-0">
+            <div class="card-body p-0" style="max-height:300px;overflow-y:auto">
                 <?php if (empty($payments)): ?>
                     <p class="p-3 text-muted">No payments on record.</p>
                 <?php else: ?>
@@ -563,7 +563,7 @@ $ext_icon = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill
                 <a href="belt_tests.php?student_id=<?= $tab_id ?>" class="btn btn-sm btn-outline-secondary">Show All</a>
                 <?php endif; ?>
             </div>
-            <div class="card-body p-0">
+            <div class="card-body p-0" style="max-height:300px;overflow-y:auto">
                 <?php if (empty($belt_tests)): ?>
                     <p class="p-3 text-muted">No belt tests on record.</p>
                 <?php else: ?>

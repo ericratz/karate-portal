@@ -506,8 +506,6 @@ include __DIR__ . '/../includes/header.php';
 
     </div>
 
-    </div>
-
     <!-- ── Right: Belt Tests + Rank History + Payments ── -->
     <div class="col-md-6 d-flex flex-column gap-4">
 
