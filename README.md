@@ -1,8 +1,13 @@
-# Shotokan Karate Portal — V3.1
+# Shotokan Karate Portal — V3.11
 
 A private membership portal for Noji Ratzlaff's Shotokan Karate dojo. Students, parents, and instructors each get a tailored dashboard — tracking attendance, belt tests, payments, and waivers. The admin runs the full operation from one place. A Playwright + PHPUnit test suite runs automatically on every push via GitHub Actions.
 
 ---
+
+## What's New in V3.11
+
+- Added scroll bars to all data cards
+- Two-column layout bug fix
 
 ## What's New in V3.1
 
