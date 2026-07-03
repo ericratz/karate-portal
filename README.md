@@ -1,8 +1,18 @@
-# Shotokan Karate Portal — V3.11
+# Shotokan Karate Portal — V3.2
 
 A private membership portal for Noji Ratzlaff's Shotokan Karate dojo. Students, parents, and instructors each get a tailored dashboard — tracking attendance, belt tests, payments, and waivers. The admin runs the full operation from one place. A Playwright + PHPUnit test suite runs automatically on every push via GitHub Actions.
 
 ---
+
+## What's New in V3.2
+
+- **Admin waiver always editable** — admin can edit any submitted waiver directly at any time; no more read-only lock after save (`admin/waiver_view.php`)
+- **Linked Family card** — instructor student profile now shows a "Linked Family" card after Belt Test History, listing parent/child links as clickable profile links (`instructor/student_profile.php`)
+- **Center Stage YTD tracking** — admin dashboard shows a "Center Stage (year)" stat card with total rent paid year-to-date; rent alert now shows all month until recorded, not just the first 7 days (`admin/index.php`)
+- **Rent reminders improved** — cron now fires on the 1st of the month (first notice) and every Saturday until rent is recorded in expenses; separate email wording for first vs. follow-up alerts (`cron/rent_reminder.php`)
+- **Attendance count in save message** — saving attendance now confirms "X present" alongside the date (`instructor/attendance.php`)
+- **Belt test date edit bug fixed** — editing a belt test date no longer creates a duplicate rank history entry or a ghost student in the roster. Root cause: `student_ranks` was missing a `UNIQUE KEY (student_id, rank_id)`, causing `ON DUPLICATE KEY UPDATE` to insert instead of update. Fixed with DELETE + INSERT and a schema migration (`migrations/001_student_ranks_unique.sql`)
+- **Test coverage** — 475 Playwright tests + 44 PHPUnit tests, all passing
 
 ## What's New in V3.11
 
@@ -16,7 +26,7 @@ A private membership portal for Noji Ratzlaff's Shotokan Karate dojo. Students, 
 - **Roster search by email and phone** — the admin roster search bar (`admin/students.php`) now matches email addresses and phone numbers in addition to name
 - **Next belt requirements** — student and parent dashboards show the next rank, minimum time-in-rank, and test score threshold needed to advance (`portal/includes/belt_helpers.php`)
 - **Belt tests delete confirmation** — `instructor/belt_tests_all.php` delete uses `onsubmit` confirm instead of `hx-confirm` (eliminates double-confirm dialogs)
-- **Test coverage expanded** — 483 tests across 37 spec files (Playwright) plus 34 PHPUnit unit/integration tests. New tests cover HTMX inline-edit flows, HTMX card swaps without page reload, and auth boundary checks for `update_profile` handlers
+- **Test coverage expanded** — 475 Playwright tests + 44 PHPUnit unit/integration tests. New tests cover HTMX inline-edit flows, HTMX card swaps without page reload, and auth boundary checks for `update_profile` handlers
 - **GitHub Actions CI** — a self-hosted Windows runner executes the full PHPUnit and Playwright suites on every push to `main`, reporting a pass/fail checkmark directly on GitHub
 
 ## What's New in V3.0

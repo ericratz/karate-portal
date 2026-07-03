@@ -116,6 +116,7 @@ CREATE TABLE IF NOT EXISTS student_ranks (
     rank_id       INT  NOT NULL,
     achieved_date DATE NOT NULL,
     notes         TEXT,
+    UNIQUE KEY uq_student_rank (student_id, rank_id),
     FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
     FOREIGN KEY (rank_id)    REFERENCES ranks(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
