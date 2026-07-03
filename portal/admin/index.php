@@ -27,7 +27,8 @@ $stats = db()->query(
         (SELECT COUNT(*) FROM users)                                              AS total_users,
         (SELECT COUNT(*) FROM class_sessions)                                     AS total_sessions,
         (SELECT COALESCE(SUM(amount),0) FROM payments WHERE YEAR(payment_date)=YEAR(NOW())) AS revenue_ytd,
-        (SELECT COALESCE(SUM(amount),0) FROM payments WHERE MONTH(payment_date)=MONTH(NOW()) AND YEAR(payment_date)=YEAR(NOW())) AS revenue_month
+        (SELECT COALESCE(SUM(amount),0) FROM payments WHERE MONTH(payment_date)=MONTH(NOW()) AND YEAR(payment_date)=YEAR(NOW())) AS revenue_month,
+        (SELECT COALESCE(SUM(amount),0) FROM expenses WHERE expense_type=\'rent\' AND paid=1 AND YEAR(expense_date)=YEAR(NOW())) AS rent_ytd
     '
 )->fetch();
 
@@ -113,15 +114,12 @@ $attendance_missing = !$att_stmt->fetch();
 $days_since_saturday = (int)floor((time() - strtotime($check_saturday)) / 86400);
 $show_attendance_alert = $attendance_missing && $days_since_saturday <= 6;
 
-// ── Rent reminder — unpaid rent in first 7 days of month ─────────────────────
-$show_rent_alert = false;
-if ((int)date('j') <= 7) {
-    $rent_stmt = db()->prepare(
-        "SELECT COUNT(*) FROM expenses WHERE expense_type = 'rent' AND DATE_FORMAT(expense_date, '%Y-%m') = ?"
-    );
-    $rent_stmt->execute([date('Y-m')]);
-    $show_rent_alert = (int)$rent_stmt->fetchColumn() === 0;
-}
+// ── Rent reminder — show all month until recorded ─────────────────────────────
+$rent_stmt = db()->prepare(
+    "SELECT COUNT(*) FROM expenses WHERE expense_type = 'rent' AND DATE_FORMAT(expense_date, '%Y-%m') = ?"
+);
+$rent_stmt->execute([date('Y-m')]);
+$show_rent_alert = (int)$rent_stmt->fetchColumn() === 0;
 
 // Recent payments (last 10)
 $recent_payments = db()->query(
@@ -166,13 +164,14 @@ include __DIR__ . '/../includes/header.php';
 <div class="row g-3 mb-4">
     <?php
     $cards = [
-        ['Active Students',    $stats['active_students'],            'text-primary'],
-        ['Total Students',     $stats['active_students'] + $stats['inactive_students'], 'text-primary'],
-        ['Revenue ('.date('F').')', '$'.number_format($stats['revenue_month'],2), 'text-success'],
-        ['Revenue (YTD)',      '$'.number_format($stats['revenue_ytd'],2),   'text-success'],
+        ['Active Students',         $stats['active_students'],                               'text-primary'],
+        ['Total Students',          $stats['active_students'] + $stats['inactive_students'], 'text-primary'],
+        ['Revenue ('.date('F').')', '$'.number_format($stats['revenue_month'],2),            'text-success'],
+        ['Revenue ('.date('Y').')', '$'.number_format($stats['revenue_ytd'],2),              'text-success'],
+        ['Center Stage ('.date('Y').')', '$'.number_format($stats['rent_ytd'],2),            'text-danger'],
     ];
     foreach ($cards as [$label, $val, $cls]): ?>
-    <div class="col-6 col-lg-3">
+    <div class="col-6 col-lg">
         <div class="card border-0 shadow-sm text-center h-100">
             <div class="card-body">
                 <div class="display-6 fw-bold <?= $cls ?>"><?= $val ?></div>

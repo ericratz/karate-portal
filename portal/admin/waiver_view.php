@@ -21,8 +21,8 @@ $stmt = db()->prepare('SELECT * FROM injury_waiver_submissions WHERE student_id 
 $stmt->execute([$student_id]);
 $submission = $stmt->fetch();
 
-// Handle admin submission (admin only)
-if (has_role('admin') && !$submission && $_SERVER['REQUEST_METHOD'] === 'POST') {
+// Handle admin submission/edit (admin only)
+if (has_role('admin') && $_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf();
     $print_name    = trim($_POST['print_name']    ?? '');
     $signature     = trim($_POST['signature']     ?? '');
@@ -41,29 +41,47 @@ if (has_role('admin') && !$submission && $_SERVER['REQUEST_METHOD'] === 'POST') 
     if (!$print_name || !$signed_date) {
         $error = 'Printed name and date are required.';
     } else {
-        db()->prepare(
-            'INSERT INTO injury_waiver_submissions
-             (student_id, print_name, signature, signed_date,
-              guardian_signature, guardian_signed_date,
-              date_of_birth, cell_phone, home_phone, email,
-              street_address, city_state_zip,
-              mailing_address, mailing_city_state_zip, ip_address)
-             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
-        )->execute([
-            $student_id, $print_name, $signature ?: $print_name, $signed_date,
-            $guardian_sig ?: null, $guardian_date,
-            $dob ?: null, $cell ?: null, $home ?: null, $email ?: null,
-            $street ?: null, $csz ?: null,
-            $mail_addr ?: null, $mail_csz ?: null,
-            'admin-entry',
-        ]);
+        if ($submission) {
+            db()->prepare(
+                'UPDATE injury_waiver_submissions SET
+                 print_name=?, signature=?, signed_date=?,
+                 guardian_signature=?, guardian_signed_date=?,
+                 date_of_birth=?, cell_phone=?, home_phone=?, email=?,
+                 street_address=?, city_state_zip=?,
+                 mailing_address=?, mailing_city_state_zip=?
+                 WHERE id=?'
+            )->execute([
+                $print_name, $signature ?: $print_name, $signed_date,
+                $guardian_sig ?: null, $guardian_date,
+                $dob ?: null, $cell ?: null, $home ?: null, $email ?: null,
+                $street ?: null, $csz ?: null,
+                $mail_addr ?: null, $mail_csz ?: null,
+                $submission['id'],
+            ]);
+        } else {
+            db()->prepare(
+                'INSERT INTO injury_waiver_submissions
+                 (student_id, print_name, signature, signed_date,
+                  guardian_signature, guardian_signed_date,
+                  date_of_birth, cell_phone, home_phone, email,
+                  street_address, city_state_zip,
+                  mailing_address, mailing_city_state_zip, ip_address)
+                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
+            )->execute([
+                $student_id, $print_name, $signature ?: $print_name, $signed_date,
+                $guardian_sig ?: null, $guardian_date,
+                $dob ?: null, $cell ?: null, $home ?: null, $email ?: null,
+                $street ?: null, $csz ?: null,
+                $mail_addr ?: null, $mail_csz ?: null,
+                'admin-entry',
+            ]);
+        }
 
         db()->prepare('UPDATE students SET injury_waiver = 1, injury_waiver_date = ? WHERE id = ?')
            ->execute([$signed_date, $student_id]);
 
-        audit('update_student', 'student', $student_id, 'admin digitized paper waiver');
+        audit('update_student', 'student', $student_id, 'admin edited waiver');
 
-        // Reload
         header('Location: waiver_view.php?student_id=' . $student_id . '&saved=1');
         exit;
     }
@@ -126,7 +144,7 @@ include __DIR__ . '/../includes/header.php';
 </div>
 
 <?php if ($saved): ?>
-    <div class="alert alert-success mb-3">Waiver digitized and saved successfully.</div>
+    <div class="alert alert-success mb-3">Waiver saved successfully.</div>
 <?php endif; ?>
 <?php if ($error): ?>
     <div class="alert alert-danger mb-3"><?= htmlspecialchars($error) ?></div>
@@ -147,7 +165,7 @@ include __DIR__ . '/../includes/header.php';
 
 <?php if ($has_submission || $is_admin): ?>
 
-<?php if (!$has_submission): ?><form method="post">
+<?php if ($is_admin): ?><form method="post">
 <?= csrf_input() ?>
 <input type="hidden" name="student_id" value="<?= $student_id ?>">
 <?php endif; ?>
@@ -199,7 +217,7 @@ include __DIR__ . '/../includes/header.php';
         <span class="w-label">Print your name (undersigned)</span>
         <input type="text" name="print_name" class="w-input"
                value="<?= $has_submission ? wv($d,'print_name') : htmlspecialchars(trim(($s['first_name']??'').' '.($s['last_name']??''))) ?>"
-               <?= $has_submission ? 'readonly' : 'required' ?>>
+               <?= $is_admin ? 'required' : 'readonly' ?>>
 
         <!-- Signature + Date -->
         <div class="row g-4 align-items-end mt-1">
@@ -207,15 +225,15 @@ include __DIR__ . '/../includes/header.php';
                 <span class="w-label">X &nbsp; Your signature</span>
                 <input type="text" name="signature" class="w-input w-sig"
                        value="<?= wv($d,'signature') ?>"
-                       <?= $has_submission ? 'readonly' : 'placeholder="As written on the physical form"' ?>>
+                       <?= $is_admin ? 'placeholder="As written on the physical form"' : 'readonly' ?>>
             </div>
             <div class="col-auto" style="min-width:180px">
-                <span class="w-label">Date<?= !$has_submission ? ' <span style="color:#dc3545">*</span>' : '' ?></span>
-                <?php if ($has_submission): ?>
-                    <div class="w-static"><?= !empty($d['signed_date']) ? date('d M Y', strtotime($d['signed_date'])) : ($student['injury_waiver_date'] ? date('d M Y', strtotime($student['injury_waiver_date'])) : '') ?></div>
-                <?php else: ?>
+                <span class="w-label">Date<?= $is_admin ? ' <span style="color:#dc3545">*</span>' : '' ?></span>
+                <?php if ($is_admin): ?>
                     <input type="date" name="signed_date" class="w-input"
-                           value="<?= htmlspecialchars($student['injury_waiver_date'] ?? date('Y-m-d')) ?>" required>
+                           value="<?= htmlspecialchars(!empty($d['signed_date']) ? $d['signed_date'] : ($student['injury_waiver_date'] ?? date('Y-m-d'))) ?>" required>
+                <?php else: ?>
+                    <div class="w-static"><?= !empty($d['signed_date']) ? date('d M Y', strtotime($d['signed_date'])) : ($student['injury_waiver_date'] ? date('d M Y', strtotime($student['injury_waiver_date'])) : '') ?></div>
                 <?php endif; ?>
             </div>
         </div>
@@ -226,79 +244,80 @@ include __DIR__ . '/../includes/header.php';
                 <span class="w-label">X &nbsp; Signature of parent or guardian (if you are under 21 years of age)</span>
                 <input type="text" name="guardian_signature" class="w-input w-sig"
                        value="<?= wv($d,'guardian_signature') ?>"
-                       <?= $has_submission ? 'readonly' : 'placeholder="Leave blank if not on physical form"' ?>>
+                       <?= $is_admin ? 'placeholder="Leave blank if not on physical form"' : 'readonly' ?>>
             </div>
             <div class="col-auto" style="min-width:180px">
                 <span class="w-label">Date</span>
-                <?php if ($has_submission): ?>
-                    <div class="w-static"><?= !empty($d['guardian_signed_date']) ? date('d M Y', strtotime($d['guardian_signed_date'])) : '' ?></div>
+                <?php if ($is_admin): ?>
+                    <input type="date" name="guardian_signed_date" class="w-input"
+                           value="<?= htmlspecialchars($d['guardian_signed_date'] ?? '') ?>">
                 <?php else: ?>
-                    <input type="date" name="guardian_signed_date" class="w-input">
+                    <div class="w-static"><?= !empty($d['guardian_signed_date']) ? date('d M Y', strtotime($d['guardian_signed_date'])) : '' ?></div>
                 <?php endif; ?>
             </div>
         </div>
 
         <!-- Date of Birth -->
         <span class="w-label">Date of Birth</span>
-        <?php if ($has_submission): ?>
-            <div class="w-static" style="max-width:220px"><?= !empty($d['date_of_birth']) ? date('d M Y', strtotime($d['date_of_birth'])) : '' ?></div>
-        <?php else: ?>
+        <?php if ($is_admin): ?>
             <input type="date" name="date_of_birth" class="w-input" style="max-width:220px"
-                   value="<?= htmlspecialchars($s['date_of_birth'] ?? '') ?>">
+                   value="<?= htmlspecialchars($d['date_of_birth'] ?? ($s['date_of_birth'] ?? '')) ?>">
+        <?php else: ?>
+            <div class="w-static" style="max-width:220px"><?= !empty($d['date_of_birth']) ? date('d M Y', strtotime($d['date_of_birth'])) : '' ?></div>
         <?php endif; ?>
 
         <!-- Cell Phone -->
         <span class="w-label">Cell Phone Number</span>
         <input type="tel" name="cell_phone" class="w-input" style="max-width:280px"
                value="<?= $has_submission ? htmlspecialchars(fmt_phone($d['cell_phone'] ?? '')) : htmlspecialchars($s['phone'] ?? '') ?>"
-               <?= $has_submission ? 'readonly' : '' ?>>
+               <?= $is_admin ? '' : 'readonly' ?>>
 
         <!-- Home Phone -->
         <span class="w-label">Home Phone Number (if different)</span>
         <input type="tel" name="home_phone" class="w-input" style="max-width:280px"
                value="<?= $has_submission ? htmlspecialchars(fmt_phone($d['home_phone'] ?? '')) : '' ?>"
-               <?= $has_submission ? 'readonly' : '' ?>>
+               <?= $is_admin ? '' : 'readonly' ?>>
 
         <!-- Email -->
         <span class="w-label">Email Address</span>
         <input type="email" name="email" class="w-input"
                value="<?= $has_submission ? wv($d,'email') : htmlspecialchars($s['email'] ?? '') ?>"
-               <?= $has_submission ? 'readonly' : '' ?>>
+               <?= $is_admin ? '' : 'readonly' ?>>
 
         <!-- Street Address -->
         <span class="w-label">Local Street Address</span>
         <input type="text" name="street_address" class="w-input"
                value="<?= wv($d,'street_address') ?>"
-               <?= $has_submission ? 'readonly' : '' ?>>
+               <?= $is_admin ? '' : 'readonly' ?>>
 
         <!-- City State ZIP -->
         <span class="w-label">City, State, ZIP</span>
         <input type="text" name="city_state_zip" class="w-input" style="max-width:420px"
                value="<?= wv($d,'city_state_zip') ?>"
-               <?= $has_submission ? 'readonly' : '' ?>>
+               <?= $is_admin ? '' : 'readonly' ?>>
 
         <!-- Mailing Address -->
         <span class="w-label">Mailing Address (if different)</span>
         <input type="text" name="mailing_address" class="w-input"
                value="<?= wv($d,'mailing_address') ?>"
-               <?= $has_submission ? 'readonly' : '' ?>>
+               <?= $is_admin ? '' : 'readonly' ?>>
 
         <!-- Mailing City State ZIP -->
         <span class="w-label">City, State, ZIP</span>
         <input type="text" name="mailing_city_state_zip" class="w-input" style="max-width:420px"
                value="<?= wv($d,'mailing_city_state_zip') ?>"
-               <?= $has_submission ? 'readonly' : '' ?>>
+               <?= $is_admin ? '' : 'readonly' ?>>
 
-        <?php if (!$has_submission && $is_admin): ?>
+        <?php if ($is_admin): ?>
         <hr class="mt-4 mb-3">
         <button type="submit" class="btn btn-primary px-4 mb-2">Save Waiver</button>
-        <span class="text-muted small ms-2">Marked as admin entry in the audit log</span>
+        <span class="text-muted small ms-2">Changes are logged in the audit log</span>
         <?php endif; ?>
 
     </div>
 </div>
 
-<?php if (!$has_submission): ?></form><?php endif; ?>
+<?php if ($is_admin): ?></form><?php endif; ?>
 
 <?php if ($has_submission): ?>
 <p class="text-muted small mt-2">

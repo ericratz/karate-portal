@@ -18,6 +18,7 @@ $id    = (int)($_GET['id'] ?? 0);
 $ref   = $_GET['ref'] ?? '';
 $msg   = '';
 $error = '';
+$oob_rank_card = false;
 
 // Bulk update attendance from checkboxes
 if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'update_attendance') {
@@ -328,13 +329,13 @@ if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ===
              VALUES (?,?,?,?,?,?,?)'
         )->execute([$id, $rank_for, $test_date, $result, $score, $fee_paid, $belt_awarded]);
         if ($belt_awarded) {
-            db()->prepare(
-                'INSERT INTO student_ranks (student_id, rank_id, achieved_date)
-                 VALUES (?,?,?)
-                 ON DUPLICATE KEY UPDATE achieved_date = VALUES(achieved_date)'
-            )->execute([$id, $rank_for, $test_date]);
+            db()->prepare('DELETE FROM student_ranks WHERE student_id=? AND rank_id=?')->execute([$id, $rank_for]);
+            db()->prepare('INSERT INTO student_ranks (student_id, rank_id, achieved_date) VALUES (?,?,?)')->execute([$id, $rank_for, $test_date]);
         }
         audit('add_belt_test', 'student', $id);
+        if (!empty($_SERVER['HTTP_HX_REQUEST'])) {
+            $oob_rank_card = true;
+        }
     }
     if (empty($_SERVER['HTTP_HX_REQUEST'])) {
         header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
@@ -358,11 +359,15 @@ if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ===
              WHERE id=? AND student_id=?'
         )->execute([$rank_for, $test_date, $result, $score, $fee_paid, $belt_awarded, $bt_id, $id]);
         if ($belt_awarded) {
-            db()->prepare(
-                'INSERT INTO student_ranks (student_id, rank_id, achieved_date)
-                 VALUES (?,?,?)
-                 ON DUPLICATE KEY UPDATE achieved_date = VALUES(achieved_date)'
-            )->execute([$id, $rank_for, $test_date]);
+            db()->prepare('DELETE FROM student_ranks WHERE student_id=? AND rank_id=?')->execute([$id, $rank_for]);
+            db()->prepare('INSERT INTO student_ranks (student_id, rank_id, achieved_date) VALUES (?,?,?)')->execute([$id, $rank_for, $test_date]);
+        } else {
+            // If this test is no longer a pass, remove the rank record unless another passing test still exists
+            $other = db()->prepare('SELECT COUNT(*) FROM belt_tests WHERE student_id=? AND rank_testing_for=? AND belt_awarded=1 AND id!=?');
+            $other->execute([$id, $rank_for, $bt_id]);
+            if ((int)$other->fetchColumn() === 0) {
+                db()->prepare('DELETE FROM student_ranks WHERE student_id=? AND rank_id=?')->execute([$id, $rank_for]);
+            }
         }
         audit('update_belt_test', 'student', $id);
     }
@@ -377,7 +382,23 @@ if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ===
     verify_csrf();
     $bt_id = (int)($_POST['bt_id'] ?? 0);
     if ($bt_id) {
+        // Capture rank info before deleting so we can clean up student_ranks
+        $bt_info_q = db()->prepare('SELECT rank_testing_for, belt_awarded FROM belt_tests WHERE id=? AND student_id=?');
+        $bt_info_q->execute([$bt_id, $id]);
+        $bt_info = $bt_info_q->fetch();
+
         db()->prepare('DELETE FROM belt_tests WHERE id=? AND student_id=?')->execute([$bt_id, $id]);
+
+        if ($bt_info && $bt_info['belt_awarded']) {
+            // Remove rank record if no other passing test remains for this rank
+            $other = db()->prepare('SELECT COUNT(*) FROM belt_tests WHERE student_id=? AND rank_testing_for=? AND belt_awarded=1');
+            $other->execute([$id, $bt_info['rank_testing_for']]);
+            if ((int)$other->fetchColumn() === 0) {
+                db()->prepare('DELETE FROM student_ranks WHERE student_id=? AND rank_id=?')
+                     ->execute([$id, $bt_info['rank_testing_for']]);
+            }
+        }
+
         audit('delete_belt_test', 'student', $id);
     }
     if (empty($_SERVER['HTTP_HX_REQUEST'])) {
@@ -1174,7 +1195,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
         </div>
 
         <!-- Rank History -->
-        <div id="rank-card" class="card border-0 shadow-sm">
+        <div id="rank-card" class="card border-0 shadow-sm"<?= $oob_rank_card ? ' hx-swap-oob="outerHTML"' : '' ?>>
             <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
                 <span>Rank History</span>
                 <div class="d-flex gap-2">

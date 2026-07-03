@@ -63,7 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $ins->execute([$sid, $session_id, current_user_id()]);
         }
 
-        $msg = 'Attendance saved for ' . date('d M Y', strtotime($post_date)) . '.';
+        $msg = 'Attendance saved for ' . date('d M Y', strtotime($post_date)) . ' — ' . count($present_ids) . ' present.';
     }
 }
 

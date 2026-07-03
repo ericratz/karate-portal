@@ -611,6 +611,34 @@ include __DIR__ . '/../includes/header.php';
             </div>
         </div>
 
+        <!-- Guardian / Family Links -->
+        <?php
+        $related = array_values(array_filter($family_tabs, fn($t) => $t['id'] !== $id));
+        if (!empty($related)):
+        ?>
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white fw-semibold">Linked Family</div>
+            <div class="card-body p-0">
+                <table class="table table-sm table-hover mb-0">
+                    <tbody>
+                    <?php foreach ($related as $rel): ?>
+                        <tr>
+                            <td>
+                                <a href="student_profile.php?id=<?= $rel['id'] ?>">
+                                    <?= htmlspecialchars($rel['name']) ?>
+                                </a>
+                                <?php if ($rel['role'] === 'parent'): ?>
+                                    <span class="badge bg-info text-dark ms-2" style="font-size:.7rem">Parent</span>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <?php endif; ?>
+
     </div>
 </div>
 
