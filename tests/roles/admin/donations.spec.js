@@ -48,7 +48,7 @@ test.describe('Donations page', () => {
         await assertNoPhpErrors(page, 'after donation save');
         await expect(page.locator('.alert-success').first()).toBeVisible();
 
-        // Delete in edit mode â€” toggle is always present after a donation is saved
+        // Delete in edit mode — toggle is always present after a donation is saved
         await page.click('#editToggle');
         const row = page.locator('tr').filter({ hasText: 'Test Donor Delete' });
         page.once('dialog', d => d.accept());

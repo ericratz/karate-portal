@@ -1,6 +1,6 @@
 ﻿// @ts-check
 // Tests for the parent portal (portal/parent/).
-// Covers access control â€” non-parent roles must all receive "Access denied".
+// Covers access control — non-parent roles must all receive "Access denied".
 // Integration tests (portal loads, child tabs, per-child pages) require a seeded
 // parent account; see the NOTE comment at the bottom of this file.
 const { test, expect } = require('@playwright/test');
@@ -15,9 +15,9 @@ const PARENT_PAGES = [
     '/parent/profile_edit.php',
 ];
 
-// â”€â”€ UNAUTHENTICATED â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── UNAUTHENTICATED ───────────────────────────────────────────────────────────
 
-test.describe('Parent pages â€” unauthenticated', () => {
+test.describe('Parent pages — unauthenticated', () => {
     test('parent/index.php redirects unauthenticated users to login', async ({ page }) => {
         await page.goto(BASE + '/parent/');
         await page.waitForLoadState('domcontentloaded');
@@ -25,7 +25,7 @@ test.describe('Parent pages â€” unauthenticated', () => {
     });
 });
 
-// â”€â”€ STUDENT ROLE DENIED â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── STUDENT ROLE DENIED ───────────────────────────────────────────────────────
 
 test.describe('Parent pages - student role denied', () => {
     test.use({ storageState: AUTH.student });
@@ -40,10 +40,10 @@ test.describe('Parent pages - student role denied', () => {
     }
 });
 
-// â”€â”€ INSTRUCTOR ROLE DENIED (except pay.php) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── INSTRUCTOR ROLE DENIED (except pay.php) ───────────────────────────────────
 // pay.php is intentionally open to instructors so they can pay for linked children.
 
-test.describe('Parent pages â€” instructor role denied', () => {
+test.describe('Parent pages — instructor role denied', () => {
     test.use({ storageState: AUTH.instructor });
 
     test('parent/index.php is accessible to instructor role (shows own student data)', async ({ page }) => {
@@ -61,7 +61,7 @@ test.describe('Parent pages â€” instructor role denied', () => {
     });
 });
 
-// â”€â”€ ADMIN ROLE DENIED â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── ADMIN ROLE DENIED ─────────────────────────────────────────────────────────
 
 test.describe('Parent pages - admin role denied', () => {
     test.use({ storageState: AUTH.admin });
@@ -74,7 +74,7 @@ test.describe('Parent pages - admin role denied', () => {
     });
 });
 
-// â”€â”€ NOTE: integration tests (portal loads, child tabs, per-child pages) â”€â”€â”€â”€â”€â”€
+// ── NOTE: integration tests (portal loads, child tabs, per-child pages) ──────
 // These require a parent account seeded in the DB snapshot:
 //   1. users row: is_admin=0
 //   2. students row linked via user_id, student_type='parent'

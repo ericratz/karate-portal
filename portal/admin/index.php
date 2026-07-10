@@ -2,8 +2,10 @@
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/auto_inactive.php';
+require_once __DIR__ . '/../includes/log_retention.php';
 require_role('admin');
 apply_auto_inactive();
+apply_log_retention();
 
 // ── Dismiss / resolve alert (POST) ───────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'dismiss_alert') {

@@ -3,7 +3,7 @@
 const { test, expect } = require('@playwright/test');
 const { assertNoPhpErrors, BASE, AUTH } = require('../helpers');
 
-// â”€â”€ INSTRUCTOR DASHBOARD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── INSTRUCTOR DASHBOARD ─────────────────────────────────────────────────────
 
 test.describe('Instructor dashboard navigation', () => {
     test.use({ storageState: AUTH.instructor });
@@ -17,7 +17,7 @@ test.describe('Instructor dashboard navigation', () => {
         for (const h of ['Take Attendance', 'Recent Classes', 'Students', 'Recent Belt Tests']) {
             await expect(page.locator('.card-header').filter({ hasText: h })).toBeVisible();
         }
-        // Date input defaults to today (Â±2 days)
+        // Date input defaults to today (±2 days)
         const val = await page.inputValue('input[name="date"]');
         expect(val).toMatch(/^\d{4}-\d{2}-\d{2}$/);
         expect(Math.abs(Date.now() - new Date(val + 'T12:00:00').getTime())).toBeLessThan(2 * 86400000);
@@ -46,7 +46,7 @@ test.describe('Instructor dashboard navigation', () => {
     });
 });
 
-// â”€â”€ ADMIN DASHBOARD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── ADMIN DASHBOARD ───────────────────────────────────────────────────────────
 
 test.describe('Admin dashboard navigation', () => {
     test.use({ storageState: AUTH.admin });
@@ -95,7 +95,7 @@ test.describe('Admin dashboard navigation', () => {
     });
 });
 
-// â”€â”€ ADMIN STUDENTS PAGE LINKS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── ADMIN STUDENTS PAGE LINKS ─────────────────────────────────────────────────
 
 test.describe('Admin students page links', () => {
     test.use({ storageState: AUTH.admin });
@@ -103,7 +103,8 @@ test.describe('Admin students page links', () => {
     test('student name links from roster go to student_profile.php', async ({ page }) => {
         await page.goto(BASE + '/admin/students.php');
         const link = page.locator('tbody a.text-decoration-none').first();
-        if (await link.count() === 0) return;
+        // The test DB has 9 students — the roster is never empty.
+        await expect(link).toHaveCount(1);
         const href = await link.getAttribute('href');
         expect(href).toContain('student_profile.php');
     });
@@ -111,7 +112,8 @@ test.describe('Admin students page links', () => {
     test('clicking a student name navigates to their profile', async ({ page }) => {
         await page.goto(BASE + '/admin/students.php');
         const link = page.locator('tbody a.text-decoration-none').first();
-        if (await link.count() === 0) return;
+        // The test DB has 9 students — the roster is never empty.
+        await expect(link).toHaveCount(1);
         await link.click();
         await page.waitForLoadState('domcontentloaded');
         expect(page.url()).toContain('student_profile.php');

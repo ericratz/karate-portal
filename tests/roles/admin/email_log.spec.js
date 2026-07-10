@@ -34,14 +34,18 @@ test.describe('Email log', () => {
         expect(header).toMatch(/\d+ entr/);
     });
 
-    test('filtering by status=sent returns only sent entries', async ({ page }) => {
-        await page.goto(BASE + '/admin/email_log.php?status=sent');
-        await assertNoPhpErrors(page, 'email log filter sent');
-        // If there are rows, all status cells should show "sent"
-        const rows = await page.locator('tbody tr').count();
-        if (rows === 0) return;
-        const failBadges = await page.locator('tbody .text-danger').count();
-        expect(failBadges).toBe(0);
+    // Deliberately no "filtering by status=sent" test: local mail() always fails
+    // here (php.ini has no working sendmail_path/SMTP relay — see README "Cannot
+    // Test Locally" — Email delivery), so email_log can never contain a 'sent' row
+    // in this environment. The filter's WHERE-clause logic is identical for both
+    // values, so the 'failed' case below exercises the same code path for real.
+    test('filtering by status=failed returns only failed entries', async ({ page }) => {
+        await page.goto(BASE + '/admin/email_log.php?status=failed');
+        await assertNoPhpErrors(page, 'email log filter failed');
+        // The test DB has real failed-send rows (local mail() always fails) — must exist.
+        await expect(page.locator('tbody tr').first()).toBeVisible();
+        const sentBadges = await page.locator('tbody .text-success').count();
+        expect(sentBadges).toBe(0);
     });
 
     test('clear filter link resets to unfiltered view', async ({ page }) => {

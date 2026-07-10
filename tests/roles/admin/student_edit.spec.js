@@ -9,7 +9,7 @@
 //   - Add note round-trip on student_edit.php
 const { test, expect } = require('@playwright/test');
 const { assertNoPhpErrors, BASE, AUTH } = require('../../helpers');
-const STUDENT_ID = 2; // Sarah Johnson â€” a stable student in the test DB
+const STUDENT_ID = 2; // Sarah Johnson — a stable student in the test DB
 const TS = Date.now();
 
 test.describe('Student Edit Cards', () => {
@@ -20,25 +20,25 @@ test.describe('Student Edit Cards', () => {
         await assertNoPhpErrors(page, 'student edit loads');
     });
 
-    // â”€â”€ ATTENDANCE DATE LINKS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── ATTENDANCE DATE LINKS ────────────────────────────────────────────────────
 
     test('attendance date links contain attendance.php?date=', async ({ page }) => {
         const link = page.locator('a[href*="attendance.php?date="]').first();
-        if (await link.count() === 0) return; // no sessions in DB
+        await expect(link).toHaveCount(1); // student 2 has attendance history in the test DB
         const href = await link.getAttribute('href');
         expect(href).toContain('attendance.php?date=');
     });
 
     test('clicking an attendance date link navigates to attendance.php', async ({ page }) => {
         const link = page.locator('a[href*="attendance.php?date="]').first();
-        if (await link.count() === 0) return;
+        await expect(link).toHaveCount(1);
         await link.click();
         await page.waitForLoadState('domcontentloaded');
         expect(page.url()).toContain('attendance.php');
         expect(page.url()).toContain('date=');
     });
 
-    // â”€â”€ BELT TEST HISTORY CARD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── BELT TEST HISTORY CARD ───────────────────────────────────────────────────
 
     test('Belt Test History card is visible', async ({ page }) => {
         await expect(page.locator('.card-header').filter({ hasText: 'Belt Test History' })).toBeVisible();
@@ -54,12 +54,12 @@ test.describe('Student Edit Cards', () => {
 
     test('existing belt test row links to belt_test_edit.php for editing', async ({ page }) => {
         const link = page.locator('#btList a[href*="belt_test_edit.php"]').first();
-        if (await link.count() === 0) return; // no belt tests on record
+        await expect(link).toHaveCount(1); // student 2 has belt test history in the test DB
         const href = await link.getAttribute('href');
         expect(href).toContain('belt_test_edit.php?id=');
     });
 
-    // â”€â”€ EXEMPT CARD (formerly Payment Waivers) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── EXEMPT CARD (formerly Payment Waivers) ───────────────────────────────────
 
     test('Exempt card is visible', async ({ page }) => {
         await expect(page.locator('.card-header').filter({ hasText: 'Exempt' })).toBeVisible();
@@ -89,7 +89,7 @@ test.describe('Student Edit Cards', () => {
         await expect(page.locator('#pw-add-box')).toBeHidden();
     });
 
-    // â”€â”€ WAIVER CARD (redesigned â€” now links to waiver_view.php) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── WAIVER CARD (redesigned — now links to waiver_view.php) ──────────────────
 
     test('Waiver row is visible in Profile Info card', async ({ page }) => {
         // Waiver was merged into the Profile Info card (no longer its own card)
@@ -101,7 +101,7 @@ test.describe('Student Edit Cards', () => {
         await expect(link).toBeVisible();
     });
 
-    // â”€â”€ PAYMENT HISTORY CARD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── PAYMENT HISTORY CARD ─────────────────────────────────────────────────────
 
     test('Payment History card is visible', async ({ page }) => {
         await expect(page.locator('.card-header').filter({ hasText: 'Payment History' })).toBeVisible();
@@ -116,7 +116,7 @@ test.describe('Student Edit Cards', () => {
         await expect(page.locator('#pay-add-box select[name="payment_method"]')).toBeVisible();
     });
 
-    // â”€â”€ NOTES CARD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── NOTES CARD ───────────────────────────────────────────────────────────────
 
     test('Student Notes card is visible at bottom of page', async ({ page }) => {
         await expect(page.locator('.card-header').filter({ hasText: 'Student Notes' })).toBeVisible();
@@ -130,7 +130,7 @@ test.describe('Student Edit Cards', () => {
         await expect(page.locator('button:has-text("Save Note")')).toBeVisible();
     });
 
-    // â”€â”€ NOTE ADD ROUND-TRIP â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── NOTE ADD ROUND-TRIP ──────────────────────────────────────────────────────
 
     test('adding a note on student_edit.php saves and displays it', async ({ page }) => {
         const noteText = `StudentEdit note ${TS}`;

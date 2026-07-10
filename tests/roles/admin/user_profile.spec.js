@@ -10,10 +10,10 @@ async function goToNonAdminProfile(page) {
     const nonAdminRow = page.locator('tbody tr').filter({
         hasNot: page.locator('span.badge.bg-danger')
     }).first();
-    if (await nonAdminRow.count() === 0) return false;
+    // The test DB always has non-admin accounts (instructor, student, parent) — this must exist.
+    await nonAdminRow.waitFor({ state: 'attached' });
     await nonAdminRow.locator('a:has-text("View")').click();
     await page.waitForLoadState('domcontentloaded');
-    return true;
 }
 
 // Helper: navigate to user_profile.php for the first user (any role)
@@ -108,14 +108,12 @@ test.describe('User Profile (admin/user_profile.php)', () => {
     });
 
     test('Account Status card visible for non-current-user profiles', async ({ page }) => {
-        const found = await goToNonAdminProfile(page);
-        if (!found) return;
+        await goToNonAdminProfile(page);
         await expect(page.locator('.card-header').filter({ hasText: 'Account Status' })).toBeVisible();
     });
 
     test('Deactivate or Activate button is present on status card', async ({ page }) => {
-        const found = await goToNonAdminProfile(page);
-        if (!found) return;
+        await goToNonAdminProfile(page);
         const btn = page.locator('button:has-text("Deactivate"), button:has-text("Activate")').last();
         await expect(btn).toBeVisible();
     });

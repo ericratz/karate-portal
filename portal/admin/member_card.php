@@ -6,6 +6,24 @@ require_role('student', 'parent', 'instructor', 'admin');
 $student_id = (int)($_GET['student_id'] ?? 0);
 if (!$student_id) { header('Location: ../instructor/students.php'); exit; }
 
+// Students/parents may only view their own card or a linked child's — instructors/admins may view any.
+$role = $_SESSION['role'] ?? '';
+if (in_array($role, ['student', 'parent'], true)) {
+    $allowed_ids = [];
+    $own_stmt = db()->prepare('SELECT id FROM students WHERE user_id = ?');
+    $own_stmt->execute([current_user_id()]);
+    if ($own_row = $own_stmt->fetch()) {
+        $own_sid = (int)$own_row['id'];
+        $allowed_ids[] = $own_sid;
+        $ch_stmt = db()->prepare('SELECT child_student_id FROM student_guardians WHERE parent_student_id = ?');
+        $ch_stmt->execute([$own_sid]);
+        foreach ($ch_stmt->fetchAll() as $r) $allowed_ids[] = (int)$r['child_student_id'];
+    }
+    if (!in_array($student_id, $allowed_ids, true)) {
+        header('Location: ' . dashboard_url($role)); exit;
+    }
+}
+
 $sq = db()->prepare('SELECT first_name, last_name, registration_date, student_type FROM students WHERE id = ?');
 $sq->execute([$student_id]);
 $student = $sq->fetch();

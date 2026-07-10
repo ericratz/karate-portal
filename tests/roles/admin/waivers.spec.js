@@ -1,15 +1,15 @@
 ﻿// @ts-check
-// Functional tests for admin/waivers.php â€” the Exempt page.
-// Covers: page load, grant form fields, grant-round-trip (grant â†’ verify â†’ delete).
+// Functional tests for admin/waivers.php — the Exempt page.
+// Covers: page load, grant form fields, grant-round-trip (grant → verify → delete).
 const { test, expect } = require('@playwright/test');
 const { assertNoPhpErrors, BASE, AUTH } = require('../../helpers');
 
 test.describe.configure({ mode: 'serial' });
 test.use({ storageState: AUTH.admin });
 
-const STUDENT_ID = 2; // Sarah Johnson â€” stable test-DB student
+const STUDENT_ID = 2; // Sarah Johnson — stable test-DB student
 
-// â”€â”€ PAGE LOAD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── PAGE LOAD ─────────────────────────────────────────────────────────────────
 
 test('admin/waivers.php loads without PHP errors', async ({ page }) => {
     await page.goto(BASE + '/admin/waivers.php');
@@ -17,7 +17,7 @@ test('admin/waivers.php loads without PHP errors', async ({ page }) => {
     await expect(page.locator('h3').first()).toContainText('Exempt');
 });
 
-// â”€â”€ GRANT FORM â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── GRANT FORM ────────────────────────────────────────────────────────────────
 
 test('Grant Exemption card header is visible', async ({ page }) => {
     await page.goto(BASE + '/admin/waivers.php');
@@ -53,7 +53,7 @@ test('submitting grant form without student shows validation error', async ({ pa
     await expect(page.locator('.alert-danger').first()).toBeVisible();
 });
 
-// â”€â”€ ALL EXEMPTIONS LIST â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── ALL EXEMPTIONS LIST ───────────────────────────────────────────────────────
 
 test('All Exemptions card header is visible', async ({ page }) => {
     await page.goto(BASE + '/admin/waivers.php');
@@ -68,7 +68,7 @@ test('filter bar has student type-to-filter and type select', async ({ page }) =
     await expect(page.locator('select[name="type"]')).toBeVisible();
 });
 
-// â”€â”€ GRANT â†’ VERIFY â†’ DELETE ROUND-TRIP â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── GRANT → VERIFY → DELETE ROUND-TRIP ───────────────────────────────────────
 
 test('granting an exemption shows Exemption granted success message', async ({ page }) => {
     await page.goto(BASE + '/admin/waivers.php');
@@ -110,7 +110,8 @@ test('deleting an exemption removes it from the list', async ({ page }) => {
     await page.click('#editToggle');
     // Find Sarah Johnson's row and click its delete button
     const row = page.locator('#waiversTable tbody tr').filter({ hasText: 'Sarah Johnson' }).first();
-    if (await row.count() === 0) return; // already gone
+    // Serial mode guarantees the "granting an exemption" test above ran first, so this row exists.
+    await expect(row).toHaveCount(1);
     page.once('dialog', d => d.accept());
     await row.locator('button.btn-outline-danger').click();
     await page.waitForLoadState('domcontentloaded');
@@ -120,7 +121,7 @@ test('deleting an exemption removes it from the list', async ({ page }) => {
     await expect(remaining).toHaveCount(0);
 });
 
-// â”€â”€ STUDENT FILTER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── STUDENT FILTER ────────────────────────────────────────────────────────────
 
 test('student filter narrows the exemptions list', async ({ page }) => {
     // First grant a fresh exemption so the list is non-empty
@@ -140,7 +141,7 @@ test('student filter narrows the exemptions list', async ({ page }) => {
     await expect(sarahRows).toHaveCount(0);
 });
 
-// â”€â”€ ACCESS CONTROL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── ACCESS CONTROL ────────────────────────────────────────────────────────────
 
 test('admin/waivers.php redirects unauthenticated users to login', async ({ page }) => {
     await page.context().clearCookies();

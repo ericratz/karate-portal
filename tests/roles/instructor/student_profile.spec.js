@@ -38,6 +38,17 @@ test.describe('Student profile — instructor', () => {
         await page.waitForLoadState('domcontentloaded');
         expect(page.url()).toContain('/instructor/');
     });
+
+    // V3.2: Linked Family card lists parent/child links as clickable profile links.
+    // Sarah Johnson (id=2) is linked to her parent Mike (id=3) via student_guardians.
+    test('Linked Family card shows the linked parent as a profile link', async ({ page }) => {
+        await page.goto(BASE + `/instructor/student_profile.php?id=${STUDENT_ID}`);
+        const card = page.locator('.card').filter({ has: page.locator('.card-header:has-text("Linked Family")') });
+        await expect(card).toBeVisible();
+        const link = card.locator('a[href*="student_profile.php?id=3"]');
+        await expect(link).toBeVisible();
+        await expect(link).toContainText('Mike');
+    });
 });
 
 // ── ADMIN VIEW ────────────────────────────────────────────────────────────────

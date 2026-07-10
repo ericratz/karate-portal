@@ -31,7 +31,8 @@ test.describe('Attendance UI', () => {
         await page.goto(BASE + `/instructor/attendance.php?date=${today}`);
         // Count visible student rows before filtering
         const totalBefore = await page.locator('#students-body tr').count();
-        if (totalBefore === 0) return; // no students in DB â€” skip
+        // The test DB has 9 students — the roster is never empty.
+        expect(totalBefore).toBeGreaterThan(0);
 
         await page.fill('#nameFilter', 'zzznomatch');
         // Allow JS to run
@@ -48,7 +49,7 @@ test.describe('Attendance UI', () => {
     test('name filter updates badge count', async ({ page }) => {
         await page.goto(BASE + `/instructor/attendance.php?date=${today}`);
         const initialCount = parseInt(await page.textContent('#count-students') ?? '0', 10);
-        if (initialCount === 0) return;
+        expect(initialCount).toBeGreaterThan(0); // the test DB has 9 students
 
         await page.fill('#nameFilter', 'zzznomatch');
         await page.waitForTimeout(200);
@@ -59,7 +60,7 @@ test.describe('Attendance UI', () => {
     test('clearing name filter restores rows', async ({ page }) => {
         await page.goto(BASE + `/instructor/attendance.php?date=${today}`);
         const initial = parseInt(await page.textContent('#count-students') ?? '0', 10);
-        if (initial === 0) return;
+        expect(initial).toBeGreaterThan(0); // the test DB has 9 students
 
         await page.fill('#nameFilter', 'zzznomatch');
         await page.waitForTimeout(200);
@@ -72,7 +73,7 @@ test.describe('Attendance UI', () => {
     test('row click toggles the checkbox in that row', async ({ page }) => {
         await page.goto(BASE + `/instructor/attendance.php?date=${today}`);
         const firstRow = page.locator('#students-body tr').first();
-        if (await firstRow.count() === 0) return;
+        await expect(firstRow).toHaveCount(1); // the test DB has 9 students
 
         const cb = firstRow.locator('input[type="checkbox"]');
         const before = await cb.isChecked();
@@ -113,7 +114,7 @@ test.describe('Attendance UI', () => {
         await page.goto(BASE + `/instructor/attendance.php?date=${today}`);
         // Badge .badge.bg-warning with "No waiver" text only appears if some student lacks a waiver
         const warnBadges = await page.locator('.badge.bg-warning').count();
-        // We just verify the element renders â€” some DBs may have all waivers signed
+        // We just verify the element renders — some DBs may have all waivers signed
         expect(warnBadges).toBeGreaterThanOrEqual(0);
     });
 
@@ -140,6 +141,6 @@ test.describe('Attendance UI', () => {
         expect(val).toBe(today);
     });
 
-    // No afterAll needed â€” global-teardown restores the DB after every run.
+    // No afterAll needed — global-teardown restores the DB after every run.
 });
 

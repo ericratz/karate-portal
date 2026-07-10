@@ -1373,7 +1373,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
         </div>
 
         <!-- Guardian / Children -->
-        <div id="guardian-card" class="card border-0 shadow-sm">
+        <div id="guardian-card" class="card border-0 shadow-sm" hx-swap-oob="true">
             <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
                 <span><?= $is_guardian_type ? 'Linked Children' : 'Guardian / Parent' ?></span>
                 <div class="d-flex gap-2">

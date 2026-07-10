@@ -97,7 +97,7 @@ test.describe('Error log page', () => {
         // No assertNoPhpErrors — error log entries may contain "Uncaught" etc.
         await page.goto(BASE + '/admin/app_log.php?level=error');
         const rows = await page.locator('tbody tr').count();
-        if (rows === 0) return;
+        expect(rows).toBeGreaterThan(0); // the test DB has error-level entries
         // Level badge is in the 2nd column; all visible rows should show "error".
         const otherLevel = page.locator('tbody td:nth-child(2)').filter({ hasNotText: 'error' });
         expect(await otherLevel.count()).toBe(0);

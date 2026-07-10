@@ -1,11 +1,11 @@
 ﻿// @ts-check
-// API-level tests â€” hit PHP endpoints directly via fetch/page.request.
+// API-level tests — hit PHP endpoints directly via fetch/page.request.
 // These test server-side validation that HTML form constraints prevent in the browser.
 const { test, expect } = require('@playwright/test');
 const { login, logout, getCsrfToken, BASE } = require('../helpers');
 const { ADMIN_USER, ADMIN_PASS, INST_USER, INST_PASS, STU_USER, STU_PASS } = require('../credentials');
 
-// â”€â”€ AUTH / ACCESS CONTROL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── AUTH / ACCESS CONTROL ─────────────────────────────────────────────────────
 
 test('GET to protected admin page without session redirects to login', async ({ request }) => {
     const res = await request.get(BASE + '/admin/payments.php', { maxRedirects: 0 });
@@ -49,7 +49,7 @@ test('POST with wrong CSRF token returns 403', async ({ page }) => {
     await logout(page);
 });
 
-// â”€â”€ REGISTRATION SERVER-SIDE VALIDATION â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── REGISTRATION SERVER-SIDE VALIDATION ──────────────────────────────────────
 
 test('registration rejects password shorter than 8 chars', async ({ page }) => {
     await page.goto(BASE + '/register.php');
@@ -89,7 +89,7 @@ test('registration rejects duplicate username', async ({ page }) => {
     expect(res.body).toContain('already taken');
 });
 
-// â”€â”€ PAYMENT HANDLER VALIDATION â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── PAYMENT HANDLER VALIDATION ────────────────────────────────────────────────
 
 test('add payment with amount=0 does not save a payment', async ({ page }) => {
     await login(page, ADMIN_USER, ADMIN_PASS);
@@ -145,7 +145,7 @@ test('student edit handler rejects invalid student ID', async ({ page }) => {
     await logout(page);
 });
 
-// â”€â”€ .env NOT ACCESSIBLE VIA HTTP â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── .env NOT ACCESSIBLE VIA HTTP ─────────────────────────────────────────────
 
 test('.env is blocked (not 200) and contains no credentials', async ({ request }) => {
     const res = await request.get('http://localhost/karate/.env');

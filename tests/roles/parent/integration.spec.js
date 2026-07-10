@@ -148,4 +148,23 @@ test.describe('Parent portal — integration', () => {
         await expect(page.locator('input[name="first_name"]')).toBeVisible();
         await expect(page.locator('input[name="last_name"]')).toBeVisible();
     });
+
+    // ── MEMBER CARD (IDOR regression) ────────────────────────────────────────
+    // admin/member_card.php is reachable by the parent role but must only render
+    // the parent's own record or a linked child's — not an arbitrary student_id.
+
+    test('member_card.php loads for a linked child', async ({ page }) => {
+        await visit(page, `/admin/member_card.php?student_id=${CHILD_CARLOS}`, 'member card linked child');
+        const body = await page.textContent('body');
+        expect(body).toContain('Carlos');
+    });
+
+    test('member_card.php with unlinked student_id does not leak that student\'s data', async ({ page }) => {
+        await page.goto(BASE + `/admin/member_card.php?student_id=${UNLINKED_ID}`);
+        await page.waitForLoadState('domcontentloaded');
+        await assertNoPhpErrors(page, 'member card unlinked id');
+        const body = await page.textContent('body');
+        expect(body).not.toContain('Johnson');
+        expect(page.url()).not.toContain('member_card.php');
+    });
 });

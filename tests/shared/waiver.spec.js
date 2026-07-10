@@ -12,7 +12,7 @@ const W_PASS = 'TestPass1!';
 const TS         = Date.now();
 const W_USER     = `waiver${TS}`;   // fresh account used only in this suite
 
-// â”€â”€ SETUP: register a fresh account â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── SETUP: register a fresh account ──────────────────────────────────────────
 
 test('setup: register fresh account for waiver tests', async ({ page }) => {
     await page.goto(BASE + '/register.php');
@@ -25,15 +25,15 @@ test('setup: register fresh account for waiver tests', async ({ page }) => {
     await page.fill('input[name="confirm"]',  W_PASS);
     await page.click('button:has-text("Next")');
     await page.waitForLoadState('domcontentloaded');
-    // No matching records for fresh user â†’ confirm step with "Create Account"
+    // No matching records for fresh user → confirm step with "Create Account"
     await page.click('button:has-text("Create Account")');
     await page.waitForLoadState('domcontentloaded');
-    // User is now logged in with a linked guest student record â€” log out for subsequent tests
+    // User is now logged in with a linked guest student record — log out for subsequent tests
     expect(page.url()).toContain('/student/');
     await logout(page);
 });
 
-// â”€â”€ DASHBOARD BUTTON â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── DASHBOARD BUTTON ──────────────────────────────────────────────────────────
 
 test('dashboard shows Complete Waiver button when unsigned', async ({ page }) => {
     await login(page, W_USER, W_PASS);
@@ -50,7 +50,7 @@ test('Complete Waiver button links to waiver.php', async ({ page }) => {
     await logout(page);
 });
 
-// â”€â”€ WAIVER PAGE LOADS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── WAIVER PAGE LOADS ─────────────────────────────────────────────────────────
 
 test('waiver.php loads without PHP errors', async ({ page }) => {
     await login(page, W_USER, W_PASS);
@@ -99,7 +99,7 @@ test('waiver form pre-fills signed date as today', async ({ page }) => {
     await logout(page);
 });
 
-// â”€â”€ FORM VALIDATION â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── FORM VALIDATION ───────────────────────────────────────────────────────────
 
 test('submitting without signature shows error', async ({ page }) => {
     await login(page, W_USER, W_PASS);
@@ -130,7 +130,7 @@ test('submitting without agreement checkbox shows error', async ({ page }) => {
     await page.fill('input[name="cell_phone"]',  '555-1234');
     await page.fill('input[name="street_address"]', '123 Main St');
     await page.fill('input[name="city_state_zip"]', 'Orem, UT 84058');
-    // Don't check i_agree â€” remove required so form submits
+    // Don't check i_agree — remove required so form submits
     await page.evaluate(() => {
         document.querySelector('input[name="i_agree"]').removeAttribute('required');
     });
@@ -161,7 +161,7 @@ test('submitting without required contact fields shows error', async ({ page }) 
     await logout(page);
 });
 
-// â”€â”€ SUCCESSFUL SUBMISSION â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── SUCCESSFUL SUBMISSION ─────────────────────────────────────────────────────
 
 test('valid submission redirects to dashboard with waiver signed', async ({ page }) => {
     await login(page, W_USER, W_PASS);
@@ -187,7 +187,7 @@ test('valid submission redirects to dashboard with waiver signed', async ({ page
 test('dashboard hides waiver card after signing', async ({ page }) => {
     await login(page, W_USER, W_PASS);
     await page.goto(BASE + '/student/');
-    // Complete Waiver button should be gone â€” card is hidden once signed
+    // Complete Waiver button should be gone — card is hidden once signed
     await expect(page.locator('a:has-text("Complete Waiver")')).toHaveCount(0);
     await logout(page);
 });
@@ -216,9 +216,9 @@ test('waiver.php has navigation to student dashboard', async ({ page }) => {
     await logout(page);
 });
 
-// â”€â”€ ADMIN VIEW â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── ADMIN VIEW ────────────────────────────────────────────────────────────────
 
-// Helper: navigate from students list â†’ profile â†’ waiver view for the test account
+// Helper: navigate from students list → profile → waiver view for the test account
 async function goToWaiverView(page) {
     await page.goto(BASE + '/admin/students.php');
     const profileLink = page.locator('tr').filter({ hasText: `Tester${TS}` }).locator('a:has-text("Profile")').first();
@@ -239,6 +239,9 @@ test('admin: waiver_view.php loads for student with signed waiver', async ({ pag
         await expect(page.locator('body')).toContainText('Waiver Tester'); // appears in h4 heading
         await expect(page.locator('input[name="street_address"]')).toHaveValue('123 Karate Lane');
         await expect(page.locator('input[name="email"]')).toHaveValue(`waiver${TS}@test.com`);
+        // V3.2: admin can always edit a submitted waiver — fields must not be readonly.
+        await expect(page.locator('input[name="street_address"]')).not.toHaveAttribute('readonly', '');
+        await expect(page.locator('input[name="email"]')).not.toHaveAttribute('readonly', '');
     }
     await logout(page);
 });
@@ -254,7 +257,7 @@ test('admin: waiver_view.php shows IP address and timestamp', async ({ page }) =
 
 test('admin: waiver_view.php for student without waiver shows warning', async ({ page }) => {
     await login(page, ADMIN_USER, ADMIN_PASS);
-    // Use student id 2 (Sarah Johnson) â€” no digital waiver on file
+    // Use student id 2 (Sarah Johnson) — no digital waiver on file
     await page.goto(BASE + '/admin/waiver_view.php?student_id=2');
     await assertNoPhpErrors(page, 'waiver view no submission');
     // Either shows a signed waiver, a manual-waiver notice, or a "no waiver" warning
@@ -285,7 +288,7 @@ test('admin: View waiver link appears on signed student profile', async ({ page 
     await logout(page);
 });
 
-// â”€â”€ ACCESS CONTROL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── ACCESS CONTROL ────────────────────────────────────────────────────────────
 
 test('waiver.php requires login', async ({ page }) => {
     await page.goto(BASE + '/student/waiver.php');
@@ -301,4 +304,4 @@ test('admin/waiver_view.php requires admin role', async ({ page }) => {
     await logout(page);
 });
 
-// No afterAll cleanup â€” global-teardown always restores the DB snapshot.
+// No afterAll cleanup — global-teardown always restores the DB snapshot.

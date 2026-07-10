@@ -1,9 +1,9 @@
 ﻿// @ts-check
-// Security tests â€” verifies all 6 hardening items and the audit log.
+// Security tests — verifies all 6 hardening items and the audit log.
 //
 // Items covered:
 //  1. CSRF tokens present in every POST form
-//  2. CSRF enforcement (POST without token â†’ 403)
+//  2. CSRF enforcement (POST without token → 403)
 //  3. Destructive actions use POST forms, not GET links
 //  4. Password minimum 8 characters
 //  5. Login rate limiting feedback (non-destructive: stays under threshold)
@@ -15,10 +15,10 @@ const { login, logout, visit, assertNoPhpErrors, BASE } = require('../helpers');
 
 const { ADMIN_USER, ADMIN_PASS, INST_USER, INST_PASS, STU_USER, STU_PASS } = require('../credentials');
 
-// â”€â”€ 1. CSRF TOKENS PRESENT IN FORMS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── 1. CSRF TOKENS PRESENT IN FORMS ──────────────────────────────────────────
 
 test('all key POST forms have csrf_token hidden input', async ({ page }) => {
-    // Login and register â€” unauthenticated
+    // Login and register — unauthenticated
     await page.goto(BASE + '/login.php');
     await expect(page.locator('input[name="csrf_token"]')).toHaveCount(1);
     await page.goto(BASE + '/register.php');
@@ -42,7 +42,7 @@ test('all key POST forms have csrf_token hidden input', async ({ page }) => {
     await logout(page);
 });
 
-// â”€â”€ 3. DESTRUCTIVE ACTIONS USE POST (not GET links) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── 3. DESTRUCTIVE ACTIONS USE POST (not GET links) ───────────────────────────
 
 test('payment delete buttons are <button> in <form method="post">, not <a> tags', async ({ page }) => {
     await login(page, ADMIN_USER, ADMIN_PASS);
@@ -104,7 +104,7 @@ test('belt test delete in all-tests list is a POST button', async ({ page }) => 
     await logout(page);
 });
 
-// â”€â”€ 4. PASSWORD MINIMUM 8 CHARACTERS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── 4. PASSWORD MINIMUM 8 CHARACTERS ─────────────────────────────────────────
 
 test('register form has minlength=8 on password field', async ({ page }) => {
     await page.goto(BASE + '/register.php');
@@ -167,7 +167,7 @@ test('admin user profile password reset requires 8 chars', async ({ page }) => {
     await logout(page);
 });
 
-// â”€â”€ 5. LOGIN RATE LIMITING â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── 5. LOGIN RATE LIMITING ────────────────────────────────────────────────────
 
 test('wrong password shows standard invalid-credentials error', async ({ page }) => {
     await page.goto(BASE + '/login.php');
@@ -179,7 +179,7 @@ test('wrong password shows standard invalid-credentials error', async ({ page })
 });
 
 test('3 failed attempts still shows wrong-password error (not rate-limited)', async ({ page }) => {
-    // Stay under the 5-attempt threshold â€” verifies counting without triggering lockout
+    // Stay under the 5-attempt threshold — verifies counting without triggering lockout
     for (let i = 0; i < 3; i++) {
         await page.goto(BASE + '/login.php');
         await page.fill('input[name="username"]', `ratelimitcheck${Date.now()}`);
@@ -195,7 +195,7 @@ test('login page loads and has no PHP errors (rate-limit code is syntactically v
     await visit(page, '/login.php', 'login rate-limit code valid');
 });
 
-// â”€â”€ 6. SESSION COOKIE HARDENING â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── 6. SESSION COOKIE HARDENING ───────────────────────────────────────────────
 
 test('session cookie has HttpOnly, SameSite=Lax, and broad path', async ({ page }) => {
     await login(page, STU_USER, STU_PASS);
@@ -208,7 +208,7 @@ test('session cookie has HttpOnly, SameSite=Lax, and broad path', async ({ page 
     await logout(page);
 });
 
-// â”€â”€ 7. AUDIT LOG â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── 7. AUDIT LOG ─────────────────────────────────────────────────────────────
 
 test('audit log page loads for admin without errors', async ({ page }) => {
     test.setTimeout(25000); // audit log can be slow mid-suite when the table has many entries
@@ -287,7 +287,7 @@ test('audit log is accessible via admin nav dropdown', async ({ page }) => {
 });
 
 test('audit log requires admin role - non-admin is denied', async ({ page }) => {
-    // Use the guest account â€” never modified by other tests, role='student' in users table
+    // Use the guest account — never modified by other tests, role='student' in users table
     await login(page, 'test', 'testing');
     await page.goto(BASE + '/admin/audit_log.php');
     const body = await page.textContent('body');
@@ -303,7 +303,7 @@ test('audit log requires admin role - instructor is denied', async ({ page }) =>
     await logout(page);
 });
 
-// â”€â”€ 8. .env NOT ACCESSIBLE VIA HTTP â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── 8. .env NOT ACCESSIBLE VIA HTTP ──────────────────────────────────────────
 
 test('.env file is blocked by the server (not 200)', async ({ page }) => {
     // Requires Apache AllowOverride All so .htaccess is processed.
@@ -317,4 +317,103 @@ test('.env URL does not return database credentials', async ({ page }) => {
     const body = await res.text();
     // Even if somehow accessible, DB password should not appear as plain HTML
     expect(body).not.toContain('DB_PASS=');
+});
+
+// ── 9. CSP SCRIPT-SRC HARDENING: no inline event-handler attributes ──────────
+// V3.4 removed 'unsafe-inline' from script-src by converting every inline
+// onclick/onchange/onsubmit/oninput handler to a delegated data-fn/data-arg
+// dispatcher, with script-src now nonce-only. Confirmed via full-codebase grep
+// (zero onclick=/onchange=/oninput=/onsubmit= in portal/**/*.php) — this test
+// guards against that regressing on a representative page per role.
+
+const INLINE_HANDLER_ATTRS = ['onclick', 'onchange', 'onsubmit', 'oninput', 'onload', 'onkeyup', 'onkeydown'];
+
+async function assertNoInlineHandlers(page, label) {
+    const count = await page.evaluate((attrs) => {
+        let total = 0;
+        attrs.forEach((a) => { total += document.querySelectorAll(`[${a}]`).length; });
+        return total;
+    }, INLINE_HANDLER_ATTRS);
+    expect(count, `inline event-handler attribute found on ${label}`).toBe(0);
+}
+
+test('admin dashboard has no inline event-handler attributes', async ({ page }) => {
+    await login(page, ADMIN_USER, ADMIN_PASS);
+    await page.goto(BASE + '/admin/');
+    await assertNoInlineHandlers(page, 'admin/');
+    await logout(page);
+});
+
+test('admin/student_edit.php has no inline event-handler attributes', async ({ page }) => {
+    await login(page, ADMIN_USER, ADMIN_PASS);
+    await page.goto(BASE + '/admin/student_edit.php?id=2');
+    await assertNoInlineHandlers(page, 'admin/student_edit.php');
+    await logout(page);
+});
+
+test('instructor/attendance_sessions.php has no inline event-handler attributes', async ({ page }) => {
+    await login(page, INST_USER, INST_PASS);
+    await page.goto(BASE + '/instructor/attendance_sessions.php');
+    await assertNoInlineHandlers(page, 'instructor/attendance_sessions.php');
+    await logout(page);
+});
+
+test('student dashboard has no inline event-handler attributes', async ({ page }) => {
+    await login(page, STU_USER, STU_PASS);
+    await page.goto(BASE + '/student/');
+    await assertNoInlineHandlers(page, 'student/');
+    await logout(page);
+});
+
+test('login page has no inline event-handler attributes', async ({ page }) => {
+    await page.goto(BASE + '/login.php');
+    await assertNoInlineHandlers(page, 'login.php');
+});
+
+// ── 10. XSS REGRESSION: payments.php prefill button escapes student name ────
+// V3.4 fix: the "+" prefill button used to build onclick="..." with addslashes()
+// (which doesn't escape HTML double-quotes), letting a student name containing
+// a `"` break out of the attribute and inject markup/scripts. Now uses
+// htmlspecialchars()'d data-* attributes read via a delegated listener instead.
+
+test('payment prefill button safely escapes a student name containing a quote', async ({ page }) => {
+    const ts = Date.now();
+    const lastName = `O"Brien${ts}`;
+    // Register a throwaway account whose last name contains a double quote.
+    await page.goto(BASE + '/register.php');
+    await page.fill('input[name="first_name"]', 'Xss');
+    await page.fill('input[name="last_name"]', lastName);
+    await page.fill('input[name="date_of_birth"]', '2000-01-01');
+    await page.fill('input[name="email"]', `xsstest${ts}@test.invalid`);
+    await page.fill('input[name="username"]', `xsstest${ts}`);
+    await page.fill('input[name="password"]', 'TestPass1!');
+    await page.fill('input[name="confirm"]', 'TestPass1!');
+    await page.click('button:has-text("Next")');
+    await page.waitForLoadState('domcontentloaded');
+    await page.click('button:has-text("Create Account")');
+    await page.waitForLoadState('domcontentloaded');
+    await logout(page);
+
+    await login(page, ADMIN_USER, ADMIN_PASS);
+    // Record a payment for the new student so a prefill "+" button renders for them.
+    await page.goto(BASE + '/admin/payments.php?action=add');
+    await page.fill('#payGrantStudentFilter', 'Xss');
+    await page.waitForTimeout(150);
+    await page.locator('.pay-grant-stu-btn:visible').first().click();
+    await page.fill('input[name="amount"]', '30');
+    await page.selectOption('select[name="payment_type"]', 'monthly_tuition');
+    await page.selectOption('select[name="payment_method"]', 'cash');
+    await page.click('button:has-text("Save Payment")');
+    await page.waitForLoadState('domcontentloaded');
+
+    const btn = page.locator('button.prefill-payment-btn[data-student-name*="Brien"]').first();
+    await expect(btn).toHaveCount(1);
+    // The name (quote included) must survive intact as a data attribute value —
+    // not break the attribute or leak into an inline onclick=.
+    expect(await btn.getAttribute('data-student-name')).toContain(lastName);
+    expect(await btn.getAttribute('onclick')).toBeNull();
+    // And the prefill must still function correctly despite the quote.
+    await btn.click();
+    await expect(page.locator('#payGrantStudentName')).toContainText('Xss');
+    await logout(page);
 });

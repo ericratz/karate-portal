@@ -59,7 +59,15 @@ module.exports = async function globalSetup() {
 
     const args = ['-h', host, '-u', user];
     if (pass) args.push(`-p${pass}`);
-    args.push('--single-transaction', '--skip-lock-tables', '--routines', name);
+    args.push(
+        '--single-transaction', '--skip-lock-tables', '--routines',
+        // Log tables are excluded from snapshot/restore — they're not part of
+        // test fixture state, and skipping them keeps the dump/restore fast.
+        `--ignore-table=${name}.activity_log`,
+        `--ignore-table=${name}.error_log`,
+        `--ignore-table=${name}.email_log`,
+        name
+    );
 
     async function runDump() {
         let dump;

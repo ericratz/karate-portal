@@ -79,7 +79,7 @@ test.describe('Pay page', () => {
         await page.goto(BASE + '/student/pay.php');
         await page.locator('#chk-monthly_tuition').check();
         // noSelectionMsg is hidden by our code when total > 0
-        // (paypalSection visibility depends on PayPal SDK loading â€” not tested here)
+        // (paypalSection visibility depends on PayPal SDK loading — not tested here)
         await expect(page.locator('#noSelectionMsg')).toBeHidden();
     });
 

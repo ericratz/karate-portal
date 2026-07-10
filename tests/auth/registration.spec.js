@@ -51,7 +51,7 @@ test('valid registration creates account and logs in', async ({ page }) => {
     await page.fill('input[name="confirm"]', 'TestPass1!');
     await page.click('button:has-text("Next")');
     await page.waitForLoadState('domcontentloaded');
-    // No matching records for fresh user â†’ lands on confirm step
+    // No matching records for fresh user → lands on confirm step
     await expect(page.locator('.card-header small')).toContainText('Confirm');
     await page.click('button:has-text("Create Account")');
     await page.waitForLoadState('domcontentloaded');

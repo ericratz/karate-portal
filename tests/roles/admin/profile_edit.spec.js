@@ -1,5 +1,5 @@
 ﻿// @ts-check
-// Profile editing tests â€” admin and student.
+// Profile editing tests — admin and student.
 const { test, expect } = require('@playwright/test');
 const { assertNoPhpErrors, BASE, AUTH } = require('../../helpers');
 

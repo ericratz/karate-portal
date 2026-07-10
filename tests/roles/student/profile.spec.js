@@ -10,7 +10,7 @@ const TS          = Date.now();
 const TEST_STREET = `999 Test Lane ${TS}`;
 const TEST_CSZ    = 'Provo, UT 84601';
 
-// â”€â”€ PROFILE SAVE FLASH â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── PROFILE SAVE FLASH ────────────────────────────────────────────────────────
 
 test('student dashboard shows success banner when ?saved=1', async ({ page }) => {
     await page.goto(BASE + '/student/?saved=1');
@@ -24,7 +24,7 @@ test('student dashboard does NOT show profile banner without ?saved=1', async ({
     await expect(page.locator('.alert-success:has-text("Profile saved")')).toHaveCount(0);
 });
 
-// â”€â”€ PROFILE EDIT FORM â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── PROFILE EDIT FORM ─────────────────────────────────────────────────────────
 
 test('profile_edit.php loads and shows address fields', async ({ page }) => {
     await page.goto(BASE + '/student/profile_edit.php');
@@ -36,11 +36,11 @@ test('profile_edit.php loads and shows address fields', async ({ page }) => {
     await expect(page.locator('button:has-text("Save Profile")')).toBeVisible();
 });
 
-// â”€â”€ ADDRESS FIELD PERSISTENCE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── ADDRESS FIELD PERSISTENCE ─────────────────────────────────────────────────
 
 test('saving profile with address fields redirects to dashboard with success banner', async ({ page }) => {
     await page.goto(BASE + '/student/profile_edit.php');
-    // Fill ALL required fields explicitly â€” don't rely on jsmith's DB values being non-null.
+    // Fill ALL required fields explicitly — don't rely on jsmith's DB values being non-null.
     // The DB snapshot is restored after all tests so these temporary changes are fine.
     await page.fill('input[name="first_name"]',    'John');
     await page.fill('input[name="last_name"]',     'Smith');
@@ -76,7 +76,7 @@ test('clearing address fields and saving persists empty values', async ({ page }
     expect(page.url()).toContain('index.php?saved=1');
 });
 
-// â”€â”€ PASSWORD CHANGE CARD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── PASSWORD CHANGE CARD ──────────────────────────────────────────────────────
 
 test('Change Password card is visible', async ({ page }) => {
     await page.goto(BASE + '/student/profile_edit.php');
@@ -85,7 +85,7 @@ test('Change Password card is visible', async ({ page }) => {
 
 test('wrong current password shows error', async ({ page }) => {
     await page.goto(BASE + '/student/profile_edit.php');
-    // Expand the Bootstrap collapse â€” wait for the input to be visible rather than a fixed delay
+    // Expand the Bootstrap collapse — wait for the input to be visible rather than a fixed delay
     await page.click('button:has-text("Change Password")');
     await page.locator('#changePasswordForm input[name="current_password"]').waitFor({ state: 'visible' });
     await page.fill('input[name="current_password"]', 'wrongpassword');
@@ -173,7 +173,7 @@ test('saving uniform and belt size persists on reload', async ({ page }) => {
     expect(saved.belt).toBe('4');
 });
 
-// â”€â”€ ACCESS CONTROL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── ACCESS CONTROL ────────────────────────────────────────────────────────────
 
 test('profile_edit.php requires login', async ({ page }) => {
     await page.context().clearCookies();

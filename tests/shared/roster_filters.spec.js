@@ -5,7 +5,7 @@
 const { test, expect } = require('@playwright/test');
 const { assertNoPhpErrors, BASE, AUTH } = require('../helpers');
 
-// â”€â”€ ADMIN ROSTER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── ADMIN ROSTER ──────────────────────────────────────────────────────────────
 
 test.describe('Admin roster filters', () => {
     test.use({ storageState: AUTH.admin });
@@ -40,14 +40,16 @@ test.describe('Admin roster filters', () => {
 
     test('student name links in table go to student_profile.php', async ({ page }) => {
         const link = page.locator('tbody a.text-decoration-none').first();
-        if (await link.count() === 0) return;
+        // The test DB has 9 students — the roster is never empty.
+        await expect(link).toHaveCount(1);
         const href = await link.getAttribute('href');
         expect(href).toContain('student_profile.php');
     });
 
     test('typing in search box hides non-matching rows', async ({ page }) => {
         const totalRows = await page.locator('tbody tr[data-name]').count();
-        if (totalRows === 0) return;
+        // The test DB has 9 students — the roster is never empty.
+        expect(totalRows).toBeGreaterThan(0);
 
         await page.fill('#rosterSearch', 'zzznomatch');
         // Allow JS to filter
@@ -62,9 +64,25 @@ test.describe('Admin roster filters', () => {
         expect(visible).toBe(0);
     });
 
+    // V3.1: roster search matches email and phone in addition to name.
+    test('search box matches by email address', async ({ page }) => {
+        await page.fill('#rosterSearch', 'sarah.j@email.com');
+        await page.waitForTimeout(200);
+        await expect(page.locator('tbody tr[data-name]:visible')).toHaveCount(1);
+        await expect(page.locator('tbody tr[data-name]:visible')).toContainText('Sarah Johnson');
+    });
+
+    test('search box matches by phone number', async ({ page }) => {
+        await page.fill('#rosterSearch', '555-0199');
+        await page.waitForTimeout(200);
+        await expect(page.locator('tbody tr[data-name]:visible')).toHaveCount(1);
+        await expect(page.locator('tbody tr[data-name]:visible')).toContainText('Sarah Johnson');
+    });
+
     test('clearing search box restores all rows', async ({ page }) => {
         const totalRows = await page.locator('tbody tr[data-name]').count();
-        if (totalRows === 0) return;
+        // The test DB has 9 students — the roster is never empty.
+        expect(totalRows).toBeGreaterThan(0);
 
         await page.fill('#rosterSearch', 'zzznomatch');
         await page.waitForTimeout(200);
@@ -104,7 +122,8 @@ test.describe('Admin roster filters', () => {
 
     test('waiver filter Signed hides unsigned rows', async ({ page }) => {
         const filterEl = page.locator('#filterWaiver, select[id*="waiver"]').first();
-        if (await filterEl.count() === 0) return;
+        // A dedicated test above ("waiver filter exists") already confirms this element renders.
+        await expect(filterEl).toHaveCount(1);
         await filterEl.selectOption('yes');
         await page.waitForTimeout(200);
         const unsignedRows = page.locator('tbody tr[data-waiver="no"]');
@@ -156,7 +175,7 @@ test.describe('Admin roster filters', () => {
 
     test('registration paid column shows checkmark or X for each student row', async ({ page }) => {
         const rows = await page.locator('tbody tr[data-name]').count();
-        if (rows === 0) return;
+        expect(rows).toBeGreaterThan(0); // the test DB has 9 students
         // Every row should have either a green ✓ or red ✗ in the reg_paid cell
         const paid   = await page.locator('tbody td .text-success').count();
         const unpaid = await page.locator('tbody td .text-danger').count();
@@ -186,7 +205,8 @@ test.describe('Admin roster filters', () => {
 
     test('clearing filter restores hidden cards', async ({ page }) => {
         const totalRows = await page.locator('tbody tr[data-name]').count();
-        if (totalRows === 0) return;
+        // The test DB has 9 students — the roster is never empty.
+        expect(totalRows).toBeGreaterThan(0);
         await page.fill('#rosterSearch', 'zzznomatch_restore_test');
         await page.waitForTimeout(300);
         await page.fill('#rosterSearch', '');
@@ -200,7 +220,7 @@ test.describe('Admin roster filters', () => {
     });
 });
 
-// ── INSTRUCTOR ROSTER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── INSTRUCTOR ROSTER ─────────────────────────────────────────────────────────
 
 test.describe('Instructor roster filters', () => {
     test.use({ storageState: AUTH.instructor });
@@ -219,7 +239,8 @@ test.describe('Instructor roster filters', () => {
 
     test('typing in search hides non-matching rows', async ({ page }) => {
         const totalRows = await page.locator('tbody tr[data-name]').count();
-        if (totalRows === 0) return;
+        // The test DB has 9 students — the roster is never empty.
+        expect(totalRows).toBeGreaterThan(0);
 
         await page.fill('#rosterSearch', 'zzznomatch');
         await page.waitForTimeout(200);
@@ -245,7 +266,8 @@ test.describe('Instructor roster filters', () => {
 
     test('student name link points to student_profile.php', async ({ page }) => {
         const link = page.locator('tbody a.text-decoration-none').first();
-        if (await link.count() === 0) return;
+        // The test DB has 9 students — the roster is never empty.
+        await expect(link).toHaveCount(1);
         const href = await link.getAttribute('href');
         expect(href).toContain('student_profile.php');
     });

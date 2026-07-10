@@ -1,5 +1,5 @@
 ﻿// @ts-check
-// Smoke tests â€” each role's pages load without PHP errors or HTTP 4xx.
+// Smoke tests — each role's pages load without PHP errors or HTTP 4xx.
 const { test, expect } = require('@playwright/test');
 const { visit, assertNoPhpErrors, BASE, AUTH } = require('../helpers');
 
@@ -24,7 +24,7 @@ test.describe('admin smoke', () => {
             ['/admin/email_log.php',               'email log'],
             ['/admin/checkin_pin.php',             'checkin pin admin'],
             ['/admin/member_card.php?student_id=2','member card'],
-            ['/admin/certificate.php?student_id=2&rank_id=1', 'certificate'],
+            ['/admin/certificate.php?student_id=2&rank_id=3', 'certificate'], // rank_id=3 (8th Kyu) is real for student 2 — an invalid combo would silently redirect instead of testing the page
         ];
         for (const [path, label] of pages) await visit(page, path, label);
         // app_log.php intentionally displays error log entries that may contain
@@ -43,6 +43,29 @@ test.describe('admin smoke', () => {
         for (const h of ['Instructors','Parents','Students','Guests']) {
             await expect(page.locator('.card-header').filter({ hasText: h })).toBeVisible();
         }
+    });
+
+    // V3.3: admin/certificate.php generates a printable certificate with student
+    // name, rank, and cert number. Student 2 (Sarah Johnson) really has rank_id=3
+    // (8th Kyu, cert_number SKSD-1003) on record — a functional check beyond the
+    // generic "loads without error" smoke test above.
+    test('certificate.php shows student name, rank, cert number, and download button', async ({ page }) => {
+        await page.goto(BASE + '/admin/certificate.php?student_id=2&rank_id=3');
+        await assertNoPhpErrors(page, 'certificate content');
+        await expect(page.locator('.name-field')).toContainText('Sarah Johnson');
+        await expect(page.locator('.number-value')).toContainText('SKSD-1003');
+        await expect(page.locator('#downloadBtn')).toBeVisible();
+    });
+
+    test('certificate.php redirects for a rank the student was never awarded', async ({ page }) => {
+        // rank_id=99999 doesn't exist in the ranks table at all (max real id is 13),
+        // so this is unambiguous regardless of what other parallel tests award
+        // student 2 in the meantime — rank_id=1 (10th Kyu) was a bad choice here
+        // since instructor/belt_tests.spec.js's AutoRank test awards that exact
+        // rank to this exact student concurrently in another worker.
+        await page.goto(BASE + '/admin/certificate.php?student_id=2&rank_id=99999');
+        await page.waitForLoadState('domcontentloaded');
+        expect(page.url()).not.toContain('certificate.php');
     });
 
     test('admin student edit page loads and nav works', async ({ page }) => {

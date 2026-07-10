@@ -1,4 +1,4 @@
-// @ts-check
+﻿// @ts-check
 // Tests for V0.2 features:
 //   - Parent category on roster/attendance/student-notes/email
 //   - Notify Noji registration flow (option cards, skip, notify)
@@ -14,7 +14,7 @@ const { login, logout, visit, assertNoPhpErrors, deleteTestStudent, BASE, AUTH }
 const { ADMIN_USER, ADMIN_PASS } = require('../credentials');
 const TS = Date.now();
 
-// â”€â”€ PARENT CATEGORY ON ROSTER VIEWS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── PARENT CATEGORY ON ROSTER VIEWS ─────────────────────────────────────────
 
 test.describe('Parent category on roster views', () => {
     test.use({ storageState: AUTH.admin });
@@ -60,7 +60,7 @@ test.describe('instructor students.php shows Parents card', () => {
     });
 });
 
-// â”€â”€ REGISTRATION FLOW â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── REGISTRATION FLOW ────────────────────────────────────────────────────────
 // Each test registers its own account to keep tests isolated.
 
 /** Helper: fill registration form and click Next (step 1 only). */
@@ -100,7 +100,7 @@ test.describe('Registration flow', () => {
     });
 
     test('Continue button is disabled until a match option is selected', async ({ page }) => {
-        // This test needs matching records â€” just verify the step 2 button state via a
+        // This test needs matching records — just verify the step 2 button state via a
         // direct DOM check on a freshly loaded match step (if matches exist)
         // Otherwise, verify the confirm step shows "Create Account" already enabled
         await registerStep1(page, `c${TS}`);
@@ -108,7 +108,7 @@ test.describe('Registration flow', () => {
         if (await confirmBtn.isVisible()) {
             await expect(confirmBtn).toBeEnabled();
         } else {
-            // Match step shown â€” continue button disabled until selection
+            // Match step shown — continue button disabled until selection
             await expect(page.locator('#continueBtn')).toBeDisabled();
         }
     });
@@ -124,7 +124,7 @@ test.describe('Registration flow', () => {
         await registerStep1(page, `e${TS}`);
         await page.click('button:has-text("Create Account")');
         await page.waitForLoadState('domcontentloaded');
-        // Registration logs the user in â€” log out before checking admin dashboard
+        // Registration logs the user in — log out before checking admin dashboard
         await logout(page);
         await login(page, ADMIN_USER, ADMIN_PASS);
         await page.goto(BASE + '/admin/');
@@ -134,13 +134,13 @@ test.describe('Registration flow', () => {
 
 });
 
-// â”€â”€ COMPARE & LINK PAGE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── COMPARE & LINK PAGE ──────────────────────────────────────────────────────
 
 test.describe('Compare & Link page', () => {
     test.use({ storageState: AUTH.admin });
 
     test('compare_account.php loads without errors when given a user_id', async ({ page }) => {
-        // Navigate via admin users list â€” click View on any user, then build compare URL
+        // Navigate via admin users list — click View on any user, then build compare URL
         await page.goto(BASE + '/admin/users.php');
         await page.locator('a:has-text("View")').first().click();
         await page.waitForLoadState('domcontentloaded');
@@ -205,7 +205,7 @@ test.describe('Compare & Link page', () => {
 
 });
 
-// â”€â”€ LINK REQUESTS CARD ON ADMIN DASHBOARD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── LINK REQUESTS CARD ON ADMIN DASHBOARD ───────────────────────────────────
 
 test.describe('Link Requests admin dashboard', () => {
     test.use({ storageState: AUTH.admin });
@@ -261,26 +261,30 @@ test.describe('Link Requests admin dashboard', () => {
     // See "Notify Noji registration flow" describe block above for link request creation test.
 });
 
-// â”€â”€ BELT TEST STUDENT INFO PANEL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── BELT TEST STUDENT INFO PANEL ─────────────────────────────────────────────
 
 test.describe('Belt test student info panel', () => {
     test.use({ storageState: AUTH.instructor });
 
-    test('selecting a student shows populated info panel; clearing hides it', async ({ page }) => {
+    test('selecting a student shows populated history panel; clearing hides it', async ({ page }) => {
+        // Student selection is type-to-filter (#studentFilter + .student-btn), not a
+        // <select> — the old raw <select name="student_id"> and #studentInfoPanel this
+        // test used were replaced by the belt test edit rewrite (see README); the
+        // equivalent panel today is #historyPanel.
         await page.goto(BASE + '/instructor/belt_test_edit.php');
-        const select = page.locator('select[name="student_id"]');
-        if (await select.locator('option').count() <= 1) return;
-        await select.selectOption({ index: 1 });
-        const panel = page.locator('#studentInfoPanel');
-        await expect(panel).not.toBeEmpty();
+        await page.fill('#studentFilter', 'a');
+        await page.waitForTimeout(100);
+        await page.locator('.student-btn:visible').first().click();
+        const panel = page.locator('#historyPanel');
+        await expect(panel).toBeVisible();
         expect((await panel.textContent())?.length).toBeGreaterThan(0);
-        // Clearing the select hides the panel
-        await select.selectOption({ index: 0 });
+        // Clearing the selection hides the panel again
+        await page.click('#clearStudentFilterBtn');
         await expect(panel).toBeHidden();
     });
 });
 
-// â”€â”€ ADMIN DROPDOWN REORGANISATION â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── ADMIN DROPDOWN REORGANISATION ────────────────────────────────────────────
 
 test.describe('Admin dropdown reorganisation', () => {
     test.use({ storageState: AUTH.admin });
@@ -307,7 +311,7 @@ test.describe('Admin dropdown reorganisation', () => {
     });
 });
 
-// â”€â”€ USERS PAGE PARENT ROLE FILTER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── USERS PAGE PARENT ROLE FILTER ────────────────────────────────────────────
 
 test.describe('Users page parent role filter', () => {
     test.use({ storageState: AUTH.admin });
@@ -334,7 +338,7 @@ test.describe('Users page parent role filter', () => {
 
 });
 
-// â”€â”€ WAIVER LABEL (renamed: Injury Waiver â†' Liability Waiver â†' Waiver) â”€â”€â”€â”€â”€â”€â”€â”€
+// ── WAIVER LABEL (renamed: Injury Waiver → Liability Waiver → Waiver) ────────
 
 test.describe('Waiver label', () => {
     test.use({ storageState: AUTH.admin });
@@ -355,7 +359,7 @@ test.describe('Waiver label', () => {
 
 });
 
-// â”€â”€ FAMILY-AWARE TUITION CHECK â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── FAMILY-AWARE TUITION CHECK ───────────────────────────────────────────────
 
 test.describe('Family-aware tuition dashboard', () => {
     test.use({ storageState: AUTH.admin });
@@ -363,16 +367,27 @@ test.describe('Family-aware tuition dashboard', () => {
     test('admin dashboard Tuition Unpaid card is visible and functional', async ({ page }) => {
         await visit(page, '/admin/', 'admin dashboard tuition');
         await expect(page.locator('.card-header').filter({ hasText: 'Tuition Unpaid' })).toBeVisible();
-        // Card either shows "All students paid âœ“" or a list of unpaid students
+        // Card either shows "All students paid ✓" or a list of unpaid students
         const body = await page.textContent('body');
         const hasPaid     = body?.includes('All students paid');
         const hasUnpaid   = body?.includes('Record Payment');
         expect(hasPaid || hasUnpaid).toBe(true);
     });
 
+    // V3.2: "Center Stage (year)" stat card shows total rent paid year-to-date.
+    test('admin dashboard shows Center Stage YTD stat card', async ({ page }) => {
+        await visit(page, '/admin/', 'admin dashboard center stage');
+        const currentYear = new Date().getFullYear().toString();
+        const card = page.locator('.text-muted.small').filter({ hasText: `Paid to Center Stage (${currentYear})` });
+        await expect(card).toBeVisible();
+        // The dollar figure sits in the sibling stat value above the label.
+        const statCard = page.locator('.card').filter({ has: card });
+        await expect(statCard).toContainText('$');
+    });
+
 });
 
-// â”€â”€ STUDENT PROFILE FAMILY TABS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── STUDENT PROFILE FAMILY TABS ──────────────────────────────────────────────
 
 test.describe('Student profile family tabs', () => {
     test.use({ storageState: AUTH.admin });
@@ -382,7 +397,7 @@ test.describe('Student profile family tabs', () => {
     });
 
     test('student_profile.php shows family tab nav when parent/child relationship exists', async ({ page }) => {
-        // Load the page â€” if student 2 is part of a family, tabs will show
+        // Load the page — if student 2 is part of a family, tabs will show
         await page.goto(BASE + '/instructor/student_profile.php?id=2');
         await assertNoPhpErrors(page, 'student profile family tabs');
         // Nav tabs may or may not appear depending on DB state

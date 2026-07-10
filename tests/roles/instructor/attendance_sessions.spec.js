@@ -1,5 +1,5 @@
 ﻿// @ts-check
-// Tests for instructor/attendance_sessions.php â€” the class sessions list with
+// Tests for instructor/attendance_sessions.php — the class sessions list with
 // date filter, quick-filter links, and the click-to-expand accordion rows.
 const { test, expect } = require('@playwright/test');
 const { assertNoPhpErrors, visit, BASE, AUTH } = require('../../helpers');
@@ -7,7 +7,7 @@ const { assertNoPhpErrors, visit, BASE, AUTH } = require('../../helpers');
 test.describe('Attendance sessions page', () => {
     test.use({ storageState: AUTH.instructor });
 
-    // â”€â”€ PAGE LOADS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── PAGE LOADS ──────────────────────────────────────────────────────
 
     test('attendance_sessions.php loads without PHP errors', async ({ page }) => {
         await visit(page, '/instructor/attendance_sessions.php', 'attendance sessions');
@@ -18,7 +18,7 @@ test.describe('Attendance sessions page', () => {
         await expect(page.locator('h4').first()).toContainText('Classes');
     });
 
-    // â”€â”€ NEW SESSION BUTTON â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── NEW SESSION BUTTON ──────────────────────────────────────────────
 
     test('+ Record New Class link exists and points to attendance.php with a date', async ({ page }) => {
         await page.goto(BASE + '/instructor/attendance_sessions.php');
@@ -35,7 +35,7 @@ test.describe('Attendance sessions page', () => {
         expect(href).toContain('2025-06-01');
     });
 
-    // â”€â”€ FILTER FORM â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── FILTER FORM ─────────────────────────────────────────────────────
 
     test('filter form has year / type selects', async ({ page }) => {
         await page.goto(BASE + '/instructor/attendance_sessions.php');
@@ -96,30 +96,31 @@ test.describe('Attendance sessions page', () => {
         expect(page.url()).not.toContain('year=');
     });
 
-    // â”€â”€ DATE LINK IN SESSION ROW â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── DATE LINK IN SESSION ROW ────────────────────────────────────────
 
     test('session date links navigate to attendance.php?date=', async ({ page }) => {
         await page.goto(BASE + '/instructor/attendance_sessions.php');
         const link = page.locator('tbody a[href*="attendance.php?date="]').first();
-        if (await link.count() === 0) return; // no sessions in DB
+        // The test DB has 10+ class sessions and the default view is unfiltered — always present.
+        await expect(link).toHaveCount(1);
         const href = await link.getAttribute('href');
         expect(href).toMatch(/attendance\.php\?date=\d{4}-\d{2}-\d{2}/);
     });
 
-    // â”€â”€ ACCORDION TOGGLE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    // The sessions table uses JS toggleSession(i) â€” clicking a row expands a detail row.
+    // ── ACCORDION TOGGLE ────────────────────────────────────────────────
+    // The sessions table uses JS toggleSession(i) — clicking a row expands a detail row.
     // The toggle cell id="tog-N" sits inside the clickable row; clicking it bubbles to <tr onclick>.
 
     test('session detail rows are hidden by default', async ({ page }) => {
         await page.goto(BASE + '/instructor/attendance_sessions.php');
-        if (await page.locator('#det-0').count() === 0) return; // no sessions
+        await expect(page.locator('#det-0')).toHaveCount(1); // always present — see note above
         await expect(page.locator('#det-0')).toBeHidden();
     });
 
     test('clicking a session row expands its detail row', async ({ page }) => {
         await page.goto(BASE + '/instructor/attendance_sessions.php');
-        if (await page.locator('#det-0').count() === 0) return;
-        // Click the toggle cell (▼) â€” event bubbles up to <tr onclick="toggleSession(0)">
+        await expect(page.locator('#det-0')).toHaveCount(1);
+        // Click the toggle cell (▼) — event bubbles up to <tr onclick="toggleSession(0)">
         await page.locator('#tog-0').click();
         await expect(page.locator('#det-0')).toBeVisible();
         // Toggle arrow flips to ▲
@@ -128,11 +129,11 @@ test.describe('Attendance sessions page', () => {
 
     test('clicking an expanded session row collapses it', async ({ page }) => {
         await page.goto(BASE + '/instructor/attendance_sessions.php');
-        if (await page.locator('#det-0').count() === 0) return;
+        await expect(page.locator('#det-0')).toHaveCount(1);
         // Open
         await page.locator('#tog-0').click();
         await expect(page.locator('#det-0')).toBeVisible();
-        // Click again â€” should collapse
+        // Click again — should collapse
         await page.locator('#tog-0').click();
         await expect(page.locator('#det-0')).toBeHidden();
         await expect(page.locator('#tog-0')).toContainText('▼');
@@ -140,11 +141,12 @@ test.describe('Attendance sessions page', () => {
 
     test('opening a second session collapses the first', async ({ page }) => {
         await page.goto(BASE + '/instructor/attendance_sessions.php');
-        if (await page.locator('#det-1').count() === 0) return; // need at least 2 sessions
+        // The test DB has 10+ class sessions, so a second row always exists.
+        await expect(page.locator('#det-1')).toHaveCount(1);
         // Open first row
         await page.locator('#tog-0').click();
         await expect(page.locator('#det-0')).toBeVisible();
-        // Open second row â€” first should auto-collapse
+        // Open second row — first should auto-collapse
         await page.locator('#tog-1').click();
         await expect(page.locator('#det-0')).toBeHidden();
         await expect(page.locator('#det-1')).toBeVisible();
@@ -152,7 +154,7 @@ test.describe('Attendance sessions page', () => {
 
     test('expanded session shows attendance names or "No attendance" message', async ({ page }) => {
         await page.goto(BASE + '/instructor/attendance_sessions.php');
-        if (await page.locator('#det-0').count() === 0) return;
+        await expect(page.locator('#det-0')).toHaveCount(1);
         await page.locator('#tog-0').click();
         const det = page.locator('#det-0');
         await expect(det).toBeVisible();
@@ -162,7 +164,7 @@ test.describe('Attendance sessions page', () => {
         expect(hasContent).toBe(true);
     });
 
-    // â”€â”€ ACCESS CONTROL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── ACCESS CONTROL ──────────────────────────────────────────────────
 
     test('attendance_sessions.php requires login', async ({ page }) => {
         await page.context().clearCookies();

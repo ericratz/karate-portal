@@ -1,6 +1,21 @@
-# Shotokan Karate Portal — V3.4
+# Shotokan Karate Portal — V3.5
 
 A private membership portal for Noji Ratzlaff's Shotokan Karate dojo. Students, parents, and instructors each get a tailored dashboard — tracking attendance, belt tests, payments, and waivers. The admin runs the full operation from one place. A Playwright + PHPUnit test suite runs automatically on every push via GitHub Actions.
+
+---
+
+## What's New in V3.5
+
+- **Parent-card real-time bug fixed** — changing a student's account type to Parent on `admin/student_edit.php` now updates the Guardian/Parent card to "Linked Family" immediately via an htmx out-of-band swap (`hx-swap-oob` on `#guardian-card`), instead of requiring an exit-and-re-enter workaround
+- **`member_card.php` IDOR fixed** — student/parent roles could view any other family's member card (name, rank, registration date) by changing `student_id` in the URL; it now validates the requested ID against the logged-in user's own record + linked children, matching the pattern already used on every other parent-facing page. Instructor/admin retain full roster access
+- **Security verification pass** — nmap, Nikto, OWASP ZAP, sqlmap, and Burp Suite run against the app to verify the above fixes and probe for further issues; findings were either resolved (the IDOR above) or confirmed to be local-dev-only artifacts with no equivalent on the live server (verbose PHP error display, exposed `Server`/`X-Powered-By` headers — both already hardened on production)
+- **CSP `style-src` review** — audited every interpolated `style=""` attribute in the codebase for injection risk; all take fixed/internal values (booleans, counts, a hardcoded belt-color table), none reflect user input. `unsafe-inline` in `style-src` is deferred as accepted low-severity risk rather than cleaned up — removing it would mean auditing/rewriting ~300 static `style=""` attributes across 43 files for a directive that only guards CSS injection, not the XSS-capable `script-src` (already nonce-only since V3.4)
+- **Log retention** — new `apply_log_retention()` purges `error_log` rows older than 1 month and `email_log`/`activity_log` rows older than 6 months, run opportunistically on admin dashboard load (same pattern as the existing auto-inactivation check)
+- **Test DB snapshot/restore speed-up** — `error_log`, `email_log`, and `activity_log` are now excluded from the Playwright test snapshot/restore cycle via `mysqldump --ignore-table`, since log data isn't part of test fixture state
+- **PHP upgraded to 8.4** on the live server
+- **CI/CD faster** — removed the redundant Composer install step from the GitHub Actions workflow (dependencies were already committed), cutting the pipeline from ~5.0 minutes to ~3.3 minutes
+- **Test suite audit and expansion** — swept the full Playwright suite for silently-skipping tests (`if (count === 0) return`-style guards that pass without ever asserting anything); converted 30+ into real, always-executing assertions backed by verified fixture data, self-seeded fixtures where none existed, or documented `test.skip` where the environment genuinely can't support it (e.g., local `mail()` always fails, so an email-status-`sent` filter test can never have a row to check). Also caught and fixed 3 tests that had silently gone stale (an admin-only UI check running as instructor, a selector for a `<select>` element removed by the V3.3 belt-test rewrite, a certificate test using a rank the fixture student was never actually awarded). Added regression tests for gaps found across V3.1–V3.4: the CSP inline-handler hardening, the payments.php XSS fix, the belt-test date-edit duplicate-rank bug, admin waiver always-editable, the Linked Family card, the Center Stage YTD stat, roster search by email/phone, and certificate.php's actual rendered content. New PHPUnit coverage added for previously-untested pure functions in `belt_helpers.php`, `registration.php`, `paypal.php`, and the new `log_retention.php`
+- **Test coverage** — 503 Playwright tests (39 spec files), 91 PHPUnit tests, all passing
 
 ---
 
@@ -41,46 +56,6 @@ A private membership portal for Noji Ratzlaff's Shotokan Karate dojo. Students, 
 
 ---
 
-## What's New in V3.2
-
-- **Admin waiver always editable** — admin can edit any submitted waiver directly at any time; no more read-only lock after save (`admin/waiver_view.php`)
-- **Linked Family card** — instructor student profile now shows a "Linked Family" card after Belt Test History, listing parent/child links as clickable profile links (`instructor/student_profile.php`)
-- **Center Stage YTD tracking** — admin dashboard shows a "Center Stage (year)" stat card with total rent paid year-to-date; rent alert now shows all month until recorded, not just the first 7 days (`admin/index.php`)
-- **Rent reminders improved** — cron now fires on the 1st of the month (first notice) and every Saturday until rent is recorded in expenses; separate email wording for first vs. follow-up alerts (`cron/rent_reminder.php`)
-- **Attendance count in save message** — saving attendance now confirms "X present" alongside the date (`instructor/attendance.php`)
-- **Belt test date edit bug fixed** — editing a belt test date no longer creates a duplicate rank history entry or a ghost student in the roster. Root cause: `student_ranks` was missing a `UNIQUE KEY (student_id, rank_id)`, causing `ON DUPLICATE KEY UPDATE` to insert instead of update. Fixed with DELETE + INSERT and a schema migration (`migrations/001_student_ranks_unique.sql`)
-- **Test coverage** — 475 Playwright tests + 44 PHPUnit tests, all passing
-
-## What's New in V3.11
-
-- Added scroll bars to all data cards
-- Two-column layout bug fix
-
-## What's New in V3.1
-
-- **HTMX partial card swaps** — all edit cards across `admin/student_edit.php` save in-place without a page reload. Edit → Save → card updates, scroll position preserved
-- **Inline profile editing** — students, instructors, and parents can edit their own profile directly on the dashboard card (no separate edit page navigation). Implemented via HTMX on `parent/index.php` and `instructor/student_profile.php`
-- **Roster search by email and phone** — the admin roster search bar (`admin/students.php`) now matches email addresses and phone numbers in addition to name
-- **Next belt requirements** — student and parent dashboards show the next rank, minimum time-in-rank, and test score threshold needed to advance (`portal/includes/belt_helpers.php`)
-- **Belt tests delete confirmation** — `instructor/belt_tests_all.php` delete uses `onsubmit` confirm instead of `hx-confirm` (eliminates double-confirm dialogs)
-- **Test coverage expanded** — 475 Playwright tests + 44 PHPUnit unit/integration tests. New tests cover HTMX inline-edit flows, HTMX card swaps without page reload, and auth boundary checks for `update_profile` handlers
-- **GitHub Actions CI** — a self-hosted Windows runner executes the full PHPUnit and Playwright suites on every push to `main`, reporting a pass/fail checkmark directly on GitHub
-
-## What's New in V3.0
-
-- **Password reset** — self-service forgot-password flow (`forgot_password.php` → `reset_password.php`). Tokens expire in 1 hour, single-use, same confirm screen for unknown usernames (no enumeration)
-- **Email log** — admin can review all outgoing emails at `admin/email_log.php`, filterable by status, type, and date range. All `mail()` calls go through `log_email()` which records to `email_log`
-- **Uniform size and belt size** — new fields on the student record (`000`–`8` for uniforms, `2`–`8` for belts). Editable in admin student edit, instructor student profile, and the student's own profile edit page
-- **Attendance bar graph** — student dashboard shows a Chart.js bar chart of attendance for the last 12 months. Bars turn purple for any month in which a rank advancement was recorded
-- **Roster quick-view** — registration paid status shows a ✓ or ✗ directly in the roster table (no need to open the full student record)
-- **Roster and Attendance nav buttons** — quick-access links in the header bar for admin and instructor roles
-- **Security headers** — `.htaccess` sets `X-Frame-Options: SAMEORIGIN`, `X-Content-Type-Options: nosniff`, and a full `Content-Security-Policy` with `report-uri` pointing to `api/csp_report.php`
-- **CSP reporting** — `api/csp_report.php` receives browser Content Security Policy violation reports and logs them via `log_event()`
-- **Role system overhaul** — `users.role ENUM` removed. Role is now derived at login: `is_admin=1` → `admin`; otherwise `students.student_type` (fallback `guest` if no linked record). Stored as `$_SESSION['role']`
-- **Playwright test suite reorganized** — tests moved from flat feature files into role-based directories (`tests/roles/admin/`, `tests/roles/instructor/`, `tests/roles/student/`, `tests/roles/parent/`, `tests/auth/`, `tests/shared/`)
-
----
-
 ## Tech Stack
 
 | Layer | Detail |
@@ -91,7 +66,7 @@ A private membership portal for Noji Ratzlaff's Shotokan Karate dojo. Students, 
 | Payments | PayPal JS SDK (one-time + subscriptions) |
 | Auth | Username/password + Google OAuth |
 | Local dev | XAMPP at `C:\Users\ericratz\XAMPP` |
-| Tests | Playwright 1.60 — 488 tests (`npm test`) + PHPUnit 9.6 — 52 tests (`cd portal && vendor/bin/phpunit`) |
+| Tests | Playwright 1.60 — 503 tests (`npm test`) + PHPUnit 9.6 — 91 tests (`cd portal && vendor/bin/phpunit`) |
 | CI | GitHub Actions — self-hosted Windows runner, runs on every push to `main` |
 
 ---
@@ -223,7 +198,7 @@ karate/
 │   │                   #   users, audit log, email, donations, backup,
 │   │                   #   member cards, rank certificates, check-in PIN
 │   └── cron/           # Scheduled jobs
-├── tests/              # Playwright test suite (488 tests, 38 spec files)
+├── tests/              # Playwright test suite (503 tests, 39 spec files)
 ├── migrations/         # SQL migration scripts
 ├── karate_schema.sql   # Fresh-install schema with seed data
 └── README.md

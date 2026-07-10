@@ -8,7 +8,7 @@ test.describe.configure({ mode: 'serial' });
 const { ADMIN_USER, ADMIN_PASS, INST_USER, INST_PASS, STU_USER, STU_PASS, GUEST_USER, GUEST_PASS } = require('../credentials');
 const NOTE_TEXT  = 'Playwright test note ' + Date.now();
 
-// â”€â”€ LOGIN / LOGOUT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── LOGIN / LOGOUT ────────────────────────────────────────────────────────────
 
 test('wrong password shows error, stays on login page', async ({ page }) => {
     await page.goto(BASE + '/login.php');
@@ -41,7 +41,7 @@ test('after logout, protected page redirects to login', async ({ page }) => {
     expect(page.url()).toContain('login.php');
 });
 
-// â”€â”€ PAYPAL PAGE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── PAYPAL PAGE ───────────────────────────────────────────────────────────────
 
 test('pay.php loads without PHP errors', async ({ page }) => {
     await login(page, STU_USER, STU_PASS);
@@ -63,7 +63,7 @@ test('paypal_create.php rejects unauthenticated request', async ({ page }) => {
     expect(body).not.toContain('order_id');
 });
 
-// â”€â”€ DELETE PROFILE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── DELETE PROFILE ────────────────────────────────────────────────────────────
 
 test('delete profile button visible on edit page for admin', async ({ page }) => {
     await login(page, ADMIN_USER, ADMIN_PASS);
@@ -79,18 +79,18 @@ test('delete profile button not on view profile page', async ({ page }) => {
 
 test('instructor cannot see delete profile button', async ({ page }) => {
     await login(page, INST_USER, INST_PASS);
-    // Instructors can't reach student_edit.php â€” it's admin only
+    // Instructors can't reach student_edit.php — it's admin only
     await page.goto(BASE + '/admin/student_edit.php?id=2');
     const body = await page.textContent('body');
     expect(body).toContain('Access denied');
 });
 
-// â”€â”€ PASSWORD CHANGE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── PASSWORD CHANGE ───────────────────────────────────────────────────────────
 
 test('student: change password form expands on button click', async ({ page }) => {
     await login(page, STU_USER, STU_PASS);
     await page.goto(BASE + '/student/profile_edit.php');
-    // Collapse is hidden by default â€” click the toggle
+    // Collapse is hidden by default — click the toggle
     await page.click('button[data-bs-target="#changePasswordForm"]');
     await expect(page.locator('#changePasswordForm')).toBeVisible();
     await expect(page.locator('input[name="current_password"]')).toBeVisible();
@@ -144,7 +144,7 @@ test('student: valid password change succeeds and new password works', async ({ 
     await expect(page.locator('.alert-success').first()).toContainText('updated');
     await logout(page);
 
-    // Verify new password works â€” ALWAYS reset back in finally so other tests aren't broken
+    // Verify new password works — ALWAYS reset back in finally so other tests aren't broken
     try {
         await login(page, STU_USER, TEMP_PASS);
         expect(page.url()).toContain('/student/');
@@ -164,7 +164,7 @@ test('student: valid password change succeeds and new password works', async ({ 
     }
 });
 
-// â”€â”€ EDIT ROUND-TRIPS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── EDIT ROUND-TRIPS ─────────────────────────────────────────────────────────
 
 test('adding a general note saves and appears in the list', async ({ page }) => {
     await login(page, ADMIN_USER, ADMIN_PASS);
@@ -258,4 +258,4 @@ test('resolve_link.php requires admin — non-admin is denied', async ({ page })
     await logout(page);
 });
 
-// No afterAll cleanup needed â€” global-teardown always restores the DB snapshot.
+// No afterAll cleanup needed — global-teardown always restores the DB snapshot.

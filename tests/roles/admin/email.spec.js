@@ -10,7 +10,7 @@ test.describe.configure({ mode: 'serial' });
 const { ADMIN_USER, ADMIN_PASS } = require('../../credentials');
 const TS         = Date.now();
 
-// â”€â”€ GUEST AUTO-PROMOTION â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── GUEST AUTO-PROMOTION ──────────────────────────────────────────────────────
 
 test.describe('Guest auto-promotion', () => {
     test.describe.configure({ mode: 'serial' });
@@ -27,7 +27,7 @@ test.describe('Guest auto-promotion', () => {
         await page.fill('input[name="confirm"]',  'TestPass1!');
         await page.click('button:has-text("Next")');
         await page.waitForLoadState('domcontentloaded');
-        // No matching records for fresh user â†’ confirm step with "Create Account"
+        // No matching records for fresh user → confirm step with "Create Account"
         await page.click('button:has-text("Create Account")');
         await page.waitForLoadState('domcontentloaded');
         // User is now logged in with a linked guest student record
@@ -83,7 +83,7 @@ test.describe('Guest auto-promotion', () => {
         // Name must be on the page
         await expect(page.locator('body')).toContainText(`Me${TS}`);
         // The row containing their name should NOT be inside the Guests card.
-        // Guests card is the last of the three cards â€” find it and verify name is absent.
+        // Guests card is the last of the three cards — find it and verify name is absent.
         const guestsCard = page.locator('.card').filter({
             has: page.locator('.card-header').filter({ hasText: 'Guests' })
         }).last();
@@ -98,10 +98,10 @@ test.describe('Guest auto-promotion', () => {
         await logout(page);
     });
 
-    // No afterAll cleanup â€” global-teardown always restores the DB snapshot.
+    // No afterAll cleanup — global-teardown always restores the DB snapshot.
 });
 
-// â”€â”€ EMAIL PAGE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── EMAIL PAGE ────────────────────────────────────────────────────────────────
 
 test.describe('Email mailing list', () => {
     test.describe.configure({ mode: 'serial' });
@@ -214,7 +214,7 @@ test.describe('Email mailing list', () => {
         await page.goto(BASE + '/admin/email_students.php');
         await page.fill('input[name="subject"]', 'Test subject');
         await page.fill('textarea[name="body"]', 'Test body');
-        // All unchecked â€” bypass the JS confirm and submit directly
+        // All unchecked — bypass the JS confirm and submit directly
         await page.evaluate(() => {
             document.getElementById('emailForm').submit();
         });

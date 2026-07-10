@@ -1,5 +1,5 @@
 ﻿// @ts-check
-// Access control â€” verifies every role is blocked from pages above their level.
+// Access control — verifies every role is blocked from pages above their level.
 const { test, expect } = require('@playwright/test');
 const { login, logout, BASE } = require('../helpers');
 const { ADMIN_USER, ADMIN_PASS, INST_USER, INST_PASS, STU_USER, STU_PASS, PARENT_USER, PARENT_PASS } = require('../credentials');

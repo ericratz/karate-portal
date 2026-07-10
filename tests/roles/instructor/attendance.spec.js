@@ -1,5 +1,5 @@
 ﻿// @ts-check
-// Functional attendance tests â€” saving attendance and student visibility.
+// Functional attendance tests — saving attendance and student visibility.
 const { test, expect } = require('@playwright/test');
 const { assertNoPhpErrors, visit, BASE, AUTH } = require('../../helpers');
 

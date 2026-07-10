@@ -1,5 +1,5 @@
 ﻿// @ts-check
-// Belt test tests â€” edit form, toggle UI, and create/verify/delete round-trip.
+// Belt test tests — edit form, toggle UI, and create/verify/delete round-trip.
 const { test, expect } = require('@playwright/test');
 const { login, logout, visit, assertNoPhpErrors, BASE, AUTH } = require('../../helpers');
 const { ADMIN_USER, ADMIN_PASS } = require('../../credentials');
@@ -9,7 +9,7 @@ test.describe.configure({ mode: 'serial' });
 test.use({ storageState: AUTH.instructor });
 const TS = Date.now();
 
-// â”€â”€ BELT TEST EDIT FORM â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── BELT TEST EDIT FORM ───────────────────────────────────────────────────────
 
 test('belt_test_edit.php loads and form fields are correct', async ({ page }) => {
     await page.goto(BASE + '/instructor/belt_test_edit.php');
@@ -114,7 +114,7 @@ test('submitting without student and rank shows validation error', async ({ page
     await expect(page.locator('.alert-danger').first()).toBeVisible();
 });
 
-// â”€â”€ BELT TESTS ALL â€” DASHBOARD + TOGGLE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── BELT TESTS ALL — DASHBOARD + TOGGLE ──────────────────────────────────────
 
 test('instructor dashboard shows Recent Belt Tests and links to belt_tests_all.php', async ({ page }) => {
     await page.goto(BASE + '/instructor/');
@@ -126,7 +126,7 @@ test('belt_tests_all.php loads, shows count, and edit toggle works', async ({ pa
     await visit(page, '/instructor/belt_tests_all.php', 'all belt tests');
     // Header shows count
     expect(await page.locator('.card-header').first().textContent()).toMatch(/\d+\s*test/i);
-    // Unauthenticated user cannot access â€” clear cookies instead of logging in as guest
+    // Unauthenticated user cannot access — clear cookies instead of logging in as guest
     await page.context().clearCookies();
     await page.goto(BASE + '/instructor/belt_tests_all.php');
     expect(page.url()).toContain('login.php'); // redirected to login
@@ -148,10 +148,15 @@ test('belt tests edit toggle shows and hides delete column', async ({ page }) =>
 });
 
 test('existing belt test edit form pre-fills correctly', async ({ page }) => {
+    // The "Edit" link on belt_tests_all.php is admin-only (see belt_tests_all.php's
+    // has_role('admin') check) — instructors can create new tests but not edit
+    // existing ones, so this needs an admin session.
+    await page.context().clearCookies();
+    await login(page, ADMIN_USER, ADMIN_PASS);
     await page.goto(BASE + '/instructor/belt_tests_all.php');
-    await page.click('#editToggle');
     const editLink = page.locator('a:has-text("Edit")').first();
-    if (await editLink.count() === 0) return;
+    // The test DB has multiple students with belt test history — this must exist.
+    await expect(editLink).toHaveCount(1);
     await editLink.click();
     await page.waitForLoadState('domcontentloaded');
     await assertNoPhpErrors(page, 'belt_test_edit existing');
@@ -160,7 +165,7 @@ test('existing belt test edit form pre-fills correctly', async ({ page }) => {
     await expect(page.locator('button:has-text("Delete")')).toBeVisible();
 });
 
-// â”€â”€ CREATE â†' VERIFY â†' DELETE ROUND-TRIP â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── CREATE → VERIFY → DELETE ROUND-TRIP ──────────────────────────────────────
 
 test('create a belt test for a student', async ({ page }) => {
     await page.goto(BASE + '/instructor/belt_test_edit.php');
@@ -193,8 +198,8 @@ test('delete button removes the belt test', async ({ page }) => {
     await expect(page.locator('body')).not.toContainText(`Delete Me ${TS}`);
 });
 
-// â”€â”€ AUTO-RANK: passing score auto-inserts into student_ranks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// PHP logic: score >= 80 â†' result='pass' AND belt_awarded=1 automatically,
+// ── AUTO-RANK: passing score auto-inserts into student_ranks ─────────────────
+// PHP logic: score >= 80 → result='pass' AND belt_awarded=1 automatically,
 // which triggers INSERT IGNORE INTO student_ranks. Verified via admin/student_edit.php.
 
 test('create a passing belt test (score >= 80) for student 2', async ({ page }) => {
@@ -229,7 +234,7 @@ test('create a passing belt test (score >= 80) for student 2', async ({ page }) 
 test('passing belt test appears in list with a score badge', async ({ page }) => {
     await page.goto(BASE + '/instructor/belt_tests_all.php');
     await expect(page.locator('body')).toContainText(`AutoRank ${TS}`);
-    // The row for our test should show a score (85%) â€” bg-success badge
+    // The row for our test should show a score (85%) — bg-success badge
     const row = page.locator('tr').filter({ hasText: `AutoRank ${TS}` });
     await expect(row.locator('.badge.bg-success, .badge.bg-danger, .badge.bg-secondary').first()).toBeVisible();
 });
@@ -241,7 +246,8 @@ test('belt_tests_all result column shows Passed badge for passing test', async (
     // columns are: 0 date, 1 student, 2 kyu_dan, 3 score, 4 fee_paid, 5 test passed.
     // Scope to column 5 to avoid matching the score badge.
     const row = page.locator('tr').filter({ hasText: `AutoRank ${TS}` });
-    if (await row.count() === 0) return;
+    // Serial mode guarantees the "create a passing belt test" test above ran first.
+    await expect(row).toHaveCount(1);
     const resultCell = row.locator('td').nth(5);
     await expect(resultCell.locator('.badge.bg-success, .badge.bg-danger, .text-muted, .text-danger')).toBeVisible();
     const badgeText = await resultCell.textContent();
@@ -249,7 +255,7 @@ test('belt_tests_all result column shows Passed badge for passing test', async (
 });
 
 test('passing belt test auto-adds rank to student Rank History in student_edit', async ({ page }) => {
-    // student_edit.php requires admin role â€” clear the instructor session first so
+    // student_edit.php requires admin role — clear the instructor session first so
     // login.php shows its form instead of redirecting to the instructor dashboard
     await page.context().clearCookies();
     await login(page, ADMIN_USER, ADMIN_PASS);
@@ -262,5 +268,42 @@ test('passing belt test auto-adds rank to student Rank History in student_edit',
     await expect(
         page.locator('.card').filter({ has: page.locator('.card-header:has-text("Rank History")') })
     ).not.toContainText('No ranks recorded.');
+    await logout(page);
+});
+
+// V3.2 regression: editing a belt test's date used to create a duplicate rank
+// history row (missing UNIQUE KEY(student_id, rank_id) meant ON DUPLICATE KEY
+// UPDATE inserted instead of updating). Fixed via DELETE+INSERT and
+// migrations/001_student_ranks_unique.sql — verify editing the date of the
+// AutoRank test above doesn't duplicate its "10th Kyu" rank history row.
+test('editing a belt test date does not duplicate its rank history row', async ({ page }) => {
+    await page.context().clearCookies();
+    await login(page, ADMIN_USER, ADMIN_PASS);
+    await page.goto(BASE + '/instructor/belt_tests_all.php');
+    const row = page.locator('tr').filter({ hasText: `AutoRank ${TS}` });
+    await expect(row).toHaveCount(1);
+    await row.locator('a:has-text("Edit")').click();
+    await page.waitForLoadState('domcontentloaded');
+
+    // Compare the count before/after rather than asserting an absolute value —
+    // other spec files run as parallel Playwright workers against this same
+    // shared fixture student, so an absolute count would be order-dependent.
+    // What this regression actually needs to prove is "editing doesn't add one."
+    await page.goto(BASE + '/admin/student_edit.php?id=2');
+    const rankRowsBefore = await page.locator('#rankTable tbody tr').filter({ hasText: '10th Kyu' }).count();
+    await page.goBack();
+    await page.waitForLoadState('domcontentloaded');
+
+    // Change only the date, keep the same rank, and save.
+    const newDate = new Date(Date.now() + 21 * 86400000).toISOString().slice(0, 10);
+    await page.fill('input[name="test_date"]', newDate);
+    await page.click('button:has-text("Save Changes")');
+    await page.waitForLoadState('domcontentloaded');
+    await assertNoPhpErrors(page, 'belt test date edit');
+
+    await page.goto(BASE + '/admin/student_edit.php?id=2');
+    await assertNoPhpErrors(page, 'student edit after date edit');
+    const rankRowsAfter = await page.locator('#rankTable tbody tr').filter({ hasText: '10th Kyu' }).count();
+    expect(rankRowsAfter).toBe(rankRowsBefore);
     await logout(page);
 });
