@@ -6,11 +6,9 @@ require_role('admin');
 $msg = $error = '';
 
 $f_type = $_GET['type'] ?? '';
-$f_paid = $_GET['paid'] ?? '';
-$f_from = $_GET['from'] ?? '';
-$f_to   = $_GET['to']   ?? '';
-$filtering = $f_type || $f_paid !== '' || $f_from || $f_to;
-$filter_qs = http_build_query(array_filter(['type'=>$f_type,'paid'=>$f_paid,'from'=>$f_from,'to'=>$f_to], fn($v) => $v !== ''));
+$f_year = (int)($_GET['year'] ?? 0);
+$filtering = $f_type !== '' || $f_year !== 0;
+$filter_qs = http_build_query(array_filter(['type'=>$f_type,'year'=>$f_year ?: ''], fn($v) => $v !== ''));
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !in_array($_POST['action'] ?? '', ['delete','toggle_paid'])) {
     verify_csrf();
@@ -18,19 +16,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !in_array($_POST['action'] ?? '', [
     $amount = (float)($_POST['amount'] ?? 0);
     $date   = $_POST['expense_date'] ?? '';
     $desc   = trim($_POST['description'] ?? '');
-    $paid   = isset($_POST['paid']) ? 1 : 0;
-
     $valid_types = ['rent','equipment','utilities','supplies','other'];
     if (!in_array($type, $valid_types) || $amount <= 0 || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
         $error = 'Please fill in all required fields.';
     } else {
         db()->prepare(
             'INSERT INTO expenses (expense_type, amount, expense_date, description, paid, recorded_by)
-             VALUES (?,?,?,?,?,?)'
-        )->execute([$type, $amount, $date, $desc ?: null, $paid, current_user_id()]);
-        $msg = 'Expense recorded.';
+             VALUES (?,?,?,?,1,?)'
+        )->execute([$type, $amount, $date, $desc ?: null, current_user_id()]);
+        header('Location: expenses.php?recorded=1' . ($filter_qs ? '&' . $filter_qs : ''));
+        exit;
     }
 }
+
+if (isset($_GET['recorded'])) $msg = 'Expense recorded.';
 
 // Delete expense
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delete') {
@@ -38,9 +37,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
     $del_id = (int)$_POST['id'];
     db()->prepare('DELETE FROM expenses WHERE id=?')->execute([$del_id]);
     audit('delete_expense', 'expense', $del_id);
-    if (!empty($_SERVER['HTTP_HX_REQUEST'])) { exit; }
-    header('Location: expenses.php?' . $filter_qs);
-    exit;
+    if (empty($_SERVER['HTTP_HX_REQUEST'])) {
+        header('Location: expenses.php?' . $filter_qs);
+        exit;
+    }
+    // For htmx requests, fall through so hx-select can pull the live count.
 }
 
 // Toggle paid status
@@ -72,10 +73,14 @@ $valid_types = ['rent','equipment','utilities','supplies','other'];
 $where  = ['1=1'];
 $params = [];
 if ($f_type && in_array($f_type, $valid_types)) { $where[] = 'e.expense_type = ?'; $params[] = $f_type; }
-if ($f_paid === '1') { $where[] = 'e.paid = 1'; }
-if ($f_paid === '0') { $where[] = 'e.paid = 0'; }
-if ($f_from) { $where[] = 'e.expense_date >= ?'; $params[] = $f_from; }
-if ($f_to)   { $where[] = 'e.expense_date <= ?'; $params[] = $f_to; }
+if ($f_year) { $where[] = 'YEAR(e.expense_date) = ?'; $params[] = $f_year; }
+
+// Years available for the dropdown — actual expense years plus the current year
+$expense_years = db()->query('SELECT DISTINCT YEAR(expense_date) AS y FROM expenses ORDER BY y DESC')
+    ->fetchAll(PDO::FETCH_COLUMN);
+if (!in_array((int)date('Y'), $expense_years)) {
+    array_unshift($expense_years, (int)date('Y'));
+}
 
 $exp_stmt = db()->prepare(
     'SELECT e.*, u.username FROM expenses e
@@ -139,12 +144,6 @@ include __DIR__ . '/../includes/header.php';
                            placeholder="e.g. Monthly studio rent — July">
                 </div>
                 <div class="col-12">
-                    <div class="form-check">
-                        <input type="checkbox" class="form-check-input" name="paid" id="paid" value="1">
-                        <label class="form-check-label" for="paid">Already paid</label>
-                    </div>
-                </div>
-                <div class="col-12">
                     <button class="btn btn-success">Save Expense</button>
                 </div>
             </form>
@@ -152,11 +151,13 @@ include __DIR__ . '/../includes/header.php';
     </div>
 </div>
 
+<div id="expenses-page-body">
 <!-- Filters -->
 <div class="card border-0 shadow-sm mb-3">
     <div class="card-body py-2">
         <form method="get" class="row g-2 align-items-end"
-              hx-get="expenses.php" hx-target="#expenses-results" hx-select="#expenses-results" hx-swap="outerHTML" hx-push-url="true">
+              hx-get="expenses.php" hx-target="#expenses-page-body" hx-select="#expenses-page-body" hx-swap="outerHTML" hx-push-url="true"
+              hx-trigger="change from:select[name='type'], change from:select[name='year']">
             <div class="col-md-2">
                 <label class="form-label small mb-1">Type</label>
                 <select name="type" class="form-select form-select-sm">
@@ -167,40 +168,18 @@ include __DIR__ . '/../includes/header.php';
                 </select>
             </div>
             <div class="col-md-2">
-                <label class="form-label small mb-1">Status</label>
-                <select name="paid" class="form-select form-select-sm">
-                    <option value="">All</option>
-                    <option value="1" <?= $f_paid === '1' ? 'selected' : '' ?>>Paid</option>
-                    <option value="0" <?= $f_paid === '0' ? 'selected' : '' ?>>Unpaid</option>
+                <label class="form-label small mb-1">Year</label>
+                <select name="year" class="form-select form-select-sm">
+                    <option value="">All Years</option>
+                    <?php foreach ($expense_years as $y): ?>
+                        <option value="<?= (int)$y ?>" <?= $f_year === (int)$y ? 'selected' : '' ?>><?= (int)$y ?></option>
+                    <?php endforeach; ?>
                 </select>
-            </div>
-            <div class="col-md-2">
-                <label class="form-label small mb-1">From</label>
-                <input type="date" name="from" class="form-control form-control-sm" value="<?= htmlspecialchars($f_from) ?>">
-            </div>
-            <div class="col-md-2">
-                <label class="form-label small mb-1">To</label>
-                <input type="date" name="to" class="form-control form-control-sm" value="<?= htmlspecialchars($f_to) ?>">
-            </div>
-            <div class="col-auto">
-                <button class="btn btn-filter btn-sm">Filter</button>
-            </div>
-            <div class="col-auto">
-                <a href="expenses.php?from=<?= date('Y-m-01') ?>&to=<?= date('Y-m-d') ?>"
-                   hx-get="expenses.php?from=<?= date('Y-m-01') ?>&to=<?= date('Y-m-d') ?>"
-                   hx-target="#expenses-results" hx-select="#expenses-results" hx-swap="outerHTML" hx-push-url="true"
-                   class="btn btn-filter btn-sm <?= ($f_from === date('Y-m-01') && $f_to === date('Y-m-d') && !$f_type && $f_paid === '') ? 'active' : '' ?>">This Month</a>
-            </div>
-            <div class="col-auto">
-                <a href="expenses.php?from=<?= date('Y-01-01') ?>&to=<?= date('Y-m-d') ?>"
-                   hx-get="expenses.php?from=<?= date('Y-01-01') ?>&to=<?= date('Y-m-d') ?>"
-                   hx-target="#expenses-results" hx-select="#expenses-results" hx-swap="outerHTML" hx-push-url="true"
-                   class="btn btn-filter btn-sm <?= ($f_from === date('Y-01-01') && $f_to === date('Y-m-d') && !$f_type && $f_paid === '') ? 'active' : '' ?>">This Year</a>
             </div>
             <?php if ($filtering): ?>
             <div class="col-auto">
                 <a href="expenses.php"
-                   hx-get="expenses.php" hx-target="#expenses-results" hx-select="#expenses-results"
+                   hx-get="expenses.php" hx-target="#expenses-page-body" hx-select="#expenses-page-body"
                    hx-swap="outerHTML" hx-push-url="true"
                    class="btn btn-filter btn-sm">Clear</a>
             </div>
@@ -209,14 +188,9 @@ include __DIR__ . '/../includes/header.php';
     </div>
 </div>
 
-<div id="expenses-results">
 <div class="d-flex align-items-center gap-3 mb-3">
     <span class="ms-auto">
         Total: <strong>$<?= number_format($total, 2) ?></strong>
-        &nbsp;|&nbsp;
-        Paid: <strong class="text-success">$<?= number_format($total_paid, 2) ?></strong>
-        &nbsp;|&nbsp;
-        Unpaid: <strong class="text-danger">$<?= number_format($total - $total_paid, 2) ?></strong>
     </span>
 </div>
 
@@ -224,8 +198,7 @@ include __DIR__ . '/../includes/header.php';
     <div class="card-header bg-white d-flex justify-content-between align-items-center">
         <span class="fw-semibold"><?= count($expenses) ?> expense<?= count($expenses)!==1?'s':'' ?></span>
         <?php if (!empty($expenses)): ?>
-        <button id="editToggle" class="btn btn-sm btn-outline-secondary"
-                onclick="(function(btn){var t=document.getElementById('expensesTable');var e=t.classList.toggle('editing');btn.textContent=e?'Done':'Edit';btn.className=e?'btn btn-sm btn-danger':'btn btn-sm btn-outline-secondary';})(this)">Edit</button>
+        <button id="editToggle" class="btn btn-sm btn-outline-secondary">Edit</button>
         <?php endif; ?>
     </div>
     <div class="card-body p-0">
@@ -239,35 +212,22 @@ include __DIR__ . '/../includes/header.php';
                     <th>Type</th>
                     <th>Description</th>
                     <th class="text-end">Amount</th>
-                    <th class="text-center">Paid</th>
                     <th>Recorded By</th>
                     <th class="delete-col"></th>
                 </tr>
             </thead>
             <tbody>
             <?php foreach ($expenses as $e): ?>
-                <tr class="<?= !$e['paid'] ? 'table-warning' : '' ?>">
+                <tr>
                     <td><?= date('d M Y', strtotime($e['expense_date'])) ?></td>
                     <td><?= ucfirst($e['expense_type']) ?></td>
                     <td><?= htmlspecialchars($e['description'] ?? '—') ?></td>
                     <td class="text-end">$<?= number_format($e['amount'], 2) ?></td>
-                    <td class="text-center">
-                        <form method="post" class="d-inline"
-                              hx-post="expenses.php" hx-target="this" hx-swap="outerHTML">
-                            <?= csrf_input() ?>
-                            <input type="hidden" name="action" value="toggle_paid">
-                            <input type="hidden" name="id" value="<?= $e['id'] ?>">
-                            <button type="submit"
-                                    class="btn btn-sm <?= $e['paid'] ? 'btn-success' : 'btn-outline-secondary' ?>">
-                                <?= $e['paid'] ? '✓ Paid' : 'Unpaid' ?>
-                            </button>
-                        </form>
-                    </td>
                     <td><?= htmlspecialchars($e['username'] ?? '—') ?></td>
                     <td class="delete-col">
                         <form method="post" class="d-inline"
-                              hx-post="expenses.php" hx-target="closest tr"
-                              hx-swap="delete swap:300ms"
+                              hx-post="expenses.php" hx-target="#expenses-page-body" hx-select="#expenses-page-body"
+                              hx-swap="outerHTML swap:300ms"
                               hx-confirm="Delete this expense? This cannot be undone.">
                             <?= csrf_input() ?>
                             <input type="hidden" name="action" value="delete">
@@ -282,12 +242,25 @@ include __DIR__ . '/../includes/header.php';
         <?php endif; ?>
     </div>
 </div>
-</div>
+</div><!-- /expenses-page-body -->
 
-<style>
+<style nonce="<?= csp_nonce() ?>">
     .delete-col { display: none; }
     table.editing .delete-col { display: table-cell; }
 </style>
+
+<script nonce="<?= csp_nonce() ?>">
+// #expenses-page-body (editToggle + table) gets replaced wholesale by htmx on
+// filter submits, so delegate from document to survive swaps.
+document.addEventListener('click', function(e) {
+    var btn = e.target.closest('#editToggle');
+    if (!btn) return;
+    var t = document.getElementById('expensesTable');
+    var editing = t.classList.toggle('editing');
+    btn.textContent = editing ? 'Done' : 'Edit';
+    btn.className   = editing ? 'btn btn-sm btn-danger' : 'btn btn-sm btn-outline-secondary';
+});
+</script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>
 

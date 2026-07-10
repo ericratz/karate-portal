@@ -180,7 +180,7 @@ include __DIR__ . '/../includes/header.php';
                 <?php else: ?>
 
                     <input type="text" id="candidateSearch" class="form-control form-control-sm mb-3"
-                           placeholder="Search by name or email…" oninput="filterCandidates(this.value)">
+                           placeholder="Search by name or email…">
 
                     <form method="post" id="resolveForm">
                         <?= csrf_input() ?>
@@ -202,12 +202,10 @@ include __DIR__ . '/../includes/header.php';
                             <?php foreach ($candidates as $c): ?>
                             <tr class="candidate-row" data-search="<?= strtolower(htmlspecialchars($c['first_name'].' '.$c['last_name'].' '.($c['email'] ?? ''))) ?>">
                                 <td>
-                                    <input type="radio" name="radio_pick" value="<?= $c['id'] ?>"
-                                           onchange="document.getElementById('realStudentId').value=this.value;
-                                                     document.getElementById('confirmBtn').disabled=false;">
+                                    <input type="radio" name="radio_pick" class="candidate-radio" value="<?= $c['id'] ?>">
                                 </td>
                                 <td>
-                                    <div class="fw-semibold"><?= htmlspecialchars($c['first_name'].' '.$c['last_name']) ?></div>
+                                    <div class="fw-semibold"><?= hn($c['first_name'].' '.$c['last_name']) ?></div>
                                     <?php if ($c['email']): ?><div class="text-muted small"><?= htmlspecialchars($c['email']) ?></div><?php endif; ?>
                                 </td>
                                 <td class="small text-nowrap">
@@ -233,13 +231,23 @@ include __DIR__ . '/../includes/header.php';
 
 </div>
 
-<script>
+<script nonce="<?= csp_nonce() ?>">
 function filterCandidates(q) {
     q = q.toLowerCase().trim();
     document.querySelectorAll('.candidate-row').forEach(row => {
         row.style.display = (!q || row.dataset.search.includes(q)) ? '' : 'none';
     });
 }
+var candidateSearch = document.getElementById('candidateSearch');
+if (candidateSearch) {
+    candidateSearch.addEventListener('input', function() { filterCandidates(this.value); });
+}
+document.querySelectorAll('.candidate-radio').forEach(function(radio) {
+    radio.addEventListener('change', function() {
+        document.getElementById('realStudentId').value = this.value;
+        document.getElementById('confirmBtn').disabled = false;
+    });
+});
 </script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>

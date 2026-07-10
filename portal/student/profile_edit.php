@@ -34,9 +34,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_password'])) {
     } else {
         db()->prepare('UPDATE users SET password_hash = ? WHERE id = ?')
              ->execute([password_hash($new, PASSWORD_BCRYPT), $user_id]);
-        $pw_msg = 'Password updated successfully.';
+        header('Location: profile_edit.php?pw_changed=1');
+        exit;
     }
 }
+
+if (isset($_GET['pw_changed'])) $pw_msg = 'Password updated successfully.';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['change_password'])) {
     $first        = trim($_POST['first_name']    ?? '');
@@ -162,6 +165,7 @@ include __DIR__ . '/../includes/header.php';
                 <input type="text" name="city_state_zip" class="form-control"
                        value="<?= htmlspecialchars($student['city_state_zip'] ?? '') ?>">
             </div>
+            <div class="col-12"><hr class="my-1"></div>
             <div class="col-6">
                 <label class="form-label">Uniform Size</label>
                 <select name="uniform_size" class="form-select">
@@ -180,6 +184,7 @@ include __DIR__ . '/../includes/header.php';
                     <?php endforeach; ?>
                 </select>
             </div>
+            <div class="col-12"><hr class="my-1"></div>
             <div class="col-12">
                 <label class="form-label">Medical Note</label>
                 <textarea name="medical_note" class="form-control" rows="2"
@@ -241,8 +246,7 @@ include __DIR__ . '/../includes/header.php';
             <p class="text-muted small mb-3">
                 PayPal automatically charges $<?= number_format(MONTHLY_FEE, 2) ?> each month.
             </p>
-            <form method="post" action="subscription_cancel.php"
-                  onsubmit="return confirm('Cancel your monthly auto-pay? You will need to pay manually each month.')">
+            <form method="post" action="subscription_cancel.php" id="cancelAutoPayForm">
                 <?= csrf_input() ?>
                 <button type="submit" class="btn btn-sm btn-danger">Cancel Auto-Pay</button>
             </form>
@@ -256,6 +260,17 @@ include __DIR__ . '/../includes/header.php';
 
 </div><!-- /col-md-5 -->
 </div><!-- /row -->
+
+<script nonce="<?= csp_nonce() ?>">
+var cancelAutoPayForm = document.getElementById('cancelAutoPayForm');
+if (cancelAutoPayForm) {
+    cancelAutoPayForm.addEventListener('submit', function(e) {
+        if (!confirm('Cancel your monthly auto-pay? You will need to pay manually each month.')) {
+            e.preventDefault();
+        }
+    });
+}
+</script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>
 

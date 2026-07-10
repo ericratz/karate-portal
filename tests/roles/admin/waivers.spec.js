@@ -24,10 +24,11 @@ test('Grant Exemption card header is visible', async ({ page }) => {
     await expect(page.locator('.card-header').filter({ hasText: 'Grant Exemption' })).toBeVisible();
 });
 
-test('grant form has student select, type select, reason textarea, date, and submit button', async ({ page }) => {
+test('grant form has student type-to-filter, type select, reason textarea, date, and submit button', async ({ page }) => {
     await page.goto(BASE + '/admin/waivers.php');
-    // Two select[name="student_id"] on this page (grant form + filter bar) â€” target the grant form's
-    await expect(page.locator('select[name="student_id"]').first()).toBeVisible();
+    await page.waitForLoadState('domcontentloaded');
+    // Student selector is now type-to-filter — no raw <select name=”student_id”>
+    await expect(page.locator('#grantStudentFilter')).toBeVisible();
     await expect(page.locator('select[name="waiver_type"]')).toBeVisible();
     await expect(page.locator('textarea[name="reason"]')).toBeVisible();
     await expect(page.locator('input[name="granted_date"]')).toBeVisible();
@@ -46,11 +47,7 @@ test('waiver_type select contains all expected exemption types', async ({ page }
 
 test('submitting grant form without student shows validation error', async ({ page }) => {
     await page.goto(BASE + '/admin/waivers.php');
-    // Remove required attribute so browser doesn't block submission
-    await page.evaluate(() => {
-        const sel = document.querySelector('select[name="student_id"]');
-        if (sel) sel.removeAttribute('required');
-    });
+    // Hidden input #grantStudentId is empty by default — just submit without selecting a student
     await page.click('button[name="grant"]');
     await page.waitForLoadState('domcontentloaded');
     await expect(page.locator('.alert-danger').first()).toBeVisible();
@@ -63,11 +60,11 @@ test('All Exemptions card header is visible', async ({ page }) => {
     await expect(page.locator('.card-header').filter({ hasText: 'All Exemptions' })).toBeVisible();
 });
 
-test('filter bar has student and type selects', async ({ page }) => {
+test('filter bar has student type-to-filter and type select', async ({ page }) => {
     await page.goto(BASE + '/admin/waivers.php');
-    // There are two student_id selects: one in the grant form, one in the filter bar
-    const studentSelects = await page.locator('select[name="student_id"]').count();
-    expect(studentSelects).toBeGreaterThanOrEqual(1);
+    // Both grant form and filter bar now use type-to-filter inputs instead of selects
+    await expect(page.locator('#grantStudentFilter')).toBeVisible();
+    await expect(page.locator('#filterStudentFilter')).toBeVisible();
     await expect(page.locator('select[name="type"]')).toBeVisible();
 });
 
@@ -75,8 +72,10 @@ test('filter bar has student and type selects', async ({ page }) => {
 
 test('granting an exemption shows Exemption granted success message', async ({ page }) => {
     await page.goto(BASE + '/admin/waivers.php');
-    // Use the grant form's student_id (first select on page)
-    await page.locator('select[name="student_id"]').first().selectOption(String(STUDENT_ID));
+    // Use the grant form's type-to-filter to select Sarah Johnson (id=2)
+    await page.fill('#grantStudentFilter', 'Sarah');
+    await page.waitForTimeout(150);
+    await page.locator('.grant-stu-btn:visible').first().click();
     await page.selectOption('select[name="waiver_type"]', 'belt_test');
     await page.fill('textarea[name="reason"]', 'Test exemption via Playwright');
     await page.click('button[name="grant"]');
@@ -126,7 +125,9 @@ test('deleting an exemption removes it from the list', async ({ page }) => {
 test('student filter narrows the exemptions list', async ({ page }) => {
     // First grant a fresh exemption so the list is non-empty
     await page.goto(BASE + '/admin/waivers.php');
-    await page.locator('select[name="student_id"]').first().selectOption(String(STUDENT_ID));
+    await page.fill('#grantStudentFilter', 'Sarah');
+    await page.waitForTimeout(150);
+    await page.locator('.grant-stu-btn:visible').first().click();
     await page.selectOption('select[name="waiver_type"]', 'seminar');
     await page.click('button[name="grant"]');
     await page.waitForLoadState('domcontentloaded');

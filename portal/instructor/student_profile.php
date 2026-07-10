@@ -19,19 +19,22 @@ if (has_role('student') && !has_role('instructor', 'admin')) {
 }
 
 // Instructor/Admin: add a note (write-only for instructors)
+$note_error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add_note') {
     verify_csrf();
     $content = trim($_POST['note_content'] ?? '');
-    if ($id && $content !== '') {
+    if ($content === '') {
+        $note_error = 'Note cannot be empty.';
+    } else {
         db()->prepare('INSERT INTO student_notes (student_id, content, created_by) VALUES (?,?,?)')
              ->execute([$id, $content, current_user_id()]);
         audit('add_note', 'student', $id);
+        if (empty($_SERVER['HTTP_HX_REQUEST'])) {
+            header("Location: student_profile.php?id=$id&noted=1");
+            exit;
+        }
+        $note_just_added = true;
     }
-    if (empty($_SERVER['HTTP_HX_REQUEST'])) {
-        header("Location: student_profile.php?id=$id&noted=1");
-        exit;
-    }
-    $note_just_added = true;
 }
 
 // Instructor/Admin: bulk update attendance from checkboxes
@@ -54,30 +57,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'updat
         exit;
     }
 }
-
-// Instructor/Admin: toggle attendance present/absent (AJAX)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'toggle_attendance') {
-    verify_csrf();
-    $session_id = (int)$_POST['session_id'];
-    if ($id && $session_id) {
-        $cur = db()->prepare('SELECT present FROM attendance WHERE student_id=? AND session_id=?');
-        $cur->execute([$id, $session_id]);
-        $row = $cur->fetch();
-        $new_present = $row ? ($row['present'] ? 0 : 1) : 1;
-        db()->prepare(
-            'INSERT INTO attendance (student_id, session_id, present, recorded_by)
-             VALUES (?,?,?,?)
-             ON DUPLICATE KEY UPDATE present=VALUES(present), recorded_by=VALUES(recorded_by)'
-        )->execute([$id, $session_id, $new_present, current_user_id()]);
-        audit('toggle_attendance', 'student', $id, "session $session_id present=$new_present");
-        header('Content-Type: application/json');
-        echo json_encode(['present' => $new_present]);
-        exit;
-    }
-    http_response_code(400);
-    exit;
-}
-
 
 $student = db()->prepare(
     'SELECT s.*, u.username, u.email AS login_email, u.last_login
@@ -242,19 +221,21 @@ if (in_array($student['student_type'], ['parent', 'instructor'], true)) {
     }
 }
 
-$page_title = $student['first_name'] . ' ' . $student['last_name'];
+$page_title = ucwords(strtolower($student['first_name'] . ' ' . $student['last_name']));
 include __DIR__ . '/../includes/header.php';
 ?>
 
 <div class="d-flex align-items-center gap-3 mb-3">
     <h4 class="mb-0">
-        <?= htmlspecialchars($student['first_name'] . ' ' . $student['last_name']) ?>
+        <?= hn($student['first_name'] . ' ' . $student['last_name']) ?>
         <?php if (!$student['active']): ?>
             <span class="badge bg-secondary ms-2">Inactive</span>
         <?php endif; ?>
     </h4>
     <?php if (has_role('admin')): ?>
     <div class="ms-auto d-flex gap-2">
+        <a href="../admin/member_card.php?student_id=<?= $id ?>" target="_blank"
+           class="btn btn-sm btn-outline-secondary">Member Card</a>
         <a href="../admin/student_edit.php?id=<?= $id ?>&ref=profile"
            class="btn btn-sm btn-success">Full Edit</a>
     </div>
@@ -267,7 +248,7 @@ include __DIR__ . '/../includes/header.php';
     <li class="nav-item">
         <a class="nav-link <?= $tab['id'] === $id ? 'active' : '' ?>"
            href="student_profile.php?id=<?= $tab['id'] ?>">
-            <?= htmlspecialchars($tab['name']) ?>
+            <?= hn($tab['name']) ?>
             <?php if ($tab['role'] === 'parent'): ?>
                 <span class="badge bg-info text-dark ms-1" style="font-size:.6rem;vertical-align:middle">Parent</span>
             <?php endif; ?>
@@ -321,10 +302,10 @@ include __DIR__ . '/../includes/header.php';
                 <span>Profile Info</span>
                 <?php if ($can_edit_profile): ?>
                 <div class="d-flex gap-2">
-                    <button type="button" id="profileCancelBtn" class="btn btn-sm btn-secondary" style="display:none"
-                            onclick="cardCancel('profile')">Cancel</button>
-                    <button type="button" id="profileEditBtn" class="btn btn-sm btn-success"
-                            onclick="cardToggle('profile')">Edit</button>
+                    <button type="button" id="profileCancelBtn" class="btn btn-sm btn-secondary card-cancel-btn" style="display:none"
+                            data-card-id="profile">Cancel</button>
+                    <button type="button" id="profileEditBtn" class="btn btn-sm btn-success card-toggle-btn"
+                            data-card-id="profile">Edit</button>
                 </div>
                 <?php endif; ?>
             </div>
@@ -449,17 +430,10 @@ include __DIR__ . '/../includes/header.php';
         <!-- Attendance -->
         <div id="att-card" class="card border-0 shadow-sm">
             <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
-                <span>
-                    Recent Attendance
-                </span>
+                <span>Sessions Attended</span>
                 <div class="d-flex gap-2">
-                    <?php if (has_role('instructor', 'admin')): ?>
-                    <a href="attendance.php?date=<?= date('Y-m-d') ?>&highlight=<?= $id ?>"
-                       class="btn btn-sm btn-success">+ Record Attendance</a>
-                    <?php endif; ?>
                     <?php if (has_role('instructor') && !has_role('admin') && !empty($attendance)): ?>
-                    <button type="button" id="attEditBtn" class="btn btn-sm btn-outline-secondary"
-                            onclick="document.getElementById('attEditBtn').style.display='none';document.getElementById('attConfirmBtn').style.display='';document.querySelectorAll('.att-edit').forEach(function(e){e.style.display=''})">Edit</button>
+                    <button type="button" id="attEditBtn" class="btn btn-sm btn-outline-secondary">Edit</button>
                     <button type="submit" id="attConfirmBtn" form="att-form" class="btn btn-sm btn-success"
                             style="display:none">Confirm</button>
                     <?php endif; ?>
@@ -477,22 +451,22 @@ include __DIR__ . '/../includes/header.php';
                     <table class="table table-sm table-hover mb-0">
                         <tbody>
                         <?php foreach ($attendance as $a): ?>
-                            <?php if (!$a['present'] && !has_role('instructor', 'admin')): continue; endif; ?>
+                            <?php if (!$a['present']): continue; endif; ?>
                             <tr>
-                                <td><?= date('D d M Y', strtotime($a['session_date'])) ?></td>
-                                <?php if (has_role('instructor', 'admin')): ?>
                                 <td>
-                                    <?php if ($a['present']): ?>
-                                        <span class="badge bg-success">Present</span>
-                                    <?php endif; ?>
-                                    <?php if (has_role('instructor') && !has_role('admin')): ?>
-                                    <span class="att-edit ms-2" style="display:none">
+                                    <a href="attendance.php?date=<?= $a['session_date'] ?>"
+                                       class="text-primary text-decoration-none">
+                                        <?= date('D d M Y', strtotime($a['session_date'])) ?>
+                                    </a>
+                                </td>
+                                <?php if (has_role('instructor') && !has_role('admin')): ?>
+                                <td>
+                                    <span class="att-edit" style="display:none">
                                         <input type="checkbox" class="form-check-input"
                                                name="att_present[]"
                                                value="<?= $a['session_id'] ?>"
-                                               <?= $a['present'] ? 'checked' : '' ?>>
+                                               checked>
                                     </span>
-                                    <?php endif; ?>
                                 </td>
                                 <?php endif; ?>
                             </tr>
@@ -549,13 +523,17 @@ include __DIR__ . '/../includes/header.php';
                 <?php else: ?>
                 <table class="table table-sm mb-0">
                     <thead class="table-light">
-                        <tr><th>Rank</th><th>Date Achieved</th></tr>
+                        <tr><th>Rank</th><th>Date Achieved</th><th></th></tr>
                     </thead>
                     <tbody>
                     <?php foreach ($ranks as $i => $r): ?>
                         <tr class="<?= $i === 0 ? 'table-purple' : '' ?>">
                             <td><?= htmlspecialchars($r['kyu_dan']) ?></td>
                             <td><?= date('M Y', strtotime($r['achieved_date'])) ?></td>
+                            <td>
+                                <a href="../admin/certificate.php?student_id=<?= $id ?>&rank_id=<?= $r['rank_id'] ?>"
+                                   target="_blank" class="btn btn-sm btn-outline-secondary py-0">Certificate</a>
+                            </td>
                         </tr>
                     <?php endforeach; ?>
                     </tbody>
@@ -566,7 +544,9 @@ include __DIR__ . '/../includes/header.php';
 
         <!-- Belt Tests -->
         <div class="card border-0 shadow-sm">
-            <div class="card-header bg-white fw-semibold">Belt Test History</div>
+            <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
+                <span>Belt Test History</span>
+            </div>
             <div class="card-body p-0" style="max-height:320px;overflow-y:auto">
                 <?php if (empty($belt_tests)): ?>
                     <p class="p-3 text-muted">No belt tests on record.</p>
@@ -585,7 +565,16 @@ include __DIR__ . '/../includes/header.php';
                     <?php foreach ($belt_tests as $bt): ?>
                         <tr>
                             <td class="text-nowrap"><?= date('d M Y', strtotime($bt['test_date'])) ?></td>
-                            <td><?= htmlspecialchars($bt['kyu_dan']) ?></td>
+                            <td>
+                                <?php if (has_role('admin')): ?>
+                                <a href="belt_test_edit.php?id=<?= $bt['id'] ?>&ref_pid=<?= $id ?>"
+                                   class="text-primary text-decoration-none">
+                                    <?= htmlspecialchars($bt['kyu_dan']) ?>
+                                </a>
+                                <?php else: ?>
+                                    <?= htmlspecialchars($bt['kyu_dan']) ?>
+                                <?php endif; ?>
+                            </td>
                             <td>
                                 <?php if (isset($bt['score']) && $bt['score'] !== null): ?>
                                     <?php if ($bt['result']==='pass'): ?>
@@ -601,7 +590,13 @@ include __DIR__ . '/../includes/header.php';
                                 <?= $bt['fee_paid'] ? '<span class="text-success">✓</span>' : '<span class="text-muted">—</span>' ?>
                             </td>
                             <td class="text-center">
-                                <?= $bt['belt_awarded'] ? '<span class="badge bg-success">Yes</span>' : '<span class="text-muted">—</span>' ?>
+                                <?php if ($bt['result'] === 'pass'): ?>
+                                    <span class="badge bg-success">Passed</span>
+                                <?php elseif ($bt['result'] === 'fail'): ?>
+                                    <span class="text-danger">✗</span>
+                                <?php else: ?>
+                                    <span class="text-muted">—</span>
+                                <?php endif; ?>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -625,7 +620,7 @@ include __DIR__ . '/../includes/header.php';
                         <tr>
                             <td>
                                 <a href="student_profile.php?id=<?= $rel['id'] ?>">
-                                    <?= htmlspecialchars($rel['name']) ?>
+                                    <?= hn($rel['name']) ?>
                                 </a>
                                 <?php if ($rel['role'] === 'parent'): ?>
                                     <span class="badge bg-info text-dark ms-2" style="font-size:.7rem">Parent</span>
@@ -669,8 +664,11 @@ include __DIR__ . '/../includes/header.php';
 <div id="notes-card" class="card border-0 shadow-sm mt-4">
     <div class="card-header bg-white fw-semibold">Add Note</div>
     <div class="card-body">
-        <?php if (isset($_GET['noted']) || $note_just_added): ?>
+        <?php if (isset($_GET['noted']) || !empty($note_just_added)): ?>
         <div class="alert alert-success py-2 mb-3">Note saved.</div>
+        <?php endif; ?>
+        <?php if ($note_error): ?>
+        <div class="alert alert-danger py-2 mb-3"><?= htmlspecialchars($note_error) ?></div>
         <?php endif; ?>
         <form method="post"
               hx-post="student_profile.php?id=<?= $id ?>"
@@ -685,10 +683,7 @@ include __DIR__ . '/../includes/header.php';
 </div>
 <?php endif; ?>
 
-<script>
-document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
-    new bootstrap.Tooltip(el);
-});
+<script nonce="<?= csp_nonce() ?>">
 function cardToggle(cardId) {
     var btn    = document.getElementById(cardId + 'EditBtn');
     var cancel = document.getElementById(cardId + 'CancelBtn');
@@ -722,6 +717,32 @@ function cardCancel(cardId) {
     if (form) form.reset();
     if (typeof setFormClean === 'function') setFormClean();
 }
+
+// Delegated — #profile-card / #att-card get replaced wholesale by htmx on
+// save, so bind from document to survive swaps.
+document.addEventListener('click', function(e) {
+    var btn;
+    if ((btn = e.target.closest('.card-toggle-btn'))) {
+        cardToggle(btn.dataset.cardId);
+        return;
+    }
+    if ((btn = e.target.closest('.card-cancel-btn'))) {
+        cardCancel(btn.dataset.cardId);
+        return;
+    }
+    if ((btn = e.target.closest('#attEditBtn'))) {
+        btn.style.display = 'none';
+        var confirmBtn = document.getElementById('attConfirmBtn');
+        if (confirmBtn) confirmBtn.style.display = '';
+        document.querySelectorAll('.att-edit').forEach(function(el) { el.style.display = ''; });
+        return;
+    }
+});
+</script>
+<script nonce="<?= csp_nonce() ?>">
+document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
+    new bootstrap.Tooltip(el);
+});
 </script>
 
 

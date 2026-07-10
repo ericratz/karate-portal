@@ -61,11 +61,11 @@ test.describe('Pay page', () => {
         await expect(page.locator('#row-month-picker')).toBeHidden();
     });
 
-    test('month picker has 4 options (current + next 3 months)', async ({ page }) => {
+    test('month picker has 5 options (previous + current + next 3 months)', async ({ page }) => {
         await page.goto(BASE + '/student/pay.php');
         await page.locator('#chk-monthly_tuition').check();
         const opts = await page.locator('#tuitionMonth option').count();
-        expect(opts).toBe(4);
+        expect(opts).toBe(5);
     });
 
     test('checking a fee updates total to non-zero', async ({ page }) => {

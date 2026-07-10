@@ -123,7 +123,7 @@ function cmp_class(string $a, string $b): string {
 }
 ?>
 
-<style>
+<style nonce="<?= csp_nonce() ?>">
     .bg-purple { background-color: #6f42c1 !important; }
     .compare-table td:first-child { width: 38%; color: #6c757d; font-size: .85rem; }
     .compare-table td:last-child  { font-weight: 500; }
@@ -144,19 +144,18 @@ function cmp_class(string $a, string $b): string {
         <span class="badge <?= $type_colours[$link_req['request_type']] ?? 'bg-secondary' ?> me-2">
             <?= $type_labels[$link_req['request_type']] ?? ucfirst($link_req['request_type']) ?>
         </span>
-        <strong><?= htmlspecialchars($user['first_name'] . ' ' . $user['last_name']) ?></strong>
+        <strong><?= hn($user['first_name'] . ' ' . $user['last_name']) ?></strong>
         submitted a link request
         <span class="text-muted small">(<?= date('d M Y g:i a', strtotime($link_req['created_at'])) ?>)</span>
         <?php if ($link_req['notes']): ?>
             <div class="mt-1 small fst-italic">"<?= htmlspecialchars($link_req['notes']) ?>"</div>
         <?php endif; ?>
     </div>
-    <form method="post" class="ms-3 flex-shrink-0">
+    <form method="post" class="ms-3 flex-shrink-0" id="dismissLinkForm">
         <?= csrf_input() ?>
         <input type="hidden" name="action" value="dismiss">
         <input type="hidden" name="link_request_id" value="<?= $link_request_id ?>">
-        <button type="submit" class="btn btn-sm btn-outline-secondary"
-                onclick="return confirm('Dismiss this request without linking?')">Dismiss</button>
+        <button type="submit" class="btn btn-sm btn-outline-secondary">Dismiss</button>
     </form>
 </div>
 <?php endif; ?>
@@ -176,7 +175,7 @@ function cmp_class(string $a, string $b): string {
                     <option value="">— pick a student —</option>
                     <?php foreach ($all_students as $s): ?>
                     <option value="<?= $s['id'] ?>" <?= $s['id'] === $student_id ? 'selected' : '' ?>>
-                        <?= htmlspecialchars($s['first_name'].' '.$s['last_name']) ?>
+                        <?= hn($s['first_name'].' '.$s['last_name']) ?>
                         (<?= $s['student_type'] ?>)
                     </option>
                     <?php endforeach; ?>
@@ -203,11 +202,11 @@ function cmp_class(string $a, string $b): string {
                     <tbody>
                         <tr class="<?= $student ? cmp_class($user['first_name'] ?? '', $student['first_name']) : '' ?>">
                             <td>First Name</td>
-                            <td><?= htmlspecialchars($user['first_name'] ?? '—') ?></td>
+                            <td><?= hn($user['first_name'] ?? '—') ?></td>
                         </tr>
                         <tr class="<?= $student ? cmp_class($user['last_name'] ?? '', $student['last_name']) : '' ?>">
                             <td>Last Name</td>
-                            <td><?= htmlspecialchars($user['last_name'] ?? '—') ?></td>
+                            <td><?= hn($user['last_name'] ?? '—') ?></td>
                         </tr>
                         <tr class="<?= $student ? cmp_class($user['date_of_birth'] ?? '', $student['date_of_birth'] ?? '') : '' ?>">
                             <td>Date of Birth</td>
@@ -236,7 +235,7 @@ function cmp_class(string $a, string $b): string {
                             <td>
                                 <?php if ($existing_link): ?>
                                     <a href="../instructor/student_profile.php?id=<?= $existing_link['id'] ?>">
-                                        <?= htmlspecialchars($existing_link['first_name'].' '.$existing_link['last_name']) ?>
+                                        <?= hn($existing_link['first_name'].' '.$existing_link['last_name']) ?>
                                     </a>
                                 <?php else: ?>
                                     <span class="text-muted">Not linked</span>
@@ -266,11 +265,11 @@ function cmp_class(string $a, string $b): string {
                     <tbody>
                         <tr class="<?= cmp_class($user['first_name'] ?? '', $student['first_name']) ?>">
                             <td>First Name</td>
-                            <td><?= htmlspecialchars($student['first_name']) ?></td>
+                            <td><?= hn($student['first_name']) ?></td>
                         </tr>
                         <tr class="<?= cmp_class($user['last_name'] ?? '', $student['last_name']) ?>">
                             <td>Last Name</td>
-                            <td><?= htmlspecialchars($student['last_name']) ?></td>
+                            <td><?= hn($student['last_name']) ?></td>
                         </tr>
                         <tr class="<?= cmp_class($user['date_of_birth'] ?? '', $student['date_of_birth'] ?? '') ?>">
                             <td>Date of Birth</td>
@@ -334,14 +333,14 @@ function cmp_class(string $a, string $b): string {
 
 <?php if ($student): ?>
 <div class="d-flex gap-3 align-items-center">
-    <form method="post">
+    <form method="post" id="linkAccountsForm"
+          data-confirm="Link <?= htmlspecialchars(addslashes($user['username'])) ?> to <?= htmlspecialchars(addslashes($student['first_name'].' '.$student['last_name'])) ?>?">
         <?= csrf_input() ?>
         <input type="hidden" name="action"           value="link">
         <input type="hidden" name="user_id"          value="<?= $user_id ?>">
         <input type="hidden" name="student_id"       value="<?= $student_id ?>">
         <input type="hidden" name="link_request_id"  value="<?= $link_request_id ?>">
-        <button type="submit" class="btn btn-primary px-4"
-                onclick="return confirm('Link <?= htmlspecialchars(addslashes($user['username'])) ?> to <?= htmlspecialchars(addslashes($student['first_name'].' '.$student['last_name'])) ?>?')">
+        <button type="submit" class="btn btn-primary px-4">
             Link These Accounts
         </button>
     </form>
@@ -354,7 +353,7 @@ function cmp_class(string $a, string $b): string {
 </div>
 <?php endif; ?>
 
-<script>
+<script nonce="<?= csp_nonce() ?>">
 document.getElementById('studentPicker').addEventListener('change', function() {
     if (!this.value) return;
     window.setFormClean();
@@ -364,6 +363,20 @@ document.getElementById('studentPicker').addEventListener('change', function() {
     params.set('student_id', this.value);
     window.location.href = 'compare_account.php?' + params.toString();
 });
+
+var dismissLinkForm = document.getElementById('dismissLinkForm');
+if (dismissLinkForm) {
+    dismissLinkForm.addEventListener('submit', function(e) {
+        if (!confirm('Dismiss this request without linking?')) e.preventDefault();
+    });
+}
+
+var linkAccountsForm = document.getElementById('linkAccountsForm');
+if (linkAccountsForm) {
+    linkAccountsForm.addEventListener('submit', function(e) {
+        if (!confirm(linkAccountsForm.dataset.confirm)) e.preventDefault();
+    });
+}
 </script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>

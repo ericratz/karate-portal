@@ -162,9 +162,45 @@ test.describe('Admin roster filters', () => {
         const unpaid = await page.locator('tbody td .text-danger').count();
         expect(paid + unpaid).toBeGreaterThan(0);
     });
+
+    test('cards have id attributes for hide-on-empty JS targeting', async ({ page }) => {
+        // PHP renders id=”card-students” etc. for the hide-on-empty feature
+        const cardIds = ['card-instructors', 'card-parents', 'card-students', 'card-guests'];
+        let found = 0;
+        for (const id of cardIds) {
+            if (await page.locator(`#${id}`).count() > 0) found++;
+        }
+        expect(found).toBeGreaterThan(0);
+    });
+
+    test('filtering to no results hides each card', async ({ page }) => {
+        await page.fill('#rosterSearch', 'zzznomatch_hide_test');
+        await page.waitForTimeout(300);
+        for (const id of ['card-instructors', 'card-parents', 'card-students', 'card-guests']) {
+            const el = page.locator(`#${id}`);
+            if (await el.count() === 0) continue;
+            const display = await el.evaluate(e => window.getComputedStyle(e).display);
+            expect(display).toBe('none');
+        }
+    });
+
+    test('clearing filter restores hidden cards', async ({ page }) => {
+        const totalRows = await page.locator('tbody tr[data-name]').count();
+        if (totalRows === 0) return;
+        await page.fill('#rosterSearch', 'zzznomatch_restore_test');
+        await page.waitForTimeout(300);
+        await page.fill('#rosterSearch', '');
+        await page.waitForTimeout(300);
+        for (const id of ['card-instructors', 'card-parents', 'card-students', 'card-guests']) {
+            const el = page.locator(`#${id}`);
+            if (await el.count() === 0) continue;
+            const display = await el.evaluate(e => window.getComputedStyle(e).display);
+            expect(display).not.toBe('none');
+        }
+    });
 });
 
-// â”€â”€ INSTRUCTOR ROSTER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── INSTRUCTOR ROSTER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 test.describe('Instructor roster filters', () => {
     test.use({ storageState: AUTH.instructor });

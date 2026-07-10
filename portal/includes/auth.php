@@ -24,6 +24,21 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// ── CSP nonce ────────────────────────────────────────────────
+// One random nonce per request, for inline <script>/<style> tags.
+function csp_nonce(): string {
+    static $nonce = null;
+    if ($nonce === null) {
+        $nonce = base64_encode(random_bytes(16));
+    }
+    return $nonce;
+}
+
+$__csp_nonce = csp_nonce();
+$__csp_report_url = (!empty($_SERVER['HTTPS']) ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . '/karate/portal/api/csp_report.php';
+header("Reporting-Endpoints: csp-endpoint=\"$__csp_report_url\"");
+header("Content-Security-Policy: default-src 'self'; script-src 'self' 'nonce-$__csp_nonce' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://www.paypal.com https://www.paypalobjects.com https://accounts.google.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; img-src 'self' data: https://www.paypalobjects.com; frame-src https://www.paypal.com https://accounts.google.com; connect-src 'self' https://www.paypal.com https://api.paypal.com https://api.sandbox.paypal.com https://cdnjs.cloudflare.com; font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; report-uri /karate/portal/api/csp_report.php; report-to csp-endpoint");
+
 // ── CSRF ─────────────────────────────────────────────────────
 function csrf_token(): string {
     if (empty($_SESSION['csrf_token'])) {
@@ -160,7 +175,9 @@ function attempt_login(string $username, string $password): string {
     db()->prepare('UPDATE users SET last_login = NOW() WHERE id = ?')
          ->execute([$user['id']]);
 
-    session_regenerate_id(true);
+    // @: session_regenerate_id() warns "headers already sent" under CLI/PHPUnit
+    // (no real HTTP header stream there) — harmless, never occurs on real requests.
+    @session_regenerate_id(true);
     $_SESSION['user_id']  = $user['id'];
     $_SESSION['username'] = $username;
 
@@ -184,7 +201,6 @@ function dashboard_url(string $role): string {
 
 
 function logout(): void {
-    audit('logout');
     $_SESSION = [];
     if (ini_get('session.use_cookies')) {
         $p = session_get_cookie_params();
@@ -194,5 +210,10 @@ function logout(): void {
     session_destroy();
     header('Location: ' . SITE_URL . '/login.php');
     exit;
+}
+
+/** Render a person's name with proper capitalisation and XSS escaping. */
+function hn(string $name): string {
+    return htmlspecialchars(ucwords(strtolower($name)));
 }
 

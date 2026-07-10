@@ -17,8 +17,8 @@ if ($own = $own_stmt->fetch()) {
     $own_id = (int)$own['id'];
     $family[] = [
         'id'    => $own_id,
-        'label' => htmlspecialchars($own['first_name'] . ' ' . $own['last_name']),
-        'name'  => htmlspecialchars($own['first_name'] . ' ' . $own['last_name']),
+        'label' => hn($own['first_name'] . ' ' . $own['last_name']),
+        'name'  => hn($own['first_name'] . ' ' . $own['last_name']),
     ];
 }
 
@@ -34,8 +34,8 @@ foreach ($ch_stmt->fetchAll() as $c) {
     $child_ids[] = (int)$c['id'];
     $family[] = [
         'id'    => (int)$c['id'],
-        'label' => htmlspecialchars($c['first_name'] . ' ' . $c['last_name']),
-        'name'  => htmlspecialchars($c['first_name'] . ' ' . $c['last_name']),
+        'label' => hn($c['first_name'] . ' ' . $c['last_name']),
+        'name'  => hn($c['first_name'] . ' ' . $c['last_name']),
     ];
 }
 
@@ -108,15 +108,17 @@ $rp_stmt = db()->prepare(
 $rp_stmt->execute($family_ids);
 $reg_paid_ids = array_map('intval', $rp_stmt->fetchAll(PDO::FETCH_COLUMN));
 
-// ── Month picker options ─────────────────────────────────────────
+// ── Month picker options (previous month + current + next 3 months) ──────
 $month_options = [];
-for ($i = 0; $i <= 3; $i++) {
+for ($i = -1; $i <= 3; $i++) {
     $ts = mktime(0, 0, 0, date('n') + $i, 1);
     $month_options[] = [
         'value' => date('Y-m-01', $ts),
         'label' => date('F Y', $ts),
     ];
 }
+$current_month_value = date('Y-m-01');
+$next_month_value    = date('Y-m-01', mktime(0, 0, 0, date('n') + 1, 1));
 
 $fees = [
     'monthly_tuition' => ['label' => 'Monthly Tuition',  'amount' => MONTHLY_FEE],
@@ -314,13 +316,15 @@ include __DIR__ . '/../includes/header.php';
 
 <script src="https://www.paypal.com/sdk/js?client-id=<?= htmlspecialchars(PAYPAL_CLIENT_ID) ?>&currency=USD"></script>
 
-<script>
+<script nonce="<?= csp_nonce() ?>">
 const FEES                    = <?= json_encode($fees) ?>;
 const CSRF                    = document.querySelector('meta[name="csrf-token"]').content;
 const TUITION_PAID_IDS        = <?= json_encode($tuition_paid_ids) ?>;
 const REG_PAID_IDS            = <?= json_encode($reg_paid_ids) ?>;
 const FAMILY_PAID             = <?= json_encode($family_tuition_paid) ?>;
 const MONTH_OPTIONS           = <?= json_encode($month_options) ?>;
+const CURRENT_MONTH_VALUE     = <?= json_encode($current_month_value) ?>;
+const NEXT_MONTH_VALUE        = <?= json_encode($next_month_value) ?>;
 const OWN_ID                  = <?= json_encode($own_id) ?>;
 const CHILD_TUITION_PAID_IDS  = <?= json_encode($child_tuition_paid_ids) ?>;
 const STUDENT_LABELS          = <?= json_encode(array_column($family, 'label', 'id')) ?>;
@@ -481,7 +485,7 @@ function onStudentChange() {
     // Set tuition month default for this student
     var alreadyPaid = TUITION_PAID_IDS.indexOf(sid) !== -1;
     document.getElementById('tuitionMonth').value =
-        alreadyPaid ? MONTH_OPTIONS[1].value : MONTH_OPTIONS[0].value;
+        alreadyPaid ? NEXT_MONTH_VALUE : CURRENT_MONTH_VALUE;
 
     recalculate();
 }
@@ -566,7 +570,7 @@ document.getElementById('customAmount').addEventListener('input', recalculate);
     var sid = getSelectedStudentId();
     var alreadyPaid = TUITION_PAID_IDS.indexOf(sid) !== -1;
     document.getElementById('tuitionMonth').value =
-        alreadyPaid ? MONTH_OPTIONS[1].value : MONTH_OPTIONS[0].value;
+        alreadyPaid ? NEXT_MONTH_VALUE : CURRENT_MONTH_VALUE;
     updateTuitionWarning();
 })();
 </script>

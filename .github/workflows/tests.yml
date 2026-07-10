@@ -15,9 +15,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install npm dependencies
-        run: npm ci
-
       # credentials.js is gitignored — recreate it from GitHub secrets
       - name: Write credentials file
         shell: powershell
@@ -51,12 +48,6 @@ jobs:
         run: |
           $src = "C:\Users\ericratz\XAMPP\htdocs\karate\.env"
           if (Test-Path $src) { Copy-Item $src .env }
-
-      - name: Install Composer dependencies
-        shell: powershell
-        run: |
-          Invoke-WebRequest -Uri https://getcomposer.org/composer.phar -OutFile "$env:GITHUB_WORKSPACE\portal\composer.phar"
-          & "C:\Users\ericratz\XAMPP\php\php.exe" "$env:GITHUB_WORKSPACE\portal\composer.phar" install --working-dir="$env:GITHUB_WORKSPACE\portal" --no-interaction
 
       - name: Run PHPUnit tests
         shell: powershell

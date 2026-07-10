@@ -116,6 +116,7 @@ CREATE TABLE IF NOT EXISTS student_ranks (
     rank_id       INT  NOT NULL,
     achieved_date DATE NOT NULL,
     notes         TEXT,
+    cert_number   VARCHAR(15) DEFAULT NULL,
     UNIQUE KEY uq_student_rank (student_id, rank_id),
     FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
     FOREIGN KEY (rank_id)    REFERENCES ranks(id)

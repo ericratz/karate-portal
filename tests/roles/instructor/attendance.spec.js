@@ -16,6 +16,9 @@ test('attendance page shows student list', async ({ page }) => {
 test('saving attendance shows confirmation', async ({ page }) => {
     test.setTimeout(20000);
     await page.goto(BASE + `/instructor/attendance.php?date=${TEST_DATE}`);
+    // Saving with zero students present now auto-deletes the empty session
+    // (see README v3.4 attendance auto-cleanup), so check one present first.
+    await page.locator('input[name="present[]"]').first().check();
     await page.click('button[type="submit"]');
     await page.waitForLoadState('domcontentloaded');
     await assertNoPhpErrors(page, 'attendance saved');

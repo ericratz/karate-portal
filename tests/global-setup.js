@@ -24,7 +24,7 @@ function clearRateLimits() {
 }
 
 async function createAuthStates(authDir) {
-    const browser = await chromium.launch({ channel: 'chrome' });
+    const browser = await chromium.launch({ headless: true });
     const BASE = 'http://localhost/karate/portal';
     const roles = [
         ['admin',      ADMIN_USER,   ADMIN_PASS],

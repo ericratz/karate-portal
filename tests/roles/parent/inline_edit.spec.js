@@ -59,8 +59,8 @@ test.describe('Parent inline profile edit', () => {
         await page.waitForLoadState('networkidle');
 
         expect(navigated).toBe(false);
-        // Card should now show the new name
-        await expect(page.locator('#profile-card')).toContainText('EmilyEdited');
+        // hn() applies ucwords(strtolower()), so 'EmilyEdited' displays as 'Emilyedited'
+        await expect(page.locator('#profile-card')).toContainText('Emilyedited');
 
         // Restore original value
         await page.click('#profileEditBtn');

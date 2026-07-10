@@ -1,12 +1,38 @@
-# Deny direct browser access to .env
-<Files ".env">
+# No directory listings — this docroot has non-web directories (backups/,
+# migrations/, node_modules/, etc.) that must never be browsable.
+Options -Indexes
+
+# Deny direct browser access to sensitive files at the project root.
+# (DB backups live in backups/ and must never be reachable even by direct URL.)
+<FilesMatch "^\.env$|\.(sql|sql\.gz|gz|log)$|^phpinfo\.txt$">
     Order allow,deny
     Deny from all
-</Files>
+</FilesMatch>
+
+# Deny all web access to non-web project directories, even by direct URL.
+# CRITICAL: portal/cron/*.php run unattended jobs (DB backup, email alerts) with
+# no auth check — they must never be reachable over HTTP, only via CLI/Task Scheduler.
+# portal/includes/*.php and portal/vendor/ likewise are library code, not pages,
+# and blow up with a raw fatal-error/path disclosure if requested directly.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^(backups|migrations|node_modules|memory|tests)(/|$) - [F,L]
+    RewriteRule ^portal/(cron|includes|vendor)(/|$) - [F,L]
+</IfModule>
 
 # Security headers
 <IfModule mod_headers.c>
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
     Header always set X-Frame-Options "SAMEORIGIN"
     Header always set X-Content-Type-Options "nosniff"
-    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://www.paypal.com https://www.paypalobjects.com https://accounts.google.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data: https://www.paypalobjects.com; frame-src https://www.paypal.com https://accounts.google.com; connect-src 'self' https://www.paypal.com https://api.paypal.com https://api.sandbox.paypal.com; font-src 'self' https://cdn.jsdelivr.net; report-uri /karate/portal/api/csp_report.php"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set Permissions-Policy "geolocation=(), microphone=(), camera=()"
+    # Content-Security-Policy is set dynamically in PHP (auth.php / checkin.php) so it can
+    # embed a per-request nonce and drop 'unsafe-inline'. Do NOT set it here too — browsers
+    # AND multiple CSP headers together, which would block the nonce'd scripts/styles.
+    Header always unset X-Powered-By
 </IfModule>
+
+FileETag None
+# ServerTokens Prod (can't run because it blocks xamp from running)
+ServerSignature Off

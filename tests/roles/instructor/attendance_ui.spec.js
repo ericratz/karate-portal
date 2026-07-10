@@ -126,6 +126,9 @@ test.describe('Attendance UI', () => {
 
     test('Delete Class button appears after attendance is saved', async ({ page }) => {
         await page.goto(BASE + `/instructor/attendance.php?date=${today}`);
+        // Saving with zero students present now auto-deletes the empty session,
+        // so check at least one student present to keep the session around.
+        await page.locator('input[name="present[]"]').first().check();
         await page.click('button:has-text("Save Attendance")');
         await page.waitForLoadState('domcontentloaded');
         await expect(page.locator('button:has-text("Delete This Class")')).toBeVisible();

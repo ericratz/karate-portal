@@ -54,9 +54,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_password'])) {
     } else {
         db()->prepare('UPDATE users SET password_hash = ? WHERE id = ?')
              ->execute([password_hash($new, PASSWORD_BCRYPT), $user_id]);
-        $pw_msg = 'Password updated successfully.';
+        header("Location: profile_edit.php?student_id=$student_id&pw_changed=1");
+        exit;
     }
 }
+
+if (isset($_GET['pw_changed'])) $pw_msg = 'Password updated successfully.';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_password'])) {
     // Already handled above — skip profile save block below
@@ -95,9 +98,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_password'])) {
         }
 
         audit('update_student', 'student', $student_id, "by_parent_user_id=$user_id");
-        $msg = 'Profile saved.';
+        header("Location: profile_edit.php?student_id=$student_id&saved=1");
+        exit;
     }
 }
+
+if (isset($_GET['saved'])) $msg = 'Profile saved.';
 
 // Load student record
 $student = db()->prepare('SELECT * FROM students WHERE id=?');
@@ -105,12 +111,12 @@ $student->execute([$student_id]);
 $student = $student->fetch();
 if (!$student) { header('Location: index.php'); exit; }
 
-$page_title = 'Edit Profile — ' . htmlspecialchars($student['first_name'] . ' ' . $student['last_name']);
+$page_title = 'Edit Profile — ' . hn($student['first_name'] . ' ' . $student['last_name']);
 include __DIR__ . '/../includes/header.php';
 ?>
 
 <div class="d-flex align-items-center gap-3 mb-4">
-    <h4 class="mb-0">Edit Profile — <?= htmlspecialchars($student['first_name'] . ' ' . $student['last_name']) ?></h4>
+    <h4 class="mb-0">Edit Profile — <?= hn($student['first_name'] . ' ' . $student['last_name']) ?></h4>
 </div>
 
 <?php if ($msg):       ?><div class="alert alert-success"><?= htmlspecialchars($msg) ?></div><?php endif; ?>

@@ -179,10 +179,8 @@ include __DIR__ . '/../includes/header.php';
                 <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
                     <span>Account Details</span>
                     <div class="d-flex gap-2">
-                        <button type="button" id="accountCancelBtn" class="btn btn-sm btn-secondary" style="display:none"
-                                onclick="cardCancel('account')">Cancel</button>
-                        <button type="button" id="accountEditBtn" class="btn btn-sm btn-success"
-                                onclick="cardToggle('account')">Edit</button>
+                        <button type="button" id="accountCancelBtn" class="btn btn-sm btn-secondary" style="display:none">Cancel</button>
+                        <button type="button" id="accountEditBtn" class="btn btn-sm btn-success">Edit</button>
                     </div>
                 </div>
                 <div class="card-body">
@@ -190,8 +188,8 @@ include __DIR__ . '/../includes/header.php';
                     <div id="account-view" class="row g-2">
                         <?php
                         $av = [
-                            'First Name'      => htmlspecialchars($user['first_name'] ?? '') ?: '—',
-                            'Last Name'       => htmlspecialchars($user['last_name']  ?? '') ?: '—',
+                            'First Name'      => hn($user['first_name'] ?? '') ?: '—',
+                            'Last Name'       => hn($user['last_name']  ?? '') ?: '—',
                             'Date of Birth'   => !empty($user['date_of_birth']) ? date('d M Y', strtotime($user['date_of_birth'])) : '—',
                             'Username'        => htmlspecialchars($user['username']),
                             'Email'           => htmlspecialchars($user['email'] ?? '') ?: '—',
@@ -261,8 +259,8 @@ include __DIR__ . '/../includes/header.php';
                         <div class="d-flex gap-2">
                             <a href="student_edit.php?id=<?= $user['student_id'] ?>"
                                class="btn btn-sm btn-outline-primary">Edit Roster Entry</a>
-                            <form method="post" class="d-inline"
-                                  onsubmit="return confirm('Unlink this account from the roster entry?')">
+                            <form method="post" class="d-inline confirm-submit-form"
+                                  data-confirm="Unlink this account from the roster entry?">
                                 <?= csrf_input() ?>
                                 <input type="hidden" name="action" value="unlink">
                                 <button class="btn btn-sm btn-outline-danger">Unlink</button>
@@ -277,7 +275,7 @@ include __DIR__ . '/../includes/header.php';
                             <option value="">— select roster entry —</option>
                             <?php foreach ($unlinked as $s): ?>
                             <option value="<?= $s['id'] ?>">
-                                <?= htmlspecialchars($s['first_name'].' '.$s['last_name']) ?>
+                                <?= hn($s['first_name'].' '.$s['last_name']) ?>
                                 (<?= ucfirst($s['student_type']) ?>)
                             </option>
                             <?php endforeach; ?>
@@ -326,8 +324,8 @@ include __DIR__ . '/../includes/header.php';
                         ? '<span class="badge bg-secondary me-2">Activated</span> This account can log in.'
                         : '<span class="badge bg-danger me-2">Deactivated</span> This account cannot log in.' ?>
                 </div>
-                <form method="post" class="d-inline"
-                      onsubmit="return confirm('<?= $user['active'] ? 'Deactivate' : 'Activate' ?> this account?')">
+                <form method="post" class="d-inline confirm-submit-form"
+                      data-confirm="<?= $user['active'] ? 'Deactivate' : 'Activate' ?> this account?">
                     <?= csrf_input() ?>
                     <input type="hidden" name="action" value="toggle_active">
                     <button class="btn btn-sm <?= $user['active'] ? 'btn-outline-danger' : 'btn-outline-success' ?>">
@@ -342,8 +340,8 @@ include __DIR__ . '/../includes/header.php';
     <!-- Delete Account -->
     <?php if ($id !== current_user_id()): ?>
     <div class="col-12">
-        <form method="post"
-              onsubmit="return confirm('Delete this login account?\n\nThe student roster entry and all their history (attendance, belt tests, payments) will be kept. Only the login account will be removed.')">
+        <form method="post" class="confirm-submit-form"
+              data-confirm="Delete this login account?&#10;&#10;The student roster entry and all their history (attendance, belt tests, payments) will be kept. Only the login account will be removed.">
             <?= csrf_input() ?>
             <input type="hidden" name="action" value="delete_user">
             <button class="btn btn-outline-danger">Delete Login Account</button>
@@ -353,7 +351,15 @@ include __DIR__ . '/../includes/header.php';
 
 </div>
 
-<script>
+<script nonce="<?= csp_nonce() ?>">
+document.getElementById('accountEditBtn').addEventListener('click', function() { cardToggle('account'); });
+document.getElementById('accountCancelBtn').addEventListener('click', function() { cardCancel('account'); });
+document.querySelectorAll('.confirm-submit-form').forEach(function(form) {
+    form.addEventListener('submit', function(e) {
+        if (!confirm(form.dataset.confirm)) e.preventDefault();
+    });
+});
+
 function cardToggle(cardId) {
     var btn    = document.getElementById(cardId + 'EditBtn');
     var cancel = document.getElementById(cardId + 'CancelBtn');

@@ -111,7 +111,7 @@ $page_title = 'Waiver — ' . $student['first_name'] . ' ' . $student['last_name
 include __DIR__ . '/../includes/header.php';
 ?>
 
-<style>
+<style nonce="<?= csp_nonce() ?>">
 .waiver-wrap { max-width: 760px; }
 .waiver-doc  { font-size: .92rem; line-height: 1.8; }
 .waiver-doc h2 { font-size: 1.15rem; font-weight: 700; text-align: center; margin-bottom: 0; }
@@ -132,7 +132,7 @@ include __DIR__ . '/../includes/header.php';
 </style>
 
 <div class="d-flex align-items-center gap-3 mb-4">
-    <h4 class="mb-0">Waiver — <?= htmlspecialchars($student['first_name'] . ' ' . $student['last_name']) ?></h4>
+    <h4 class="mb-0">Waiver — <?= hn($student['first_name'] . ' ' . $student['last_name']) ?></h4>
     <?php if ($student['injury_waiver']): ?>
         <span class="badge bg-success">Signed <?= date('d M Y', strtotime($student['injury_waiver_date'])) ?></span>
     <?php endif; ?>

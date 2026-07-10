@@ -45,6 +45,7 @@ include __DIR__ . '/../includes/header.php';
 
 <?php if ($own_student_id): ?>
 <div class="d-flex justify-content-end gap-2 mb-3">
+    <a href="../admin/member_card.php?student_id=<?= (int)$own_student_id ?>" target="_blank" class="btn" style="background-color:#0052cc;border-color:#0052cc;color:#fff;">Member Card <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16" style="vertical-align:middle;margin-left:2px"><path fill-rule="evenodd" d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5"/><path fill-rule="evenodd" d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 1.707V5.5a.5.5 0 0 0 1 0z"/></svg></a>
     <?php if ($has_children): ?>
     <a href="../parent/index.php" class="btn btn-outline-secondary">View Profile</a>
     <?php else: ?>
@@ -139,7 +140,7 @@ include __DIR__ . '/../includes/header.php';
                             <td class="text-nowrap"><?= date('d M Y', strtotime($t['test_date'])) ?></td>
                             <td>
                                 <a href="student_profile.php?id=<?= $t['student_id'] ?>" class="text-decoration-none">
-                                    <?= htmlspecialchars($t['first_name'].' '.$t['last_name']) ?>
+                                    <?= hn($t['first_name'].' '.$t['last_name']) ?>
                                 </a>
                             </td>
                             <td><?= htmlspecialchars($t['kyu_dan']) ?></td>

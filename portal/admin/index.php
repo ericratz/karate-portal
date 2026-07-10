@@ -32,11 +32,12 @@ $stats = db()->query(
     '
 )->fetch();
 
-// Students who haven't paid tuition this month.
+// Students who haven't paid tuition this month (active, registered students only).
 $unpaid = db()->query(
     'SELECT s.id, s.first_name, s.last_name
      FROM students s
      WHERE s.active = 1
+       AND s.student_type IN (\'student\',\'parent\',\'instructor\')
        AND s.id NOT IN (
            SELECT student_id FROM payments
            WHERE payment_type = "monthly_tuition"
@@ -133,6 +134,98 @@ if ($has_more_payments) array_pop($recent_payments);
 
 $linked_msg = isset($_GET['linked']) ? 'Accounts linked successfully.' : '';
 
+// ── Revenue chart — last 12 months ───────────────────────────────────────
+$rev_rows = db()->query(
+    "SELECT DATE_FORMAT(payment_date,'%Y-%m') AS month,
+            payment_type,
+            SUM(amount) AS total
+     FROM payments
+     WHERE payment_date >= DATE_FORMAT(DATE_SUB(NOW(), INTERVAL 11 MONTH),'%Y-%m-01')
+     GROUP BY month, payment_type
+     ORDER BY month"
+)->fetchAll();
+
+$exp_rows = db()->query(
+    "SELECT DATE_FORMAT(expense_date,'%Y-%m') AS month,
+            SUM(amount) AS total
+     FROM expenses
+     WHERE expense_date >= DATE_FORMAT(DATE_SUB(NOW(), INTERVAL 11 MONTH),'%Y-%m-01')
+     GROUP BY month
+     ORDER BY month"
+)->fetchAll();
+
+$exp_type_rows = db()->query(
+    "SELECT DATE_FORMAT(expense_date,'%Y-%m') AS month,
+            expense_type,
+            SUM(amount) AS total
+     FROM expenses
+     WHERE expense_date >= DATE_FORMAT(DATE_SUB(NOW(), INTERVAL 11 MONTH),'%Y-%m-01')
+     GROUP BY month, expense_type
+     ORDER BY month"
+)->fetchAll();
+
+$don_rows = db()->query(
+    "SELECT DATE_FORMAT(payment_date,'%Y-%m') AS month, SUM(amount) AS total
+     FROM donations
+     WHERE payment_date >= DATE_FORMAT(DATE_SUB(NOW(), INTERVAL 11 MONTH),'%Y-%m-01')
+     GROUP BY month
+     ORDER BY month"
+)->fetchAll();
+
+$chart_months = [];
+for ($i = 11; $i >= 0; $i--) {
+    $chart_months[] = date('Y-m', strtotime("-$i months"));
+}
+
+$named_types  = ['monthly_tuition', 'registration', 'belt_test', 'slc_training', 'seminar'];
+$exp_types    = ['rent', 'equipment', 'utilities', 'supplies', 'other'];
+$chart_data   = array_fill_keys($named_types, []);
+$chart_data['other']     = [];
+$chart_data['donations'] = [];
+$chart_data['revenue']   = [];
+$chart_data['expenses']  = [];
+$chart_data['exp_abs']   = [];
+foreach ($exp_types as $t) $chart_data['exp_' . $t] = [];
+
+$rev_map = [];
+foreach ($rev_rows as $r) {
+    $rev_map[$r['month']][$r['payment_type']] = (float)$r['total'];
+}
+$exp_map = [];
+foreach ($exp_rows as $r) {
+    $exp_map[$r['month']] = (float)$r['total'];
+}
+$exp_type_map = [];
+foreach ($exp_type_rows as $r) {
+    $exp_type_map[$r['month']][$r['expense_type']] = (float)$r['total'];
+}
+$don_map = [];
+foreach ($don_rows as $r) {
+    $don_map[$r['month']] = (float)$r['total'];
+}
+
+foreach ($chart_months as $m) {
+    foreach ($named_types as $t) {
+        $chart_data[$t][] = $rev_map[$m][$t] ?? 0;
+    }
+    $other = 0;
+    foreach ($rev_map[$m] ?? [] as $type => $amt) {
+        if (!in_array($type, $named_types)) $other += $amt;
+    }
+    $chart_data['other'][]     = $other;
+    $chart_data['donations'][] = $don_map[$m] ?? 0;
+    foreach ($exp_types as $t) {
+        $chart_data['exp_' . $t][] = $exp_type_map[$m][$t] ?? 0;
+    }
+
+    $exp_total = $exp_map[$m] ?? 0;
+    $chart_data['revenue'][]  = array_sum($rev_map[$m] ?? []) + ($don_map[$m] ?? 0);
+    $chart_data['expenses'][] = -$exp_total;
+    $chart_data['exp_abs'][]  = $exp_total;
+}
+
+$chart_labels = array_map(fn($m) => date('M Y', strtotime($m . '-01')), $chart_months);
+
 $page_title = 'Admin Dashboard';
 include __DIR__ . '/../includes/header.php';
 ?>
@@ -168,7 +261,7 @@ include __DIR__ . '/../includes/header.php';
         ['Total Students',          $stats['active_students'] + $stats['inactive_students'], 'text-primary'],
         ['Revenue ('.date('F').')', '$'.number_format($stats['revenue_month'],2),            'text-success'],
         ['Revenue ('.date('Y').')', '$'.number_format($stats['revenue_ytd'],2),              'text-success'],
-        ['Center Stage ('.date('Y').')', '$'.number_format($stats['rent_ytd'],2),            'text-danger'],
+        ['Paid to Center Stage ('.date('Y').')', '$'.number_format($stats['rent_ytd'],2),      'text-danger'],
     ];
     foreach ($cards as [$label, $val, $cls]): ?>
     <div class="col-6 col-lg">
@@ -180,6 +273,14 @@ include __DIR__ . '/../includes/header.php';
         </div>
     </div>
     <?php endforeach; ?>
+</div>
+
+<!-- ── Revenue chart ── -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white fw-semibold">Revenue and Expenses</div>
+    <div class="card-body">
+        <canvas id="revenueChart" height="80"></canvas>
+    </div>
 </div>
 
 <!-- ── Action items + Recent payments ── -->
@@ -204,7 +305,7 @@ include __DIR__ . '/../includes/header.php';
                         <tr>
                             <td>
                                 <a href="../instructor/student_profile.php?id=<?= $s['id'] ?>">
-                                    <?= htmlspecialchars($s['first_name'].' '.$s['last_name']) ?>
+                                    <?= hn($s['first_name'].' '.$s['last_name']) ?>
                                 </a>
                             </td>
                             <td>
@@ -235,7 +336,7 @@ include __DIR__ . '/../includes/header.php';
                         <tr>
                             <td>
                                 <a href="student_edit.php?id=<?= $s['id'] ?>">
-                                    <?= htmlspecialchars($s['first_name'].' '.$s['last_name']) ?>
+                                    <?= hn($s['first_name'].' '.$s['last_name']) ?>
                                 </a>
                             </td>
                         </tr>
@@ -468,7 +569,7 @@ include __DIR__ . '/../includes/header.php';
                     <?php foreach ($recent_payments as $p): ?>
                         <tr>
                             <td><?= date('d M Y', strtotime($p['payment_date'])) ?></td>
-                            <td><?= htmlspecialchars($p['first_name'].' '.$p['last_name']) ?></td>
+                            <td><?= hn($p['first_name'].' '.$p['last_name']) ?></td>
                             <td><?= ucwords(str_replace('_',' ',$p['payment_type'])) ?></td>
                             <td class="text-end">$<?= number_format($p['amount'],2) ?></td>
                         </tr>
@@ -482,7 +583,108 @@ include __DIR__ . '/../includes/header.php';
 
 </div>
 
-<style>.bg-purple { background-color: #6f42c1 !important; }</style>
+<style nonce="<?= csp_nonce() ?>">.bg-purple { background-color: #6f42c1 !important; }</style>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"
+        integrity="sha384-e6nUZLBkQ86NJ6TVVKAeSaK8jWa3NhkYWZFomE39AvDbQWeie9PlQqM3pmYW5d1g"
+        crossorigin="anonymous"></script>
+<script nonce="<?= csp_nonce() ?>">
+(function () {
+    var htmlRoot = document.getElementById('html-root');
+    function textColor() {
+        return htmlRoot.getAttribute('data-bs-theme') === 'dark' ? '#ffffff' : '#212529';
+    }
+
+    var bd = {
+        tuition:      <?= json_encode($chart_data['monthly_tuition']) ?>,
+        registration: <?= json_encode($chart_data['registration']) ?>,
+        belt_test:    <?= json_encode($chart_data['belt_test']) ?>,
+        slc_training: <?= json_encode($chart_data['slc_training']) ?>,
+        seminar:      <?= json_encode($chart_data['seminar']) ?>,
+        donations:    <?= json_encode($chart_data['donations']) ?>,
+        other:        <?= json_encode($chart_data['other']) ?>,
+        exp_rent:      <?= json_encode($chart_data['exp_rent']) ?>,
+        exp_equipment: <?= json_encode($chart_data['exp_equipment']) ?>,
+        exp_utilities: <?= json_encode($chart_data['exp_utilities']) ?>,
+        exp_supplies:  <?= json_encode($chart_data['exp_supplies']) ?>,
+        exp_other:     <?= json_encode($chart_data['exp_other']) ?>,
+        exp_abs:       <?= json_encode($chart_data['exp_abs']) ?>,
+    };
+
+    var chart = new Chart(document.getElementById('revenueChart'), {
+        type: 'bar',
+        data: {
+            labels: <?= json_encode($chart_labels) ?>,
+            datasets: [
+                {
+                    label: 'Revenue',
+                    data: <?= json_encode($chart_data['revenue']) ?>,
+                    backgroundColor: 'rgba(25,135,84,0.75)',
+                    stack: 'a',
+                },
+                {
+                    label: 'Expenses',
+                    data: <?= json_encode($chart_data['expenses']) ?>,
+                    backgroundColor: 'rgba(220,53,69,0.75)',
+                    stack: 'b',
+                },
+            ]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { position: 'top', labels: { color: textColor() } },
+                tooltip: {
+                    mode: 'index',
+                    callbacks: {
+                        label: ctx => {
+                            if (ctx.raw === 0) return null;
+                            var i = ctx.dataIndex;
+                            var lines = [];
+                            if (ctx.dataset.label === 'Revenue') {
+                                if (bd.tuition[i]      > 0) lines.push(' Tuition: $'      + bd.tuition[i].toFixed(2));
+                                if (bd.registration[i] > 0) lines.push(' Registration: $' + bd.registration[i].toFixed(2));
+                                if (bd.belt_test[i]    > 0) lines.push(' Belt Tests: $'   + bd.belt_test[i].toFixed(2));
+                                if (bd.slc_training[i] > 0) lines.push(' SLC Training: $' + bd.slc_training[i].toFixed(2));
+                                if (bd.seminar[i]      > 0) lines.push(' Seminar: $'      + bd.seminar[i].toFixed(2));
+                                if (bd.donations[i]    > 0) lines.push(' Donations: $'    + bd.donations[i].toFixed(2));
+                                if (bd.other[i]        > 0) lines.push(' Other: $'        + bd.other[i].toFixed(2));
+                            } else if (ctx.dataset.label === 'Expenses') {
+                                if (bd.exp_rent[i]      > 0) lines.push(' Rent: $'      + bd.exp_rent[i].toFixed(2));
+                                if (bd.exp_equipment[i] > 0) lines.push(' Equipment: $' + bd.exp_equipment[i].toFixed(2));
+                                if (bd.exp_utilities[i] > 0) lines.push(' Utilities: $' + bd.exp_utilities[i].toFixed(2));
+                                if (bd.exp_supplies[i]  > 0) lines.push(' Supplies: $'  + bd.exp_supplies[i].toFixed(2));
+                                if (bd.exp_other[i]     > 0) lines.push(' Other: $'     + bd.exp_other[i].toFixed(2));
+                            }
+                            return lines.length ? lines : null;
+                        },
+                        footer: items => {
+                            var net  = items.reduce((s, item) => s + item.raw, 0);
+                            var sign = net < 0 ? '-' : '';
+                            return 'Net: ' + sign + '$' + Math.abs(net).toFixed(2);
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: { stacked: true, ticks: { color: textColor() } },
+                y: {
+                    stacked: true,
+                    ticks: { color: textColor(), callback: v => '$' + Math.abs(v) }
+                }
+            }
+        }
+    });
+
+    new MutationObserver(function () {
+        var c = textColor();
+        chart.options.plugins.legend.labels.color = c;
+        chart.options.scales.x.ticks.color = c;
+        chart.options.scales.y.ticks.color = c;
+        chart.update();
+    }).observe(htmlRoot, { attributes: true, attributeFilter: ['data-bs-theme'] });
+})();
+</script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>
 

@@ -10,8 +10,10 @@
     <title><?= htmlspecialchars($page_title ?? 'Portal') ?> — Shotokan Karate</title>
     <meta name="csrf-token" content="<?= csrf_token() ?>">
     <link rel="stylesheet"
-          href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
-    <style>
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+          integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
+          crossorigin="anonymous">
+    <style nonce="<?= csp_nonce() ?>">
         .navbar { background: #6f42c1 !important; }
         .navbar .navbar-brand,
         .navbar .nav-link,
@@ -114,6 +116,19 @@
             --bs-btn-active-bg: #555;
             --bs-btn-active-color: #fff;
         }
+        /* Toggleable filter buttons (This Month / This Year, etc.) —
+           make the applied filter unmistakable */
+        .btn-filter.active {
+            background-color: #6f42c1 !important;
+            border-color: #6f42c1 !important;
+            color: #fff !important;
+            font-weight: 600;
+        }
+        [data-bs-theme="dark"] .btn-filter.active {
+            background-color: #8a5cd6 !important;
+            border-color: #8a5cd6 !important;
+            color: #fff !important;
+        }
 
         /* Global green buttons */
         .btn-primary {
@@ -125,6 +140,27 @@
             --bs-btn-color: #fff;
             --bs-btn-hover-color: #fff;
             --bs-btn-active-color: #fff;
+        }
+        .navbar .dropdown-menu {
+            background-color: #6f42c1;
+            border-color: #5a32a3;
+        }
+        .navbar .dropdown-menu .dropdown-item {
+            color: rgba(255,255,255,.9) !important;
+        }
+        .navbar .dropdown-menu .dropdown-item:hover,
+        .navbar .dropdown-menu .dropdown-item:focus {
+            background-color: rgba(255,255,255,.15);
+            color: #fff !important;
+        }
+        .navbar .dropdown-menu .dropdown-header {
+            color: rgba(255,255,255,.55) !important;
+            font-size: .7rem;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+        }
+        .navbar .dropdown-menu .dropdown-divider {
+            border-color: rgba(255,255,255,.15);
         }
         .btn-logout {
             color: #fff !important;
@@ -150,12 +186,14 @@
             --bs-btn-active-color: #fff;
         }
     </style>
-    <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.3/dist/htmx.min.js"></script>
-    <style>
+    <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.3/dist/htmx.min.js"
+            integrity="sha384-0895/pl2MU10Hqc6jd4RvrthNlDiE9U1tWmX7WRESftEDRosgxNsQG/Ze9YMRzHq"
+            crossorigin="anonymous"></script>
+    <style nonce="<?= csp_nonce() ?>">
         /* htmx delete-row fade */
         .htmx-swapping { opacity: 0 !important; transition: opacity 300ms ease !important; }
     </style>
-    <script>
+    <script nonce="<?= csp_nonce() ?>">
         (function() {
             if (localStorage.getItem('theme') === 'dark') {
                 document.getElementById('html-root').setAttribute('data-bs-theme', 'dark');
@@ -229,13 +267,16 @@
             </ul>
             <div class="d-flex align-items-center gap-3">
                 <button id="dark-toggle" title="Toggle dark mode"
-                        style="width:44px;height:24px;border-radius:12px;border:2px solid #000;cursor:pointer;
-                               padding:2px;display:flex;align-items:center;transition:background .25s;
-                               background:#ccc;flex-shrink:0">
+                        style="position:relative;width:78px;height:28px;border-radius:14px;
+                               border:2px solid #888;cursor:pointer;
+                               transition:background .25s,border-color .25s;background:#3d1a7a;flex-shrink:0">
+                    <span id="dark-label"
+                          style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+                                 font-size:.72rem;font-weight:700;color:#e0e0e0;user-select:none;
+                                 pointer-events:none;letter-spacing:.05em">Dark</span>
                     <span id="dark-knob"
-                          style="width:20px;height:20px;border-radius:50%;background:#fff;
-                                 display:block;transition:transform .25s;transform:translateX(0);background:#fff;">
-                    </span>
+                          style="position:absolute;top:3px;left:3px;width:18px;height:18px;
+                                 border-radius:50%;background:#fff;transition:transform .25s"></span>
                 </button>
                 <span class="navbar-text">
                     <?= htmlspecialchars($_SESSION['username'] ?? '') ?>

@@ -2,8 +2,18 @@
 // Belt advancement helpers — next rank, test homework URLs, test PDF URLs.
 // Included by student dashboard and parent portal.
 
-define('HW_BASE',   'https://noji.com/karate/class/homework/');
-define('TEST_BASE', 'https://noji.com/karate/testing/');
+define('HW_BASE',        'https://noji.com/karate/class/homework/');
+define('TEST_BASE',      'https://noji.com/karate/testing/');
+define('HW_INDEX_ADULT', 'https://noji.com/karate/class/homework/homework.php');
+define('HW_INDEX_YOUTH', 'https://noji.com/karate/class/homework/youth_homework.php');
+
+function hw_index_url(?string $date_of_birth): string {
+    if ($date_of_birth) {
+        $age = (int)(new DateTime($date_of_birth))->diff(new DateTime())->y;
+        if ($age < 16) return HW_INDEX_YOUTH;
+    }
+    return HW_INDEX_ADULT;
+}
 
 // Test homework filenames, keyed by age group then kyu_dan.
 // Some ranks share a single PDF across youth/adult; others are age-split.

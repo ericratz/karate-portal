@@ -9,9 +9,11 @@ $msg = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delete') {
     verify_csrf();
     db()->prepare('DELETE FROM general_notes WHERE id = ?')->execute([(int)$_POST['id']]);
-    if (!empty($_SERVER['HTTP_HX_REQUEST'])) { exit; }
-    header('Location: general_notes.php');
-    exit;
+    if (empty($_SERVER['HTTP_HX_REQUEST'])) {
+        header('Location: general_notes.php');
+        exit;
+    }
+    // For htmx requests, fall through so hx-select can pull the live count.
 }
 
 // Edit existing note
@@ -37,11 +39,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'edit'
             — <?= htmlspecialchars($n['username'] ?? 'unknown') ?>
         </span>
         <div class="d-flex gap-1 flex-shrink-0 ms-2">
-            <button type="button" class="btn btn-sm btn-outline-secondary py-0"
-                    onclick="this.closest('.note-entry').querySelector('.note-edit-form').style.display='block'">Edit</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary py-0 note-edit-btn">Edit</button>
             <form method="post" class="d-inline delete-btn"
-                  hx-post="general_notes.php" hx-target="closest .note-entry"
-                  hx-swap="delete swap:300ms" hx-confirm="Delete this entry?">
+                  hx-post="general_notes.php" hx-target="#general-notes-card" hx-select="#general-notes-card"
+                  hx-swap="outerHTML swap:300ms" hx-confirm="Delete this entry?">
                 <?= csrf_input() ?>
                 <input type="hidden" name="action" value="delete">
                 <input type="hidden" name="id" value="<?= $n['id'] ?>">
@@ -61,8 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'edit'
                   rows="4" required><?= htmlspecialchars($n['content']) ?></textarea>
         <div class="d-flex gap-2">
             <button type="submit" class="btn btn-sm btn-primary">Save</button>
-            <button type="button" class="btn btn-sm btn-secondary"
-                    onclick="this.closest('.note-entry').querySelector('.note-edit-form').style.display='none'">Cancel</button>
+            <button type="button" class="btn btn-sm btn-secondary note-cancel-btn">Cancel</button>
         </div>
     </form>
 </div>
@@ -82,9 +82,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add')
         db()->prepare(
             'INSERT INTO general_notes (content, created_by) VALUES (?,?)'
         )->execute([$content, current_user_id()]);
-        $msg = 'Note saved.';
+        header('Location: general_notes.php?saved=1');
+        exit;
     }
 }
+
+if (isset($_GET['saved'])) $msg = 'Note saved.';
 
 
 // Load all notes oldest-first (log style)
@@ -137,8 +140,7 @@ include __DIR__ . '/../includes/header.php';
                            style="width:200px" placeholder="Search notes… (Ctrl+F)">
                     <span id="matchCount" class="text-muted small"></span>
                     <?php if (!empty($notes)): ?>
-                    <button id="editToggle" class="btn btn-sm btn-success"
-                            onclick="(function(btn){var c=document.getElementById('notesContainer');var e=c.classList.toggle('editing');btn.textContent=e?'Done':'Edit';btn.className=e?'btn btn-sm btn-danger':'btn btn-sm btn-success';})(this)">Edit</button>
+                    <button id="editToggle" class="btn btn-sm btn-success">Edit</button>
                     <?php endif; ?>
                 </div>
             </div>
@@ -159,11 +161,10 @@ include __DIR__ . '/../includes/header.php';
                             — <?= htmlspecialchars($n['username'] ?? 'unknown') ?>
                         </span>
                         <div class="d-flex gap-1 flex-shrink-0 ms-2">
-                            <button type="button" class="btn btn-sm btn-outline-secondary py-0"
-                                    onclick="this.closest('.note-entry').querySelector('.note-edit-form').style.display='block'">Edit</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary py-0 note-edit-btn">Edit</button>
                             <form method="post" class="d-inline delete-btn"
-                                  hx-post="general_notes.php" hx-target="closest .note-entry"
-                                  hx-swap="delete swap:300ms" hx-confirm="Delete this entry?">
+                                  hx-post="general_notes.php" hx-target="#general-notes-card" hx-select="#general-notes-card"
+                                  hx-swap="outerHTML swap:300ms" hx-confirm="Delete this entry?">
                                 <?= csrf_input() ?>
                                 <input type="hidden" name="action" value="delete">
                                 <input type="hidden" name="id" value="<?= $n['id'] ?>">
@@ -183,8 +184,7 @@ include __DIR__ . '/../includes/header.php';
                                   rows="4" required><?= htmlspecialchars($n['content']) ?></textarea>
                         <div class="d-flex gap-2">
                             <button type="submit" class="btn btn-sm btn-primary">Save</button>
-                            <button type="button" class="btn btn-sm btn-secondary"
-                                    onclick="this.closest('.note-entry').querySelector('.note-edit-form').style.display='none'">Cancel</button>
+                            <button type="button" class="btn btn-sm btn-secondary note-cancel-btn">Cancel</button>
                         </div>
                     </form>
                 </div>
@@ -194,12 +194,34 @@ include __DIR__ . '/../includes/header.php';
 
 </div>
 
-<style>
+<style nonce="<?= csp_nonce() ?>">
     .delete-btn { display: none !important; }
     #notesContainer.editing .delete-btn { display: inline-block !important; }
 </style>
 
-<script>
+<script nonce="<?= csp_nonce() ?>">
+// Delegated from document — note-entry markup can arrive either from the
+// initial render or from htmx swaps (edit/delete), so per-element bindings
+// wouldn't survive; delegation handles both.
+document.addEventListener('click', function(e) {
+    var btn;
+    if ((btn = e.target.closest('.note-edit-btn'))) {
+        btn.closest('.note-entry').querySelector('.note-edit-form').style.display = 'block';
+        return;
+    }
+    if ((btn = e.target.closest('.note-cancel-btn'))) {
+        btn.closest('.note-entry').querySelector('.note-edit-form').style.display = 'none';
+        return;
+    }
+    if ((btn = e.target.closest('#editToggle'))) {
+        var c = document.getElementById('notesContainer');
+        var editing = c.classList.toggle('editing');
+        btn.textContent = editing ? 'Done' : 'Edit';
+        btn.className   = editing ? 'btn btn-sm btn-danger' : 'btn btn-sm btn-success';
+        return;
+    }
+});
+
 // Intercept Ctrl+F and redirect to our search field
 document.addEventListener('keydown', function(e) {
     if ((e.ctrlKey || e.metaKey) && e.key === 'f') {

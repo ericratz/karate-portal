@@ -43,8 +43,8 @@ function student_row($s) {
     $att_txt      = $s['last_attended'] ? date('d M Y', strtotime($s['last_attended'])) : 'Never';
     $search_name  = strtolower($s['last_name'] . ' ' . $s['first_name'] . ' ' . $s['first_name'] . ' ' . $s['last_name']);
     $display_name = $sort === 'last_name'
-        ? $s['last_name'] . ', ' . $s['first_name']
-        : $s['first_name'] . ' ' . $s['last_name'];
+        ? ucwords(strtolower($s['last_name'])) . ', ' . ucwords(strtolower($s['first_name']))
+        : ucwords(strtolower($s['first_name'] . ' ' . $s['last_name']));
     $status = $s['active'] ? 'active' : 'inactive';
     $login  = $s['user_role'] ? 'yes' : 'no';
     echo '<tr'
@@ -118,29 +118,29 @@ function student_table($rows, $empty_msg) {
     <a href="?sort=last_name"  class="btn btn-sm btn-filter <?= $sort === 'last_name'  ? 'active' : '' ?>">Last Name</a>
     <span class="text-muted small ms-2">|</span>
     <input type="text" id="rosterSearch" class="form-control form-control-sm"
-           placeholder="Search name…" style="width:180px" oninput="filterRoster()">
-    <select id="filterStatus" class="form-select form-select-sm" style="width:130px" onchange="filterRoster()">
+           placeholder="Search name…" style="width:180px">
+    <select id="filterStatus" class="form-select form-select-sm" style="width:130px">
         <option value="">All Statuses</option>
         <option value="active">Active</option>
         <option value="inactive">Inactive</option>
     </select>
-    <select id="filterLogin" class="form-select form-select-sm" style="width:140px" onchange="filterRoster()">
+    <select id="filterLogin" class="form-select form-select-sm" style="width:140px">
         <option value="">All Accounts</option>
         <option value="yes">Has Login</option>
         <option value="no">No Login</option>
     </select>
-    <select id="filterRank" class="form-select form-select-sm" style="width:160px" onchange="filterRoster()">
+    <select id="filterRank" class="form-select form-select-sm" style="width:160px">
         <option value="">All Ranks</option>
         <?php foreach ($all_ranks as $rk): ?>
             <option value="<?= htmlspecialchars($rk) ?>"><?= htmlspecialchars($rk) ?></option>
         <?php endforeach; ?>
     </select>
-    <select id="filterWaiver" class="form-select form-select-sm" style="width:150px" onchange="filterRoster()">
+    <select id="filterWaiver" class="form-select form-select-sm" style="width:150px">
         <option value="">All Waivers</option>
         <option value="yes">Waiver Signed</option>
         <option value="no">No Waiver</option>
     </select>
-    <select id="filterAttendance" class="form-select form-select-sm" style="width:160px" onchange="filterRoster()">
+    <select id="filterAttendance" class="form-select form-select-sm" style="width:160px">
         <option value="">Any Attendance</option>
         <option value="30">Last 30 Days</option>
         <option value="90">Last 90 Days</option>
@@ -149,43 +149,51 @@ function student_table($rows, $empty_msg) {
     </select>
 </div>
 
-<div class="card border-0 shadow-sm mb-4">
+<?php if (!empty($instructors)): ?>
+<div class="card border-0 shadow-sm mb-4" id="card-instructors">
     <div class="card-header bg-white fw-semibold">
         Instructors <span class="badge bg-primary ms-2" id="count-instructors"><?= count($instructors) ?></span>
     </div>
     <div class="card-body p-0">
-        <?php student_table($instructors, 'No instructors on roster.'); ?>
+        <?php student_table($instructors, ''); ?>
     </div>
 </div>
+<?php endif; ?>
 
-<div class="card border-0 shadow-sm mb-4">
+<?php if (!empty($parents)): ?>
+<div class="card border-0 shadow-sm mb-4" id="card-parents">
     <div class="card-header bg-white fw-semibold">
         Parents <span class="badge bg-primary ms-2" id="count-parents"><?= count($parents) ?></span>
     </div>
     <div class="card-body p-0">
-        <?php student_table($parents, 'No parents on roster.'); ?>
+        <?php student_table($parents, ''); ?>
     </div>
 </div>
+<?php endif; ?>
 
-<div class="card border-0 shadow-sm mb-4">
+<?php if (!empty($students)): ?>
+<div class="card border-0 shadow-sm mb-4" id="card-students">
     <div class="card-header bg-white fw-semibold">
         Students <span class="badge bg-primary ms-2" id="count-students"><?= count($students) ?></span>
     </div>
     <div class="card-body p-0">
-        <?php student_table($students, 'No students on roster.'); ?>
+        <?php student_table($students, ''); ?>
     </div>
 </div>
+<?php endif; ?>
 
-<div class="card border-0 shadow-sm mb-4">
+<?php if (!empty($guests)): ?>
+<div class="card border-0 shadow-sm mb-4" id="card-guests">
     <div class="card-header bg-white fw-semibold">
         Guests <span class="badge bg-primary ms-2" id="count-guests"><?= count($guests) ?></span>
     </div>
     <div class="card-body p-0">
-        <?php student_table($guests, 'No guests on roster.'); ?>
+        <?php student_table($guests, ''); ?>
     </div>
 </div>
+<?php endif; ?>
 
-<script>
+<script nonce="<?= csp_nonce() ?>">
 function filterRoster() {
     var q      = document.getElementById('rosterSearch').value.toLowerCase().trim();
     var status = document.getElementById('filterStatus').value;
@@ -219,18 +227,25 @@ function filterRoster() {
         row.style.display = match ? '' : 'none';
     });
     ['instructors','parents','students','guests'].forEach(function(key) {
-        var badge = document.getElementById('count-' + key);
-        if (!badge) return;
+        var card = document.getElementById('card-' + key);
+        if (!card) return;
         var count = 0;
-        badge.closest('.card').querySelectorAll('tbody tr[data-name]').forEach(function(r) {
+        card.querySelectorAll('tbody tr[data-name]').forEach(function(r) {
             if (r.style.display !== 'none') count++;
         });
-        badge.textContent = count;
+        var badge = document.getElementById('count-' + key);
+        if (badge) badge.textContent = count;
+        card.style.display = count === 0 ? 'none' : '';
     });
 }
+
+document.getElementById('rosterSearch').addEventListener('input', filterRoster);
+['filterStatus', 'filterLogin', 'filterRank', 'filterWaiver', 'filterAttendance'].forEach(function(id) {
+    document.getElementById(id).addEventListener('change', filterRoster);
+});
 </script>
 
-<script>
+<script nonce="<?= csp_nonce() ?>">
 document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
     new bootstrap.Tooltip(el);
 });

@@ -115,7 +115,7 @@ function user_row(array $u, bool $show_roster = true): void {
         echo '<td>';
         if ($u['student_id']) {
             echo '<a href="../instructor/student_profile.php?id=' . $u['student_id'] . '" class="text-decoration-none">'
-               . htmlspecialchars($u['first_name'] . ' ' . $u['last_name']) . '</a>';
+               . hn($u['first_name'] . ' ' . $u['last_name']) . '</a>';
         }
         echo '</td>';
     }
@@ -146,8 +146,8 @@ include __DIR__ . '/../includes/header.php';
 </div>
 <div class="d-flex gap-2 align-items-center mb-4 flex-wrap">
     <input type="text" id="userSearch" class="form-control form-control-sm"
-           placeholder="Search username…" style="width:180px" oninput="filterUsers()">
-    <select id="filterRole" class="form-select form-select-sm" style="width:130px" onchange="filterUsers()">
+           placeholder="Search username…" style="width:180px">
+    <select id="filterRole" class="form-select form-select-sm" style="width:130px">
         <option value="">All Roles</option>
         <option value="student">Student</option>
         <option value="instructor">Instructor</option>
@@ -155,7 +155,7 @@ include __DIR__ . '/../includes/header.php';
         <option value="guest">Guest</option>
         <option value="parent">Parent</option>
     </select>
-    <select id="filterStatus" class="form-select form-select-sm" style="width:130px" onchange="filterUsers()">
+    <select id="filterStatus" class="form-select form-select-sm" style="width:130px">
         <option value="">All Statuses</option>
         <option value="active">Activated</option>
         <option value="inactive">Deactivated</option>
@@ -214,7 +214,7 @@ include __DIR__ . '/../includes/header.php';
     </div>
 </div>
 
-<script>
+<script nonce="<?= csp_nonce() ?>">
 function filterUsers() {
     var q      = document.getElementById('userSearch').value.toLowerCase().trim();
     var role   = document.getElementById('filterRole').value;
@@ -226,9 +226,12 @@ function filterUsers() {
         row.style.display = match ? '' : 'none';
     });
 }
+document.getElementById('userSearch').addEventListener('input', filterUsers);
+document.getElementById('filterRole').addEventListener('change', filterUsers);
+document.getElementById('filterStatus').addEventListener('change', filterUsers);
 </script>
 
-<script>
+<script nonce="<?= csp_nonce() ?>">
 document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
     new bootstrap.Tooltip(el);
 });

@@ -7,16 +7,21 @@ test.describe.configure({ mode: 'serial' });
 test.use({ storageState: AUTH.admin });
 const TS = Date.now();
 
-test('payments page loads with default year-start filter', async ({ page }) => {
+test('payments page loads with Year filter defaulting to All Years', async ({ page }) => {
     await visit(page, '/admin/payments.php', 'payments');
-    // Default from = Y-01-01, to = empty (show everything from year start)
-    const from = await page.inputValue('input[name="from"]');
-    expect(from).toMatch(/^\d{4}-01-01$/);
+    const yearSelect = page.locator('select[name="year"]');
+    await expect(yearSelect).toBeVisible();
+    expect(await yearSelect.inputValue()).toBe('');
+    const currentYear = new Date().getFullYear().toString();
+    await expect(yearSelect.locator(`option[value="${currentYear}"]`)).toHaveCount(1);
 });
 
 test('record manual payment and it appears in list', async ({ page }) => {
     await page.goto(BASE + '/admin/payments.php?action=add');
-    await page.selectOption('select[name="student_id"]', { index: 1 });
+    // Student selector is now type-to-filter
+    await page.fill('#payGrantStudentFilter', 'a');
+    await page.waitForTimeout(150);
+    await page.locator('.pay-grant-stu-btn:visible').first().click();
     await page.fill('input[name="amount"]', '30');
     await page.selectOption('select[name="payment_type"]', 'monthly_tuition');
     await page.selectOption('select[name="payment_method"]', 'cash');
@@ -28,18 +33,17 @@ test('record manual payment and it appears in list', async ({ page }) => {
 });
 
 test('filter by method and by type show only matching rows', async ({ page }) => {
-    // Filter by cash
+    // Filter by cash — the method select live-filters via HTMX on change
     await page.goto(BASE + '/admin/payments.php');
-    await page.selectOption('select[name="method"]', 'cash');
-    await page.click('button:has-text("Filter")');
-    await page.waitForLoadState('domcontentloaded');
+    await Promise.all([
+        page.waitForResponse(r => r.url().includes('/admin/payments.php')),
+        page.selectOption('select[name="method"]', 'cash'),
+    ]);
     await assertNoPhpErrors(page, 'payment filter cash');
-    const methods = await page.locator('tbody td:nth-child(6)').allTextContents();
+    const methods = await page.locator('tbody td:nth-child(5)').allTextContents();
     methods.forEach(m => expect(m.toLowerCase()).toBe('cash'));
-    // Filter by registration type
-    await page.selectOption('select[name="type"]', 'registration');
-    await page.selectOption('select[name="method"]', '');
-    await page.click('button:has-text("Filter")');
+    // Filter by registration type — navigate directly to avoid HTMX timing (filter form uses hx-get)
+    await page.goto(BASE + '/admin/payments.php?type=registration');
     await page.waitForLoadState('domcontentloaded');
     await assertNoPhpErrors(page, 'payment filter registration');
     const types = await page.locator('tbody td:nth-child(4)').allTextContents();

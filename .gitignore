@@ -10,6 +10,7 @@ memory/
 *.txt
 tests/clear_rate_limit.php
 tests/cleanup.config.js
+portal/admin/assets/
 portal/vendor/
 portal/.phpunit.result.cache
 portal/composer.phar

@@ -3,27 +3,32 @@ require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/db.php';
 require_role('instructor', 'admin');
 
-$date_from   = isset($_GET['from']) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['from']) ? $_GET['from'] : null;
-$date_to     = isset($_GET['to'])   && preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['to'])   ? $_GET['to']   : null;
 $valid_types = ['class', 'seminar', 'private'];
 $type_filter = isset($_GET['type']) && in_array($_GET['type'], $valid_types, true) ? $_GET['type'] : null;
-$filtering   = $date_from !== null || $date_to !== null || $type_filter !== null;
+$year_filter = (int)($_GET['year'] ?? 0);
+$filtering   = $type_filter !== null || $year_filter !== 0;
 
 // Build query dynamically based on active filters
 $where  = [];
 $params = [];
 
-if ($date_from !== null || $date_to !== null) {
-    $where[]  = 'cs.session_date BETWEEN ? AND ?';
-    $params[] = $date_from ?? '2000-01-01';
-    $params[] = $date_to   ?? date('Y-m-d');
-}
 if ($type_filter !== null) {
     $where[]  = 'cs.class_type = ?';
     $params[] = $type_filter;
 }
+if ($year_filter) {
+    $where[]  = 'YEAR(cs.session_date) = ?';
+    $params[] = $year_filter;
+}
 
 $where_sql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
+
+// Years available for the dropdown — actual class years plus the current year
+$session_years = db()->query('SELECT DISTINCT YEAR(session_date) AS y FROM class_sessions ORDER BY y DESC')
+    ->fetchAll(PDO::FETCH_COLUMN);
+if (!in_array((int)date('Y'), $session_years)) {
+    array_unshift($session_years, (int)date('Y'));
+}
 $sessions_stmt = db()->prepare(
     "SELECT cs.id, cs.session_date, cs.class_type,
             SUM(CASE WHEN a.present=1 THEN 1 ELSE 0 END) AS present_count
@@ -61,33 +66,27 @@ include __DIR__ . '/../includes/header.php';
 
 <div class="d-flex align-items-center gap-3 mb-4">
     <h4 class="mb-0">Classes</h4>
-    <div class="d-flex flex-column align-items-end gap-1 ms-auto">
-        <input type="date" id="newSessionDate" class="form-control form-control-sm" value="<?= date('Y-m-d') ?>" style="width:160px">
+    <a href="../checkin.php" target="_blank" class="btn btn-sm ms-2"
+       style="background-color:#0052cc;border-color:#0052cc;color:#fff;">
+        QR Check-in <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16" style="vertical-align:middle;margin-left:2px"><path fill-rule="evenodd" d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5"/><path fill-rule="evenodd" d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 1.707V5.5a.5.5 0 0 0 1 0z"/></svg>
+    </a>
+    <?php if (has_role('admin')): ?>
+    <a href="../admin/checkin_pin.php" class="btn btn-sm btn-outline-secondary ms-1">Check-in PIN</a>
+    <?php endif; ?>
+    <div class="d-flex flex-column align-items-stretch gap-1 ms-auto">
+        <input type="date" id="newSessionDate" class="form-control form-control-sm" value="<?= date('Y-m-d') ?>">
         <a id="newSessionBtn" href="attendance.php?date=<?= date('Y-m-d') ?>" class="btn btn-success btn-sm">+ Record New Class</a>
     </div>
-    <script>
-    document.getElementById('newSessionDate').addEventListener('change', function() {
-        document.getElementById('newSessionBtn').href = 'attendance.php?date=' + this.value;
-    });
-    </script>
 </div>
 
+<div id="sessions-page-body">
 <!-- Filter -->
 <div class="card border-0 shadow-sm mb-4">
     <div class="card-body py-3">
-        <?php
-        // Build type param suffix for quick-links so type filter is preserved
-        $type_qs = $type_filter ? '&type=' . $type_filter : '';
-        ?>
-        <form method="get" class="row g-2 align-items-end">
-            <div class="col-auto">
-                <label class="form-label small mb-1">From</label>
-                <input type="date" name="from" class="form-control form-control-sm" value="<?= htmlspecialchars($date_from ?? '') ?>">
-            </div>
-            <div class="col-auto">
-                <label class="form-label small mb-1">To</label>
-                <input type="date" name="to" class="form-control form-control-sm" value="<?= htmlspecialchars($date_to ?? '') ?>">
-            </div>
+        <form method="get" id="sessionsFilterForm" class="row g-2 align-items-end"
+              hx-get="attendance_sessions.php" hx-target="#sessions-page-body" hx-select="#sessions-page-body"
+              hx-swap="outerHTML" hx-push-url="true"
+              hx-trigger="change from:select[name='type'], change from:select[name='year']">
             <div class="col-auto">
                 <label class="form-label small mb-1">Type</label>
                 <select name="type" class="form-select form-select-sm">
@@ -98,19 +97,20 @@ include __DIR__ . '/../includes/header.php';
                 </select>
             </div>
             <div class="col-auto">
-                <button type="submit" class="btn btn-filter btn-sm">Filter</button>
-            </div>
-            <div class="col-auto">
-                <a href="attendance_sessions.php?from=<?= date('Y-m-01') ?>&to=<?= date('Y-m-d') ?><?= $type_qs ?>"
-                   class="btn btn-filter btn-sm <?= ($date_from === date('Y-m-01') && $date_to === date('Y-m-d')) ? 'active' : '' ?>">This Month</a>
-            </div>
-            <div class="col-auto">
-                <a href="attendance_sessions.php?from=<?= date('Y-01-01') ?>&to=<?= date('Y-m-d') ?><?= $type_qs ?>"
-                   class="btn btn-filter btn-sm <?= ($date_from === date('Y-01-01') && $date_to === date('Y-m-d')) ? 'active' : '' ?>">This Year</a>
+                <label class="form-label small mb-1">Year</label>
+                <select name="year" class="form-select form-select-sm">
+                    <option value="">All Years</option>
+                    <?php foreach ($session_years as $y): ?>
+                        <option value="<?= (int)$y ?>" <?= $year_filter === (int)$y ? 'selected' : '' ?>><?= (int)$y ?></option>
+                    <?php endforeach; ?>
+                </select>
             </div>
             <?php if ($filtering): ?>
             <div class="col-auto">
-                <a href="attendance_sessions.php" class="btn btn-filter btn-sm">Clear</a>
+                <a href="attendance_sessions.php"
+                   hx-get="attendance_sessions.php" hx-target="#sessions-page-body" hx-select="#sessions-page-body"
+                   hx-swap="outerHTML" hx-push-url="true"
+                   class="btn btn-filter btn-sm">Clear</a>
             </div>
             <?php endif; ?>
         </form>
@@ -123,12 +123,6 @@ include __DIR__ . '/../includes/header.php';
 <div class="card border-0 shadow-sm">
     <div class="card-header bg-white fw-semibold">
         <?= count($sessions) ?> class<?= count($sessions) !== 1 ? 'es' : '' ?>
-        <?php if ($filtering): ?>
-        <span class="text-muted fw-normal small ms-2">
-            <?= ($date_from ? date('d M Y', strtotime($date_from)) : 'beginning') ?>
-            — <?= ($date_to ? date('d M Y', strtotime($date_to)) : 'today') ?>
-        </span>
-        <?php endif; ?>
     </div>
     <div class="card-body p-0">
         <table class="table table-hover mb-0">
@@ -142,11 +136,10 @@ include __DIR__ . '/../includes/header.php';
             </thead>
             <tbody>
             <?php foreach ($sessions as $i => $sess): ?>
-                <tr style="cursor:pointer" onclick="toggleSession(<?= $i ?>)">
+                <tr style="cursor:pointer" class="session-row" data-idx="<?= $i ?>">
                     <td class="fw-medium">
                         <a href="attendance.php?date=<?= $sess['session_date'] ?>"
-                           class="text-decoration-none"
-                           onclick="event.stopPropagation()">
+                           class="text-decoration-none session-link">
                             <?= date('D d M Y', strtotime($sess['session_date'])) ?>
                         </a>
                     </td>
@@ -164,7 +157,7 @@ include __DIR__ . '/../includes/header.php';
                         <?php else: ?>
                             <div class="small fw-semibold text-success mb-1">Present (<?= count($att) ?>)</div>
                             <div class="small">
-                                <?= implode(', ', array_map(fn($a) => htmlspecialchars($a['first_name'].' '.mb_substr($a['last_name'],0,1)), $att)) ?>
+                                <?= implode(', ', array_map(fn($a) => hn($a['first_name']).' '.mb_strtoupper(mb_substr($a['last_name'],0,1)), $att)) ?>
                             </div>
                         <?php endif; ?>
                     </td>
@@ -175,8 +168,13 @@ include __DIR__ . '/../includes/header.php';
     </div>
 </div>
 <?php endif; ?>
+</div><!-- /sessions-page-body -->
 
-<script>
+<script nonce="<?= csp_nonce() ?>">
+document.getElementById('newSessionDate').addEventListener('change', function() {
+    document.getElementById('newSessionBtn').href = 'attendance.php?date=' + this.value;
+});
+
 function toggleSession(i) {
     var row  = document.getElementById('det-' + i);
     var tog  = document.getElementById('tog-' + i);
@@ -196,6 +194,14 @@ function toggleSession(i) {
         tog.textContent   = '▲';
     }
 }
+
+// Delegated — #sessions-page-body gets replaced wholesale by htmx on filter
+// submits, so bind from document to survive swaps.
+document.addEventListener('click', function(e) {
+    if (e.target.closest('.session-link')) return;
+    var row = e.target.closest('.session-row');
+    if (row) toggleSession(row.dataset.idx);
+});
 </script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>

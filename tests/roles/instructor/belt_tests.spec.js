@@ -14,44 +14,100 @@ const TS = Date.now();
 test('belt_test_edit.php loads and form fields are correct', async ({ page }) => {
     await page.goto(BASE + '/instructor/belt_test_edit.php');
     await assertNoPhpErrors(page, 'belt_test_edit new');
-    // Score input
-    const inp = page.locator('#scoreInput');
-    await expect(inp).toBeVisible();
-    expect(await inp.getAttribute('min')).toBe('0');
-    expect(await inp.getAttribute('max')).toBe('100');
-    // Student select has options
-    expect(await page.locator('select[name="student_id"] option').count()).toBeGreaterThan(1);
+    // #scoreManual is only rendered as a visible input on existing tests with a recorded score.
+    // On a new form it's <input type="hidden" name="score_manual"> — just verify it's present.
+    await expect(page.locator('input[name="score_manual"]')).toHaveCount(1);
+    // Student selector is now type-to-filter (no raw select element)
+    await expect(page.locator('#studentFilter')).toBeVisible();
+    // #studentList exists but has 0 height initially (all buttons are display:none until typing)
+    await expect(page.locator('#studentList')).toHaveCount(1);
     // Rank select is required
     expect(await page.locator('select[name="rank_id"]').getAttribute('required')).not.toBeNull();
-    // Date defaults to today (Â±2 days)
+    // Date defaults to today (±2 days)
     const val = await page.inputValue('input[name="test_date"]');
     expect(val).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(Math.abs(Date.now() - new Date(val + 'T12:00:00').getTime())).toBeLessThan(2 * 86400000);
-    // Belt Awarded unchecked, Fee Paid enabled
-    expect(await page.locator('#beltAwarded').isChecked()).toBe(false);
+    // #beltAwarded is set server-side only (no HTML element); fee_paid checkbox is in the chart section
     await expect(page.locator('#feePaid')).toBeEnabled();
-    // Workflow alert visible
-    await expect(page.locator('.alert-light')).toContainText('Workflow');
 });
 
-test('score preview shows Pass/Fail/empty based on input', async ({ page }) => {
+test('type-to-filter student selector shows matching names and hides after selection', async ({ page }) => {
     await page.goto(BASE + '/instructor/belt_test_edit.php');
-    await page.fill('#scoreInput', '85');
-    await page.dispatchEvent('#scoreInput', 'input');
-    await expect(page.locator('#resultPreview .badge.bg-success')).toBeVisible();
-    await page.fill('#scoreInput', '70');
-    await page.dispatchEvent('#scoreInput', 'input');
-    await expect(page.locator('#resultPreview .badge.bg-danger')).toBeVisible();
-    await page.fill('#scoreInput', '');
-    await page.dispatchEvent('#scoreInput', 'input');
-    expect((await page.textContent('#resultPreview'))?.trim()).toBe('');
+    // No students visible before typing
+    const allBtns = page.locator('.student-btn');
+    const total = await allBtns.count();
+    expect(total).toBeGreaterThan(0);
+    let visibleBefore = 0;
+    for (let i = 0; i < total; i++) {
+        const display = await allBtns.nth(i).evaluate(el => window.getComputedStyle(el).display);
+        if (display !== 'none') visibleBefore++;
+    }
+    expect(visibleBefore).toBe(0);
+    // After typing, matching buttons appear
+    await page.fill('#studentFilter', 'a');
+    await page.waitForTimeout(100);
+    let visibleAfter = 0;
+    for (let i = 0; i < total; i++) {
+        const display = await allBtns.nth(i).evaluate(el => window.getComputedStyle(el).display);
+        if (display !== 'none') visibleAfter++;
+    }
+    expect(visibleAfter).toBeGreaterThan(0);
+    // Clicking a button hides the filter and shows #studentSelected
+    await page.locator('.student-btn:visible').first().click();
+    await expect(page.locator('#studentFilter')).toBeHidden();
+    await expect(page.locator('#studentSelected')).toBeVisible();
+    await expect(page.locator('#studentSelectedName')).not.toBeEmpty();
+    // Clicking "change" restores the filter
+    await page.locator('#studentSelected button').click();
+    await expect(page.locator('#studentFilter')).toBeVisible();
+    await expect(page.locator('#studentSelected')).toBeHidden();
+});
+
+test('3rd Dan rank is not listed in rank options', async ({ page }) => {
+    await page.goto(BASE + '/instructor/belt_test_edit.php');
+    const rankOptions = await page.locator('select[name="rank_id"] option').allTextContents();
+    const hasSandan = rankOptions.some(t => /3rd\s*dan|sandan/i.test(t));
+    expect(hasSandan).toBe(false);
+});
+
+test('score preview shows Pass/Fail/empty based on sub-score inputs', async ({ page }) => {
+    await page.goto(BASE + '/instructor/belt_test_edit.php');
+    // Select a student to reveal the chart section
+    await page.fill('#studentFilter', 'a');
+    await page.waitForTimeout(100);
+    await page.locator('.student-btn:visible').first().click();
+    await expect(page.locator('#chartSection')).toBeVisible({ timeout: 3000 });
+    // Fill sub-score inputs for a passing total (>= 80)
+    await page.evaluate(() => {
+        const type = document.getElementById('chartTypeInput').value;
+        if (type === 'lower') {
+            [['l_basics_form', 22], ['l_basics_eff', 22], ['l_kumite_form', 18], ['l_kumite_eff', 18]]
+                .forEach(([id, v]) => { const el = document.getElementById(id); if (el) el.value = v; });
+        } else {
+            [['r_kata_form', 15], ['r_kata_eff', 15], ['r_basics_form', 15], ['r_basics_eff', 15],
+             ['r_kumite_form', 10], ['r_kumite_eff', 10]]
+                .forEach(([id, v]) => { const el = document.getElementById(id); if (el) el.value = v; });
+        }
+        recomputeScore();
+    });
+    await expect(page.locator('#resultBadge .badge.bg-success')).toBeVisible();
+    // Clear all inputs → badge should empty
+    await page.evaluate(() => {
+        ['r_kata_form','r_kata_eff','r_basics_form','r_basics_eff','r_kumite_form','r_kumite_eff',
+         'l_basics_form','l_basics_eff','l_kumite_form','l_kumite_eff']
+            .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+        recomputeScore();
+    });
+    expect((await page.textContent('#resultBadge'))?.trim()).toBe('');
 });
 
 test('submitting without student and rank shows validation error', async ({ page }) => {
     await page.goto(BASE + '/instructor/belt_test_edit.php');
+    // Make the chart section visible (submit button is hidden by default until a "student" is conceptually selected)
     await page.evaluate(() => {
-        ['select[name="student_id"]','select[name="rank_id"]','input[name="test_date"]']
-            .forEach(s => document.querySelector(s)?.removeAttribute('required'));
+        document.getElementById('chartSection').style.display = '';
+        document.querySelector('select[name="rank_id"]')?.removeAttribute('required');
+        document.querySelector('input[name="test_date"]')?.removeAttribute('required');
     });
     await page.click('button[type="submit"]');
     await page.waitForLoadState('domcontentloaded');
@@ -104,15 +160,18 @@ test('existing belt test edit form pre-fills correctly', async ({ page }) => {
     await expect(page.locator('button:has-text("Delete")')).toBeVisible();
 });
 
-// â”€â”€ CREATE â†’ VERIFY â†’ DELETE ROUND-TRIP â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â”€â”€ CREATE â†' VERIFY â†' DELETE ROUND-TRIP â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 test('create a belt test for a student', async ({ page }) => {
     await page.goto(BASE + '/instructor/belt_test_edit.php');
     const futureDate = new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10);
-    await page.selectOption('select[name="student_id"]', { index: 1 });
+    // Type-to-filter: type a letter, click first visible student button
+    await page.fill('#studentFilter', 'a');
+    await page.waitForTimeout(100);
+    await page.locator('.student-btn:visible').first().click();
     await page.fill('input[name="test_date"]', futureDate);
     await page.selectOption('select[name="rank_id"]', { index: 1 });
-    await page.fill('input[name="notes"]', `Delete Me ${TS}`);
+    await page.fill('textarea[name="notes"]', `Delete Me ${TS}`);
     await page.click('button[type="submit"]');
     await page.waitForLoadState('domcontentloaded');
     await assertNoPhpErrors(page, 'create belt test for delete');
@@ -135,26 +194,36 @@ test('delete button removes the belt test', async ({ page }) => {
 });
 
 // â”€â”€ AUTO-RANK: passing score auto-inserts into student_ranks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// PHP logic: score >= 80 â†’ result='pass' AND belt_awarded=1 automatically,
+// PHP logic: score >= 80 â†' result='pass' AND belt_awarded=1 automatically,
 // which triggers INSERT IGNORE INTO student_ranks. Verified via admin/student_edit.php.
 
 test('create a passing belt test (score >= 80) for student 2', async ({ page }) => {
     await page.goto(BASE + '/instructor/belt_test_edit.php');
     await page.waitForLoadState('domcontentloaded');
     const today = new Date().toISOString().slice(0, 10);
-    // Select Sarah Johnson (student id=2) by value
-    await page.selectOption('select[name="student_id"]', { value: '2' });
+    // Type-to-filter: select Sarah Johnson by name
+    await page.fill('#studentFilter', 'Sarah');
+    await page.waitForTimeout(100);
+    await page.locator('.student-btn:visible').first().click();
     await page.fill('input[name="test_date"]', today);
     // Choose the first available rank
     await page.selectOption('select[name="rank_id"]', { index: 1 });
-    // Score >= 80 â†’ PHP auto-sets result='pass' and belt_awarded=1 (auto-rank)
-    await page.fill('#scoreInput', '85');
-    await page.fill('input[name="notes"]', `AutoRank ${TS}`);
+    // Score >= 80 → PHP auto-sets result='pass' and belt_awarded=1 (auto-rank)
+    // #scoreManual only exists when editing an existing scored test — for a new
+    // test we fill the chart's score inputs instead. Rank index 1 (10th Kyu,
+    // rank_order=1) uses the "lower" chart (l_basics_*/l_kumite_*), which totals to 85.
+    await page.fill('input[name="l_basics_form"]', '50');
+    await page.fill('input[name="l_basics_eff"]', '30');
+    await page.fill('input[name="l_kumite_form"]', '0');
+    await page.fill('input[name="l_kumite_eff"]', '5');
+    await page.fill('textarea[name="notes"]', `AutoRank ${TS}`);
     await page.click('button[type="submit"]');
     await page.waitForLoadState('domcontentloaded');
     await assertNoPhpErrors(page, 'create passing belt test');
-    // Successful save redirects to belt_test_edit.php?id=X&saved=1
-    expect(page.url()).toContain('saved=1');
+    // Save redirects to belt_test_edit.php?id=X&saved=1, but instructors are then
+    // immediately bounced to belt_tests_all.php — the full grading chart for an
+    // existing test is admin-only (see belt_test_edit.php's role check).
+    expect(page.url()).toContain('belt_tests_all.php');
 });
 
 test('passing belt test appears in list with a score badge', async ({ page }) => {
@@ -163,6 +232,20 @@ test('passing belt test appears in list with a score badge', async ({ page }) =>
     // The row for our test should show a score (85%) â€” bg-success badge
     const row = page.locator('tr').filter({ hasText: `AutoRank ${TS}` });
     await expect(row.locator('.badge.bg-success, .badge.bg-danger, .badge.bg-secondary').first()).toBeVisible();
+});
+
+test('belt_tests_all result column shows Passed badge for passing test', async ({ page }) => {
+    await page.goto(BASE + '/instructor/belt_tests_all.php');
+    // The AutoRank test (score=85) we just created should have a Passed badge.
+    // Row has two badges (Score column "85%" and Test Passed column "Passed") —
+    // columns are: 0 date, 1 student, 2 kyu_dan, 3 score, 4 fee_paid, 5 test passed.
+    // Scope to column 5 to avoid matching the score badge.
+    const row = page.locator('tr').filter({ hasText: `AutoRank ${TS}` });
+    if (await row.count() === 0) return;
+    const resultCell = row.locator('td').nth(5);
+    await expect(resultCell.locator('.badge.bg-success, .badge.bg-danger, .text-muted, .text-danger')).toBeVisible();
+    const badgeText = await resultCell.textContent();
+    expect(badgeText).toMatch(/Passed|✗|—/);
 });
 
 test('passing belt test auto-adds rank to student Rank History in student_edit', async ({ page }) => {

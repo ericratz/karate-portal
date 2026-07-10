@@ -3,26 +3,78 @@ require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/db.php';
 require_role('admin');
 
+// Manual backup download — streams a fresh SQL export straight to the
+// browser as a file download. Nothing is written to disk on the server.
+if (($_GET['download_backup'] ?? '') === '1') {
+    verify_csrf();
+    $pdo    = db();
+    $dbname = DB_NAME;
+
+    header('Content-Type: application/sql');
+    header('Content-Disposition: attachment; filename="karate_backup_' . date('Y-m-d_His') . '.sql"');
+
+    echo "-- ============================================================\n";
+    echo "-- Database backup: {$dbname}\n";
+    echo "-- Generated: " . date('D j M Y g:i a T') . "\n";
+    echo "-- ============================================================\n\n";
+    echo "SET NAMES utf8mb4;\n";
+    echo "SET FOREIGN_KEY_CHECKS = 0;\n\n";
+
+    $tables = $pdo->query('SHOW TABLES')->fetchAll(PDO::FETCH_COLUMN);
+    foreach ($tables as $table) {
+        $safe = '`' . str_replace('`', '``', $table) . '`';
+
+        $row = $pdo->query("SHOW CREATE TABLE {$safe}")->fetch(PDO::FETCH_NUM);
+        echo "-- Table: {$table}\n";
+        echo "DROP TABLE IF EXISTS {$safe};\n";
+        echo $row[1] . ";\n\n";
+
+        $stmt  = $pdo->query("SELECT * FROM {$safe}");
+        $first = true;
+        $cols  = null;
+        while ($data = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            if ($first) {
+                $cols  = implode(', ', array_map(fn($c) => '`' . str_replace('`', '``', $c) . '`', array_keys($data)));
+                $first = false;
+            }
+            $vals = array_map(fn($v) => $v === null ? 'NULL' : $pdo->quote($v), array_values($data));
+            echo "INSERT INTO {$safe} ({$cols}) VALUES (" . implode(', ', $vals) . ");\n";
+        }
+        echo "\n";
+    }
+    echo "SET FOREIGN_KEY_CHECKS = 1;\n";
+    echo "-- End of backup\n";
+
+    audit('manual_backup_download', null, null, count($tables) . ' tables');
+    exit;
+}
+
 $tab = $_GET['tab'] ?? 'activity';
 if (!in_array($tab, ['activity', 'error', 'mail'], true)) $tab = 'activity';
+
+// ── Timeframe (shared across tabs) ──────────────────────────────
+$timeframe = $_GET['timeframe'] ?? 'day';
+if (!in_array($timeframe, ['day', 'week', 'month', 'year', 'all'], true)) $timeframe = 'day';
+$timeframe_labels = ['day' => 'This Day', 'week' => 'This Week', 'month' => 'This Month', 'year' => 'This Year', 'all' => 'All Time'];
+$timeframe_since = [
+    'day'   => date('Y-m-d 00:00:00'),
+    'week'  => date('Y-m-d 00:00:00', strtotime('monday this week')),
+    'month' => date('Y-m-01 00:00:00'),
+    'year'  => date('Y-01-01 00:00:00'),
+    'all'   => null,
+][$timeframe];
 
 // ── Activity ──────────────────────────────────────────────────
 $a_action = $_GET['action'] ?? '';
 $a_user   = trim($_GET['user'] ?? '');
-$a_from   = $_GET['from']   ?? '';
-$a_to     = $_GET['to']     ?? '';
 
 // ── Error ─────────────────────────────────────────────────────
 $e_level   = $_GET['level']   ?? '';
 $e_channel = $_GET['channel'] ?? '';
-$e_from    = $_GET['from']    ?? '';
-$e_to      = $_GET['to']      ?? '';
 
 // ── Mail ──────────────────────────────────────────────────────
 $m_status = $_GET['status'] ?? '';
 $m_type   = $_GET['type']   ?? '';
-$m_from   = $_GET['from']   ?? '';
-$m_to     = $_GET['to']     ?? '';
 
 // ── Fetch only the active tab ─────────────────────────────────
 $entries = $logs = $mails = [];
@@ -31,9 +83,8 @@ $LIMIT = 500;
 if ($tab === 'activity') {
     $where = ['1=1']; $params = [];
     if ($a_action) { $where[] = 'action = ?';              $params[] = $a_action; }
-    if ($a_user)   { $where[] = 'username LIKE ?';         $params[] = '%' . $a_user . '%'; }
-    if ($a_from)   { $where[] = 'DATE(created_at) >= ?';   $params[] = $a_from; }
-    if ($a_to)     { $where[] = 'DATE(created_at) <= ?';   $params[] = $a_to; }
+    if ($a_user)   { $where[] = 'username = ?';            $params[] = $a_user; }
+    if ($timeframe_since) { $where[] = 'created_at >= ?';  $params[] = $timeframe_since; }
     $stmt = db()->prepare(
         'SELECT * FROM activity_log WHERE ' . implode(' AND ', $where)
         . ' ORDER BY created_at DESC LIMIT ' . $LIMIT
@@ -41,14 +92,14 @@ if ($tab === 'activity') {
     $stmt->execute($params);
     $entries = $stmt->fetchAll();
     $a_actions = db()->query('SELECT DISTINCT action FROM activity_log ORDER BY action')->fetchAll(PDO::FETCH_COLUMN);
+    $a_users   = db()->query("SELECT DISTINCT username FROM activity_log WHERE username IS NOT NULL AND username <> '' ORDER BY username")->fetchAll(PDO::FETCH_COLUMN);
 
 } elseif ($tab === 'error') {
     $LIMIT = 200;
     $where = []; $params = [];
     if ($e_level)   { $where[] = 'level = ?';            $params[] = $e_level; }
     if ($e_channel) { $where[] = 'channel = ?';          $params[] = $e_channel; }
-    if ($e_from)    { $where[] = 'DATE(logged_at) >= ?'; $params[] = $e_from; }
-    if ($e_to)      { $where[] = 'DATE(logged_at) <= ?'; $params[] = $e_to; }
+    if ($timeframe_since) { $where[] = 'logged_at >= ?'; $params[] = $timeframe_since; }
     $stmt = db()->prepare(
         'SELECT * FROM error_log'
         . ($where ? ' WHERE ' . implode(' AND ', $where) : '')
@@ -63,8 +114,7 @@ if ($tab === 'activity') {
     $where = []; $params = [];
     if ($m_status) { $where[] = 'status = ?';          $params[] = $m_status; }
     if ($m_type)   { $where[] = 'type = ?';            $params[] = $m_type; }
-    if ($m_from)   { $where[] = 'DATE(sent_at) >= ?';  $params[] = $m_from; }
-    if ($m_to)     { $where[] = 'DATE(sent_at) <= ?';  $params[] = $m_to; }
+    if ($timeframe_since) { $where[] = 'sent_at >= ?'; $params[] = $timeframe_since; }
     $stmt = db()->prepare(
         'SELECT * FROM email_log'
         . ($where ? ' WHERE ' . implode(' AND ', $where) : '')
@@ -87,7 +137,10 @@ $page_title = 'Logs';
 include __DIR__ . '/../includes/header.php';
 ?>
 
-<h4 class="mb-3">Logs</h4>
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <h4 class="mb-0">Logs</h4>
+    <a href="logs.php?download_backup=1" class="btn btn-blue btn-sm">⬇ Download Backup</a>
+</div>
 
 <ul class="nav nav-tabs mb-3">
     <li class="nav-item">
@@ -109,11 +162,19 @@ include __DIR__ . '/../includes/header.php';
 
 <div class="card border-0 shadow-sm mb-3">
     <div class="card-body py-2">
-        <form method="get" class="row g-2 align-items-end">
+        <form method="get" class="row g-2 align-items-end js-live-filter-form">
             <input type="hidden" name="tab" value="activity">
-            <div class="col-md-2">
+            <div class="col-md-3">
+                <label class="form-label small mb-1">Timeframe</label>
+                <select name="timeframe" class="form-select form-select-sm js-live-filter">
+                    <?php foreach ($timeframe_labels as $tv => $tl): ?>
+                    <option value="<?= $tv ?>" <?= $timeframe === $tv ? 'selected' : '' ?>><?= $tl ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="col-md-3">
                 <label class="form-label small mb-1">Action</label>
-                <select name="action" class="form-select form-select-sm">
+                <select name="action" class="form-select form-select-sm js-live-filter">
                     <option value="">All Actions</option>
                     <?php foreach ($a_actions as $a): ?>
                     <option value="<?= htmlspecialchars($a) ?>" <?= $a_action === $a ? 'selected' : '' ?>>
@@ -122,26 +183,16 @@ include __DIR__ . '/../includes/header.php';
                     <?php endforeach; ?>
                 </select>
             </div>
-            <div class="col-md-2">
+            <div class="col-md-3">
                 <label class="form-label small mb-1">User</label>
-                <input type="text" name="user" class="form-control form-control-sm"
-                       placeholder="Username…" value="<?= htmlspecialchars($a_user) ?>">
-            </div>
-            <div class="col-md-2">
-                <label class="form-label small mb-1">From</label>
-                <input type="date" name="from" class="form-control form-control-sm"
-                       value="<?= htmlspecialchars($a_from) ?>">
-            </div>
-            <div class="col-md-2">
-                <label class="form-label small mb-1">To</label>
-                <input type="date" name="to" class="form-control form-control-sm"
-                       value="<?= htmlspecialchars($a_to) ?>">
-            </div>
-            <div class="col-md-1">
-                <button class="btn btn-filter btn-sm w-100">Filter</button>
-            </div>
-            <div class="col-md-1">
-                <a href="logs.php?tab=activity" class="btn btn-filter btn-sm w-100">Clear</a>
+                <select name="user" class="form-select form-select-sm js-live-filter">
+                    <option value="">All Users</option>
+                    <?php foreach ($a_users as $u): ?>
+                    <option value="<?= htmlspecialchars($u) ?>" <?= $a_user === $u ? 'selected' : '' ?>>
+                        <?= htmlspecialchars($u) ?>
+                    </option>
+                    <?php endforeach; ?>
+                </select>
             </div>
         </form>
     </div>
@@ -211,11 +262,19 @@ include __DIR__ . '/../includes/header.php';
 
 <div class="card border-0 shadow-sm mb-3">
     <div class="card-body py-2">
-        <form method="get" class="row g-2 align-items-end">
+        <form method="get" class="row g-2 align-items-end js-live-filter-form">
             <input type="hidden" name="tab" value="error">
-            <div class="col-md-2">
+            <div class="col-md-3">
+                <label class="form-label small mb-1">Timeframe</label>
+                <select name="timeframe" class="form-select form-select-sm js-live-filter">
+                    <?php foreach ($timeframe_labels as $tv => $tl): ?>
+                    <option value="<?= $tv ?>" <?= $timeframe === $tv ? 'selected' : '' ?>><?= $tl ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="col-md-3">
                 <label class="form-label small mb-1">Level</label>
-                <select name="level" class="form-select form-select-sm">
+                <select name="level" class="form-select form-select-sm js-live-filter">
                     <option value="">All Levels</option>
                     <?php foreach ($e_levels as $l): ?>
                     <option value="<?= htmlspecialchars($l) ?>" <?= $e_level === $l ? 'selected' : '' ?>>
@@ -224,9 +283,9 @@ include __DIR__ . '/../includes/header.php';
                     <?php endforeach; ?>
                 </select>
             </div>
-            <div class="col-md-2">
+            <div class="col-md-3">
                 <label class="form-label small mb-1">Channel</label>
-                <select name="channel" class="form-select form-select-sm">
+                <select name="channel" class="form-select form-select-sm js-live-filter">
                     <option value="">All Channels</option>
                     <?php foreach ($e_channels as $ch): ?>
                     <option value="<?= htmlspecialchars($ch) ?>" <?= $e_channel === $ch ? 'selected' : '' ?>>
@@ -234,22 +293,6 @@ include __DIR__ . '/../includes/header.php';
                     </option>
                     <?php endforeach; ?>
                 </select>
-            </div>
-            <div class="col-md-2">
-                <label class="form-label small mb-1">From</label>
-                <input type="date" name="from" class="form-control form-control-sm"
-                       value="<?= htmlspecialchars($e_from) ?>">
-            </div>
-            <div class="col-md-2">
-                <label class="form-label small mb-1">To</label>
-                <input type="date" name="to" class="form-control form-control-sm"
-                       value="<?= htmlspecialchars($e_to) ?>">
-            </div>
-            <div class="col-md-1">
-                <button class="btn btn-filter btn-sm w-100">Filter</button>
-            </div>
-            <div class="col-md-1">
-                <a href="logs.php?tab=error" class="btn btn-filter btn-sm w-100">Clear</a>
             </div>
         </form>
     </div>
@@ -312,19 +355,27 @@ include __DIR__ . '/../includes/header.php';
 
 <div class="card border-0 shadow-sm mb-3">
     <div class="card-body py-2">
-        <form method="get" class="row g-2 align-items-end">
+        <form method="get" class="row g-2 align-items-end js-live-filter-form">
             <input type="hidden" name="tab" value="mail">
-            <div class="col-md-2">
+            <div class="col-md-3">
+                <label class="form-label small mb-1">Timeframe</label>
+                <select name="timeframe" class="form-select form-select-sm js-live-filter">
+                    <?php foreach ($timeframe_labels as $tv => $tl): ?>
+                    <option value="<?= $tv ?>" <?= $timeframe === $tv ? 'selected' : '' ?>><?= $tl ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="col-md-3">
                 <label class="form-label small mb-1">Status</label>
-                <select name="status" class="form-select form-select-sm">
+                <select name="status" class="form-select form-select-sm js-live-filter">
                     <option value="">All</option>
                     <option value="sent"   <?= $m_status === 'sent'   ? 'selected' : '' ?>>Sent</option>
                     <option value="failed" <?= $m_status === 'failed' ? 'selected' : '' ?>>Failed</option>
                 </select>
             </div>
-            <div class="col-md-2">
+            <div class="col-md-3">
                 <label class="form-label small mb-1">Type</label>
-                <select name="type" class="form-select form-select-sm">
+                <select name="type" class="form-select form-select-sm js-live-filter">
                     <option value="">All Types</option>
                     <?php foreach ($m_types as $t): ?>
                     <option value="<?= htmlspecialchars($t) ?>" <?= $m_type === $t ? 'selected' : '' ?>>
@@ -332,22 +383,6 @@ include __DIR__ . '/../includes/header.php';
                     </option>
                     <?php endforeach; ?>
                 </select>
-            </div>
-            <div class="col-md-2">
-                <label class="form-label small mb-1">From</label>
-                <input type="date" name="from" class="form-control form-control-sm"
-                       value="<?= htmlspecialchars($m_from) ?>">
-            </div>
-            <div class="col-md-2">
-                <label class="form-label small mb-1">To</label>
-                <input type="date" name="to" class="form-control form-control-sm"
-                       value="<?= htmlspecialchars($m_to) ?>">
-            </div>
-            <div class="col-md-1">
-                <button class="btn btn-filter btn-sm w-100">Filter</button>
-            </div>
-            <div class="col-md-1">
-                <a href="logs.php?tab=mail" class="btn btn-filter btn-sm w-100">Clear</a>
             </div>
         </form>
     </div>
@@ -399,5 +434,27 @@ include __DIR__ . '/../includes/header.php';
 </div>
 
 <?php endif; ?>
+
+<style nonce="<?= csp_nonce() ?>">
+    /* .btn-primary is repurposed site-wide as green, so a genuinely blue
+       button needs its own class. */
+    .btn-blue {
+        --bs-btn-bg: #0d6efd;
+        --bs-btn-border-color: #0d6efd;
+        --bs-btn-hover-bg: #0b5ed7;
+        --bs-btn-hover-border-color: #0a58ca;
+        --bs-btn-active-bg: #0a58ca;
+        --bs-btn-active-border-color: #0a53be;
+        --bs-btn-color: #fff;
+        --bs-btn-hover-color: #fff;
+        --bs-btn-active-color: #fff;
+    }
+</style>
+
+<script nonce="<?= csp_nonce() ?>">
+document.querySelectorAll('.js-live-filter').forEach(function (el) {
+    el.addEventListener('change', function () { el.closest('form').submit(); });
+});
+</script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>

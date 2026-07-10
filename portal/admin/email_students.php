@@ -6,6 +6,11 @@ require_role('admin');
 
 $msg = $error = '';
 
+if (isset($_SESSION['email_students_flash'])) {
+    $msg = $_SESSION['email_students_flash'];
+    unset($_SESSION['email_students_flash']);
+}
+
 $all_students = db()->query(
     'SELECT s.id, s.first_name, s.last_name, s.email, s.student_type, s.active,
             u.email AS login_email
@@ -41,8 +46,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                            . "Content-Type: text/plain; charset=UTF-8\r\n";
             log_email($to, $subject, $personal_body, $headers, 'bulk') ? $sent++ : $failed++;
         }
-        $msg = "Sent to $sent recipient" . ($sent !== 1 ? 's' : '') . '.';
-        if ($failed) $msg .= " $failed skipped (missing or invalid email).";
+        $flash = "Sent to $sent recipient" . ($sent !== 1 ? 's' : '') . '.';
+        if ($failed) $flash .= " $failed skipped (missing or invalid email).";
+        $_SESSION['email_students_flash'] = $flash;
+        header('Location: email_students.php');
+        exit;
     }
 }
 
@@ -92,16 +100,14 @@ foreach ($all_students as $s) {
         <div class="mb-3">
             <div class="d-flex gap-3 flex-wrap align-items-center">
                 <div class="form-check">
-                    <input type="checkbox" class="form-check-input" id="chk_all"
-                           onchange="toggleAll(this)">
+                    <input type="checkbox" class="form-check-input" id="chk_all">
                     <label class="form-check-label fw-semibold" for="chk_all">All</label>
                 </div>
                 <div class="vr mx-1"></div>
                 <?php foreach (['instructors' => 'Instructors', 'parents' => 'Parents', 'students' => 'Students', 'guests' => 'Guests'] as $val => $label): ?>
                 <div class="form-check">
                     <input type="checkbox" class="form-check-input group-chk"
-                           id="chk_<?= $val ?>" data-group="<?= $val ?>"
-                           onchange="onGroupChange(this)">
+                           id="chk_<?= $val ?>" data-group="<?= $val ?>">
                     <label class="form-check-label" for="chk_<?= $val ?>"><?= $label ?></label>
                 </div>
                 <?php endforeach; ?>
@@ -109,8 +115,7 @@ foreach ($all_students as $s) {
             </div>
         </div>
 
-        <button type="submit" class="btn btn-primary px-4" id="sendBtn"
-                onclick="return confirmSend()">
+        <button type="submit" class="btn btn-primary px-4" id="sendBtn">
             Send Email
         </button>
 
@@ -144,13 +149,11 @@ foreach ($all_students as $s) {
                     <td>
                         <input type="checkbox" class="form-check-input recipient-chk"
                                name="send_to[]" value="<?= $s['id'] ?>"
-                               id="r<?= $s['id'] ?>"
-                               onchange="updateCount()"
->
+                               id="r<?= $s['id'] ?>">
                     </td>
                     <td class="small">
                         <label for="r<?= $s['id'] ?>" class="mb-0 cursor-pointer">
-                            <?= htmlspecialchars($s['first_name'] . ' ' . $s['last_name']) ?>
+                            <?= hn($s['first_name'] . ' ' . $s['last_name']) ?>
                         </label>
                     </td>
                     <td>
@@ -169,7 +172,7 @@ foreach ($all_students as $s) {
 
 </form>
 
-<script>
+<script nonce="<?= csp_nonce() ?>">
 function toggleAll(chk) {
     // Sync group checkboxes
     document.querySelectorAll('.group-chk').forEach(function(c) {
@@ -214,7 +217,10 @@ function syncAllCheckbox() {
 
 function updateCount() {
     const n = document.querySelectorAll('.recipient-chk:checked').length;
-    document.getElementById('recipientCount').textContent = n + ' selected';
+    const badge = document.getElementById('recipientCount');
+    badge.textContent = n + ' selected';
+    badge.className = 'badge' + (n > 0 ? '' : ' bg-secondary');
+    badge.style.backgroundColor = n > 0 ? '#6f42c1' : '';
     syncAllCheckbox();
 }
 
@@ -232,6 +238,17 @@ document.querySelectorAll('.recipient-row').forEach(function(row) {
         if (chk && !chk.disabled) { chk.checked = !chk.checked; updateCount(); }
     });
     row.style.cursor = 'pointer';
+});
+
+document.getElementById('chk_all').addEventListener('change', function() { toggleAll(this); });
+document.querySelectorAll('.group-chk').forEach(function(c) {
+    c.addEventListener('change', function() { onGroupChange(this); });
+});
+document.querySelectorAll('.recipient-chk').forEach(function(c) {
+    c.addEventListener('change', updateCount);
+});
+document.getElementById('emailForm').addEventListener('submit', function(e) {
+    if (!confirmSend()) e.preventDefault();
 });
 
 updateCount();

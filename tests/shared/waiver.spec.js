@@ -104,10 +104,11 @@ test('waiver form pre-fills signed date as today', async ({ page }) => {
 test('submitting without signature shows error', async ({ page }) => {
     await login(page, W_USER, W_PASS);
     await page.goto(BASE + '/student/waiver.php');
-    // Clear the pre-filled name and leave signature empty
-    await page.fill('input[name="print_name"]', '');
+    // Provide print_name so server passes that validation and reaches the signature check
+    await page.fill('input[name="print_name"]', 'Test Student');
+    // Leave signature empty and remove browser-required attrs so form submits
+    await page.fill('input[name="signature"]', '');
     await page.evaluate(() => {
-        document.querySelector('input[name="print_name"]').removeAttribute('required');
         document.querySelector('input[name="signature"]').removeAttribute('required');
         document.querySelector('input[name="i_agree"]').removeAttribute('required');
         document.querySelector('input[name="cell_phone"]').removeAttribute('required');

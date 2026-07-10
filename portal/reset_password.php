@@ -51,8 +51,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $valid) {
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Reset Password — <?= htmlspecialchars(SITE_NAME) ?></title>
     <link rel="stylesheet"
-          href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
-    <style>
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+          integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
+          crossorigin="anonymous">
+    <style nonce="<?= csp_nonce() ?>">
         body { background: #f0f0f0; }
         .card-wrap { max-width: 420px; margin: 80px auto; }
         .card-header { background: #6f42c1; color: #fff; text-align: center; padding: 1.25rem; }

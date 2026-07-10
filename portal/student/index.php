@@ -46,7 +46,7 @@ $student_id = $student['id'];
 
 // Current rank (highest rank_order achieved)
 $rank = db()->prepare(
-    'SELECT r.name, r.kyu_dan
+    'SELECT r.name, r.kyu_dan, sr.rank_id
      FROM student_ranks sr
      JOIN ranks r ON r.id = sr.rank_id
      WHERE sr.student_id = ?
@@ -184,15 +184,16 @@ function badge_result(string $r): string {
 <div class="d-flex align-items-center justify-content-between mb-4">
     <div>
         <h3 class="mb-0">
-            Welcome, <?= htmlspecialchars($student['first_name']) ?>!
+            Welcome, <?= hn($student['first_name']) ?>!
         </h3>
         <small class="text-muted">
             Member since <?= fmt_date($student['registration_date']) ?>
         </small>
     </div>
     <div class="d-flex gap-2 flex-wrap">
-        <a href="https://noji.com/karate/class/homework/homework.php" target="_blank" class="btn" style="background-color:#0052cc;border-color:#0052cc;color:#fff;">All Homework <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16" style="vertical-align:middle;margin-left:2px"><path fill-rule="evenodd" d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5"/><path fill-rule="evenodd" d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 1.707V5.5a.5.5 0 0 0 1 0z"/></svg></a>
+        <a href="<?= hw_index_url($student['date_of_birth'] ?? null) ?>" target="_blank" class="btn" style="background-color:#0052cc;border-color:#0052cc;color:#fff;">All Homework <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16" style="vertical-align:middle;margin-left:2px"><path fill-rule="evenodd" d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5"/><path fill-rule="evenodd" d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 1.707V5.5a.5.5 0 0 0 1 0z"/></svg></a>
         <a href="https://noji.com/karate/testing/testing.php" target="_blank" class="btn" style="background-color:#0052cc;border-color:#0052cc;color:#fff;">Test Info <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16" style="vertical-align:middle;margin-left:2px"><path fill-rule="evenodd" d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5"/><path fill-rule="evenodd" d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 1.707V5.5a.5.5 0 0 0 1 0z"/></svg></a>
+        <a href="../admin/member_card.php?student_id=<?= $student_id ?>" target="_blank" class="btn" style="background-color:#0052cc;border-color:#0052cc;color:#fff;">Member Card <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16" style="vertical-align:middle;margin-left:2px"><path fill-rule="evenodd" d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5"/><path fill-rule="evenodd" d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 1.707V5.5a.5.5 0 0 0 1 0z"/></svg></a>
         <a href="../instructor/student_profile.php?id=<?= $student_id ?>" class="btn btn-success">View Profile</a>
         <a href="pay.php" class="btn btn-success">Make a Payment</a>
     </div>
@@ -217,7 +218,14 @@ $ext_icon = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill
     <div class="col-sm-6 col-lg-3">
         <div class="card text-center h-100 border-0 shadow-sm">
             <div class="card-body d-flex flex-column align-items-center justify-content-center gap-1">
-                <div class="fw-bold fs-3" style="color:#6f42c1"><?= $rank ? htmlspecialchars($rank['name']) : '—' ?></div>
+                <?php if ($rank && $rank['rank_id']): ?>
+                <a href="../admin/certificate.php?student_id=<?= $student_id ?>&rank_id=<?= $rank['rank_id'] ?>"
+                   target="_blank" class="fw-bold fs-3 text-decoration-none" style="color:#6f42c1">
+                    <?= htmlspecialchars($rank['name']) ?><?= $ext_icon ?>
+                </a>
+                <?php else: ?>
+                <div class="fw-bold fs-3" style="color:#6f42c1">—</div>
+                <?php endif; ?>
                 <div class="text-muted small">Current Rank</div>
             </div>
         </div>
@@ -353,52 +361,14 @@ $ext_icon = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill
             </div>
         </div>
 
-        <!-- Belt Tests -->
-        <div class="card border-0 shadow-sm">
-            <div class="card-header bg-white fw-semibold border-bottom d-flex justify-content-between align-items-center">
-                <span>Belt Tests</span>
-                <?php if (count($tests) === 10): ?>
-                <a href="belt_tests.php" class="btn btn-sm btn-outline-secondary">Show All</a>
-                <?php endif; ?>
-            </div>
-            <div class="card-body p-0" style="max-height:300px;overflow-y:auto">
-                <?php if (empty($tests)): ?>
-                    <p class="p-3 text-muted">No belt tests on record.</p>
-                <?php else: ?>
-                <table class="table table-sm table-hover mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Date</th>
-                            <th>Testing For</th>
-                            <th>Result</th>
-                            <th>Fee</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                    <?php foreach ($tests as $t): ?>
-                        <tr>
-                            <td><?= fmt_date($t['test_date']) ?></td>
-                            <td><?= htmlspecialchars($t['kyu_dan']) ?></td>
-                            <td><?= badge_result($t['result']) ?></td>
-                            <td>
-                                <?= $t['fee_paid']
-                                    ? '<span class="text-success">Paid</span>'
-                                    : '<span class="text-danger">Unpaid</span>' ?>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
-                    </tbody>
-                </table>
-                <?php endif; ?>
-            </div>
-        </div>
-
     </div>
 </div>
 
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-<script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"
+        integrity="sha384-NrKB+u6Ts6AtkIhwPixiKTzgSKNblyhlk0Sohlgar9UHUBzai/sgnNNWWd291xqt"
+        crossorigin="anonymous"></script>
+<script nonce="<?= csp_nonce() ?>">
 (function () {
     var chartInst = null;
     var ranks     = <?= json_encode($chart_ranks) ?>;

@@ -76,6 +76,7 @@ $student           = null;
 $attendance        = [];
 $payments          = [];
 $belt_tests        = [];
+$rank_history      = [];
 $rank              = null;
 $next_rank         = null;
 $active_waivers    = [];
@@ -105,6 +106,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'updat
     $ec_phone = trim($_POST['ec_phone']       ?? '');
     $street   = trim($_POST['street_address'] ?? '');
     $csz      = trim($_POST['city_state_zip'] ?? '');
+    $uniform  = trim($_POST['uniform_size']   ?? '');
+    $belt     = trim($_POST['belt_size']      ?? '');
     $medical  = trim($_POST['medical_note']   ?? '');
     if (!$first || !$last) {
         $profile_error = 'First and last name are required.';
@@ -112,9 +115,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'updat
         db()->prepare(
             'UPDATE students SET first_name=?, last_name=?, date_of_birth=?,
              phone=?, email=?, emergency_contact_name=?, emergency_contact_phone=?,
-             street_address=?, city_state_zip=?, medical_note=? WHERE id=?'
+             street_address=?, city_state_zip=?, uniform_size=?, belt_size=?, medical_note=? WHERE id=?'
         )->execute([$first, $last, $dob ?: null, $phone, $email, $ec_name, $ec_phone,
-                    $street ?: null, $csz ?: null, $medical ?: null, $edit_sid]);
+                    $street ?: null, $csz ?: null, $uniform ?: null, $belt ?: null, $medical ?: null, $edit_sid]);
         $lu = db()->prepare('SELECT user_id FROM students WHERE id=?');
         $lu->execute([$edit_sid]);
         if ($uid = $lu->fetchColumn()) {
@@ -136,7 +139,7 @@ if ($tab_id) {
 
     if ($student) {
         $rank_q = db()->prepare(
-            'SELECT r.name, r.kyu_dan FROM student_ranks sr
+            'SELECT r.name, r.kyu_dan, sr.rank_id FROM student_ranks sr
              JOIN ranks r ON r.id = sr.rank_id
              WHERE sr.student_id = ? ORDER BY r.rank_order DESC LIMIT 1'
         );
@@ -178,6 +181,14 @@ if ($tab_id) {
         );
         $bt_q->execute([$tab_id]);
         $belt_tests = $bt_q->fetchAll();
+
+        $rh_q = db()->prepare(
+            'SELECT sr.rank_id, r.kyu_dan, sr.achieved_date
+             FROM student_ranks sr JOIN ranks r ON r.id = sr.rank_id
+             WHERE sr.student_id = ? ORDER BY r.rank_order DESC'
+        );
+        $rh_q->execute([$tab_id]);
+        $rank_history = $rh_q->fetchAll();
 
         $wv_q = db()->prepare(
             'SELECT waiver_type FROM payment_waivers WHERE student_id = ? ORDER BY granted_date DESC'
@@ -246,15 +257,21 @@ function score_badge(string $result, ?int $score): string {
 <div class="d-flex align-items-center justify-content-between mb-3">
     <div>
         <?php if ($student): ?>
-        <h3 class="mb-0">Welcome, <?= htmlspecialchars($student['first_name']) ?>!</h3>
+        <h3 class="mb-0">Welcome, <?= hn($student['first_name']) ?>!</h3>
         <small class="text-muted">Member since <?= $student['registration_date'] ? fmt_date($student['registration_date']) : '—' ?></small>
         <?php else: ?>
         <h3 class="mb-0">My Dashboard</h3>
         <?php endif; ?>
     </div>
-    <div class="d-flex gap-2">
+    <div class="d-flex gap-2 flex-wrap">
+        <?php
+        $inline_ext = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16" style="vertical-align:middle;margin-left:2px"><path fill-rule="evenodd" d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5"/><path fill-rule="evenodd" d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 1.707V5.5a.5.5 0 0 0 1 0z"/></svg>';
+        ?>
+        <a href="<?= hw_index_url($student['date_of_birth'] ?? null) ?>" target="_blank" class="btn" style="background-color:#0052cc;border-color:#0052cc;color:#fff;">All Homework <?= $inline_ext ?></a>
+        <a href="https://noji.com/karate/testing/testing.php" target="_blank" class="btn" style="background-color:#0052cc;border-color:#0052cc;color:#fff;">Test Info <?= $inline_ext ?></a>
         <?php if ($tab_id): ?>
-        <a href="pay.php?student_id=<?= $tab_id ?>" class="btn btn-success btn-sm">Make a Payment</a>
+        <a href="../admin/member_card.php?student_id=<?= $tab_id ?>" target="_blank" class="btn" style="background-color:#0052cc;border-color:#0052cc;color:#fff;">Member Card <?= $inline_ext ?></a>
+        <a href="pay.php?student_id=<?= $tab_id ?>" class="btn btn-success">Make a Payment</a>
         <?php endif; ?>
     </div>
 </div>
@@ -266,7 +283,7 @@ function score_badge(string $result, ?int $score): string {
     <li class="nav-item">
         <a class="nav-link <?= $tab_id === (int)$own_student['id'] ? 'active' : '' ?>"
            href="?student_id=<?= $own_student['id'] ?>">
-            <?= htmlspecialchars($own_student['first_name'] . ' ' . $own_student['last_name']) ?>
+            <?= hn($own_student['first_name'] . ' ' . $own_student['last_name']) ?>
         </a>
     </li>
     <?php endif; ?>
@@ -274,7 +291,7 @@ function score_badge(string $result, ?int $score): string {
     <li class="nav-item">
         <a class="nav-link <?= $tab_id === (int)$child['id'] ? 'active' : '' ?>"
            href="?student_id=<?= $child['id'] ?>">
-            <?= htmlspecialchars($child['first_name'] . ' ' . $child['last_name']) ?>
+            <?= hn($child['first_name'] . ' ' . $child['last_name']) ?>
         </a>
     </li>
     <?php endforeach; ?>
@@ -303,7 +320,14 @@ $ext_icon = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill
     <div class="col-sm-6 col-lg-3">
         <div class="card text-center h-100 border-0 shadow-sm">
             <div class="card-body d-flex flex-column align-items-center justify-content-center gap-1">
-                <div class="fs-3 fw-bold" style="color:#6f42c1"><?= $rank ? htmlspecialchars($rank['name']) : '—' ?></div>
+                <?php if ($rank && $rank['rank_id']): ?>
+                <a href="../admin/certificate.php?student_id=<?= $tab_id ?>&rank_id=<?= $rank['rank_id'] ?>"
+                   target="_blank" class="fs-3 fw-bold text-decoration-none" style="color:#6f42c1">
+                    <?= htmlspecialchars($rank['name']) ?><?= $ext_icon ?>
+                </a>
+                <?php else: ?>
+                <div class="fs-3 fw-bold" style="color:#6f42c1">—</div>
+                <?php endif; ?>
                 <div class="text-muted small">Current Rank</div>
             </div>
         </div>
@@ -360,6 +384,7 @@ $ext_icon = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill
 </div>
 
 
+
 <!-- ── Attendance bar graph ── -->
 <div class="card border-0 shadow-sm mb-4">
     <div class="card-header bg-white fw-semibold border-bottom">Attendance — Last 12 Months</div>
@@ -394,9 +419,8 @@ $ext_icon = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill
             $waiver_row = '—';
         }
         $pv = [
-            'First Name'        => htmlspecialchars($student['first_name'] ?? '') ?: '—',
-            'Last Name'         => htmlspecialchars($student['last_name']  ?? '') ?: '—',
-            'Account Type'      => $type_badge,
+            'First Name'        => hn($student['first_name'] ?? '') ?: '—',
+            'Last Name'         => hn($student['last_name']  ?? '') ?: '—',
             'Date of Birth'     => $student['date_of_birth'] ? fmt_date($student['date_of_birth']) : '—',
             'Phone'             => ($student['phone'] ?? '') ? fmt_phone($student['phone']) : '—',
             'Email'             => htmlspecialchars($student['email'] ?? '') ?: '—',
@@ -404,7 +428,10 @@ $ext_icon = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill
             'Emergency Phone'   => ($student['emergency_contact_phone'] ?? '') ? fmt_phone($student['emergency_contact_phone']) : '—',
             'Address'           => $addr_parts ? implode('<br>', $addr_parts) : '—',
             'Member Since'      => $student['registration_date'] ? fmt_date($student['registration_date']) : '—',
+            'Account Type'      => $type_badge,
             'Waiver'            => $waiver_row,
+            'Uniform Size'      => htmlspecialchars($student['uniform_size'] ?? '') ?: '—',
+            'Belt Size'         => htmlspecialchars($student['belt_size'] ?? '') ?: '—',
             'Medical Note'      => !empty($student['medical_note']) ? nl2br(htmlspecialchars($student['medical_note'])) : '—',
         ];
         $pv_keys = array_keys($pv); $pv_last = end($pv_keys);
@@ -413,10 +440,10 @@ $ext_icon = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill
             <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
                 <span>Profile Info</span>
                 <div class="d-flex gap-2">
-                    <button type="button" id="profileCancelBtn" class="btn btn-sm btn-secondary" style="display:none"
-                            onclick="cardCancel('profile')">Cancel</button>
-                    <button type="button" id="profileEditBtn" class="btn btn-sm btn-success"
-                            onclick="cardToggle('profile')">Edit</button>
+                    <button type="button" id="profileCancelBtn" class="btn btn-sm btn-secondary card-cancel-btn" style="display:none"
+                            data-card-id="profile">Cancel</button>
+                    <button type="button" id="profileEditBtn" class="btn btn-sm btn-success card-toggle-btn"
+                            data-card-id="profile">Edit</button>
                 </div>
             </div>
             <div class="card-body py-2 px-3">
@@ -483,6 +510,24 @@ $ext_icon = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill
                             <label class="form-label">City, State, ZIP</label>
                             <input type="text" name="city_state_zip" class="form-control"
                                    value="<?= htmlspecialchars($student['city_state_zip'] ?? '') ?>">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">Uniform Size</label>
+                            <select name="uniform_size" class="form-select">
+                                <option value="">— not set —</option>
+                                <?php foreach (['000','00','0','1','2','3','4','5','6','7','8'] as $us): ?>
+                                <option value="<?= $us ?>" <?= ($student['uniform_size'] ?? '') === $us ? 'selected' : '' ?>><?= $us ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">Belt Size</label>
+                            <select name="belt_size" class="form-select">
+                                <option value="">— not set —</option>
+                                <?php foreach (['2','3','4','5','6','7','8'] as $bs): ?>
+                                <option value="<?= $bs ?>" <?= ($student['belt_size'] ?? '') === $bs ? 'selected' : '' ?>><?= $bs ?></option>
+                                <?php endforeach; ?>
+                            </select>
                         </div>
                         <div class="col-12">
                             <label class="form-label">Medical Note</label>
@@ -577,8 +622,36 @@ $ext_icon = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill
                             <td><?= fmt_date($t['test_date']) ?></td>
                             <td><?= htmlspecialchars($t['kyu_dan']) ?></td>
                             <td><?= score_badge($t['result'], isset($t['score']) ? (int)$t['score'] : null) ?></td>
-                            <td><?= $t['fee_paid'] ? '<span class="text-success">✓</span>' : '' ?></td>
+                            <td><?= $t['fee_paid'] ? '<span class="text-success">✓</span>' : '<span class="text-danger">✗</span>' ?></td>
                             <td><?= $t['result'] === 'pass' ? '<span class="text-success">✓</span>' : ($t['result'] === 'fail' ? '<span class="text-danger">✗</span>' : '<span class="text-muted">—</span>') ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <!-- Rank History -->
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white fw-semibold">Rank History</div>
+            <div class="card-body p-0" style="max-height:300px;overflow-y:auto">
+                <?php if (empty($rank_history)): ?>
+                    <p class="p-3 text-muted">No ranks recorded.</p>
+                <?php else: ?>
+                <table class="table table-sm mb-0">
+                    <thead class="table-light">
+                        <tr><th>Rank</th><th>Date Achieved</th><th></th></tr>
+                    </thead>
+                    <tbody>
+                    <?php foreach ($rank_history as $i => $rh): ?>
+                        <tr class="<?= $i === 0 ? 'table-purple' : '' ?>">
+                            <td><?= htmlspecialchars($rh['kyu_dan']) ?></td>
+                            <td><?= date('M Y', strtotime($rh['achieved_date'])) ?></td>
+                            <td>
+                                <a href="../admin/certificate.php?student_id=<?= $tab_id ?>&rank_id=<?= $rh['rank_id'] ?>"
+                                   target="_blank" class="btn btn-sm btn-outline-secondary py-0">Certificate</a>
+                            </td>
                         </tr>
                     <?php endforeach; ?>
                     </tbody>
@@ -606,7 +679,7 @@ $ext_icon = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill
                         $cs = $children_summary[(int)$ch['id']];
                     ?>
                     <tr>
-                        <td><?= htmlspecialchars($ch['first_name'] . ' ' . $ch['last_name']) ?></td>
+                        <td><?= hn($ch['first_name'] . ' ' . $ch['last_name']) ?></td>
                         <td><?= $cs['last_attendance'] ? fmt_date($cs['last_attendance']) : '' ?></td>
                         <td>
                             <?php if ($cs['last_payment']): ?>
@@ -614,7 +687,7 @@ $ext_icon = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill
                                 <span class="text-muted small ms-1"><?= fmt_type($cs['last_payment']['payment_type']) ?></span>
                             <?php endif; ?>
                         </td>
-                        <td><?= $ch['injury_waiver'] ? '<span class="text-success">✓</span>' : '' ?></td>
+                        <td><?= $ch['injury_waiver'] ? '<span class="text-success">✓</span>' : '<span class="text-danger">✗</span>' ?></td>
                         <td>
                             <?php if ($cs['next_rank'] && $cs['next_rank']['hw_url']): ?>
                             <a href="<?= $cs['next_rank']['hw_url'] ?>" target="_blank" class="text-decoration-none small">
@@ -635,8 +708,10 @@ $ext_icon = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill
 
 <?php endif; // $student ?>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-<script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"
+        integrity="sha384-NrKB+u6Ts6AtkIhwPixiKTzgSKNblyhlk0Sohlgar9UHUBzai/sgnNNWWd291xqt"
+        crossorigin="anonymous"></script>
+<script nonce="<?= csp_nonce() ?>">
 (function () {
     var chartInst = null;
     var ranks     = <?= json_encode($chart_ranks) ?>;
@@ -720,6 +795,20 @@ function cardCancel(cardId) {
     var form = document.getElementById(cardId + '-form');
     if (form) form.reset();
 }
+
+// Delegated — #profile-card gets replaced wholesale by htmx on save, so
+// bind from document to survive swaps.
+document.addEventListener('click', function(e) {
+    var btn;
+    if ((btn = e.target.closest('.card-toggle-btn'))) {
+        cardToggle(btn.dataset.cardId);
+        return;
+    }
+    if ((btn = e.target.closest('.card-cancel-btn'))) {
+        cardCancel(btn.dataset.cardId);
+        return;
+    }
+});
 </script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>

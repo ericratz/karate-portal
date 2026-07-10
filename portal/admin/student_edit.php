@@ -3,6 +3,10 @@ require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/db.php';
 require_role('admin');
 function fmt_phone(string $p): string { $d = preg_replace('/\D/', '', $p); return strlen($d) === 10 ? substr($d,0,3).'-'.substr($d,3,3).'-'.substr($d,6) : $p; }
+function next_cert_number(): string {
+    $last = db()->query('SELECT cert_number FROM student_ranks WHERE cert_number IS NOT NULL ORDER BY CAST(SUBSTRING(cert_number,6) AS UNSIGNED) DESC LIMIT 1')->fetchColumn();
+    return sprintf('SKSD-%04d', $last ? (int)substr($last, 5) + 1 : 1000);
+}
 
 // If no registration payment remains, revert student back to guest
 function sync_registration_status(int $student_id): void {
@@ -18,7 +22,6 @@ $id    = (int)($_GET['id'] ?? 0);
 $ref   = $_GET['ref'] ?? '';
 $msg   = '';
 $error = '';
-$oob_rank_card = false;
 
 // Bulk update attendance from checkboxes
 if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'update_attendance') {
@@ -32,6 +35,14 @@ if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ===
     );
     foreach ($all_sessions as $sid) {
         $upsert->execute([$id, (int)$sid, in_array((int)$sid, $present_ids) ? 1 : 0, current_user_id()]);
+    }
+    // An empty class (nobody present) isn't worth keeping a record of
+    if (!empty($all_sessions)) {
+        $placeholders = implode(',', array_fill(0, count($all_sessions), '?'));
+        db()->prepare(
+            "DELETE FROM class_sessions WHERE id IN ($placeholders)
+             AND id NOT IN (SELECT DISTINCT session_id FROM attendance WHERE present = 1)"
+        )->execute($all_sessions);
     }
     audit('update_attendance', 'student', $id);
     if (empty($_SERVER['HTTP_HX_REQUEST'])) {
@@ -218,36 +229,8 @@ if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ===
     $medical_note  = trim($_POST['medical_note']  ?? '');
     $uniform_size  = trim($_POST['uniform_size']  ?? '');
     $belt_size     = trim($_POST['belt_size']     ?? '');
-    if (!$first || !$last) {
-        $error = 'First and last name are required.';
-    } else {
-        db()->prepare(
-            'UPDATE students SET first_name=?, last_name=?, date_of_birth=?, phone=?, email=?,
-             emergency_contact_name=?, emergency_contact_phone=?,
-             street_address=?, city_state_zip=?,
-             registration_date=?, student_type=?,
-             medical_note=?, uniform_size=?, belt_size=?
-             WHERE id=?'
-        )->execute([$first,$last,$dob?:null,$phone,$email,$ec_name,$ec_phone,$street?:null,$csz?:null,$reg_date,$s_type,$medical_note?:null,$uniform_size?:null,$belt_size?:null,$id]);
-        $uid_q = db()->prepare('SELECT user_id FROM students WHERE id=?');
-        $uid_q->execute([$id]);
-        if ($lu = $uid_q->fetchColumn()) {
-            db()->prepare('UPDATE users SET first_name=?, last_name=?, email=? WHERE id=?')
-                 ->execute([$first, $last, $email ?: null, $lu]);
-        }
-        audit('update_student', 'student', $id);
-        if (empty($_SERVER['HTTP_HX_REQUEST'])) {
-            header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
-            exit;
-        }
-    }
-}
-
-// Update active status
-if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'update_active_status') {
-    verify_csrf();
-    $raw = $_POST['active_override'] ?? 'auto';
-    $active_override = $raw === '1' ? 1 : ($raw === '0' ? 0 : null);
+    $ao_raw          = $_POST['active_override'] ?? 'auto';
+    $active_override = $ao_raw === '1' ? 1 : ($ao_raw === '0' ? 0 : null);
     if ($active_override === 1) { $active = 1; }
     elseif ($active_override === 0) { $active = 0; }
     else {
@@ -259,12 +242,29 @@ if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ===
         $chk->execute([$id]);
         $active = (int)$chk->fetchColumn() > 0 ? 1 : 0;
     }
-    db()->prepare('UPDATE students SET active=?, active_override=? WHERE id=?')
-         ->execute([$active, $active_override, $id]);
-    audit('update_student', 'student', $id);
-    if (empty($_SERVER['HTTP_HX_REQUEST'])) {
-        header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
-        exit;
+    if (!$first || !$last) {
+        $error = 'First and last name are required.';
+    } else {
+        db()->prepare(
+            'UPDATE students SET first_name=?, last_name=?, date_of_birth=?, phone=?, email=?,
+             emergency_contact_name=?, emergency_contact_phone=?,
+             street_address=?, city_state_zip=?,
+             registration_date=?, student_type=?,
+             medical_note=?, uniform_size=?, belt_size=?,
+             active=?, active_override=?
+             WHERE id=?'
+        )->execute([$first,$last,$dob?:null,$phone,$email,$ec_name,$ec_phone,$street?:null,$csz?:null,$reg_date,$s_type,$medical_note?:null,$uniform_size?:null,$belt_size?:null,$active,$active_override,$id]);
+        $uid_q = db()->prepare('SELECT user_id FROM students WHERE id=?');
+        $uid_q->execute([$id]);
+        if ($lu = $uid_q->fetchColumn()) {
+            db()->prepare('UPDATE users SET first_name=?, last_name=?, email=? WHERE id=?')
+                 ->execute([$first, $last, $email ?: null, $lu]);
+        }
+        audit('update_student', 'student', $id);
+        if (empty($_SERVER['HTTP_HX_REQUEST'])) {
+            header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
+            exit;
+        }
     }
 }
 
@@ -290,8 +290,8 @@ if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ===
     $new_rank_id   = (int)($_POST['new_rank_id'] ?? 0);
     $new_rank_date = trim($_POST['new_rank_date'] ?? '') ?: date('Y-m-d');
     if ($new_rank_id) {
-        db()->prepare('INSERT INTO student_ranks (student_id, rank_id, achieved_date) VALUES (?,?,?)')
-             ->execute([$id, $new_rank_id, $new_rank_date]);
+        db()->prepare('INSERT INTO student_ranks (student_id, rank_id, achieved_date, cert_number) VALUES (?,?,?,?)')
+             ->execute([$id, $new_rank_id, $new_rank_date, next_cert_number()]);
         audit('update_student', 'student', $id);
     }
     if (empty($_SERVER['HTTP_HX_REQUEST'])) {
@@ -314,69 +314,7 @@ if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ===
     }
 }
 
-// Add belt test (inline)
-if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add_belt_test') {
-    verify_csrf();
-    $rank_for  = (int)($_POST['rank_testing_for'] ?? 0);
-    $test_date = $_POST['test_date'] ?? date('Y-m-d');
-    $score     = ($_POST['score'] ?? '') !== '' ? min(100, max(0, (int)$_POST['score'])) : null;
-    $result    = $score === null ? 'pending' : ($score >= 80 ? 'pass' : 'fail');
-    $fee_paid     = isset($_POST['fee_paid']) ? 1 : 0;
-    $belt_awarded = ($result === 'pass') ? 1 : 0;
-    if ($rank_for) {
-        db()->prepare(
-            'INSERT INTO belt_tests (student_id, rank_testing_for, test_date, result, score, fee_paid, belt_awarded)
-             VALUES (?,?,?,?,?,?,?)'
-        )->execute([$id, $rank_for, $test_date, $result, $score, $fee_paid, $belt_awarded]);
-        if ($belt_awarded) {
-            db()->prepare('DELETE FROM student_ranks WHERE student_id=? AND rank_id=?')->execute([$id, $rank_for]);
-            db()->prepare('INSERT INTO student_ranks (student_id, rank_id, achieved_date) VALUES (?,?,?)')->execute([$id, $rank_for, $test_date]);
-        }
-        audit('add_belt_test', 'student', $id);
-        if (!empty($_SERVER['HTTP_HX_REQUEST'])) {
-            $oob_rank_card = true;
-        }
-    }
-    if (empty($_SERVER['HTTP_HX_REQUEST'])) {
-        header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
-        exit;
-    }
-}
-
 // Update belt test
-if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'update_belt_test') {
-    verify_csrf();
-    $bt_id     = (int)($_POST['bt_id'] ?? 0);
-    $rank_for  = (int)($_POST['rank_testing_for'] ?? 0);
-    $test_date = $_POST['test_date'] ?? date('Y-m-d');
-    $score     = ($_POST['score'] ?? '') !== '' ? min(100, max(0, (int)$_POST['score'])) : null;
-    $result    = $score === null ? 'pending' : ($score >= 80 ? 'pass' : 'fail');
-    $fee_paid     = isset($_POST['fee_paid']) ? 1 : 0;
-    $belt_awarded = ($result === 'pass') ? 1 : 0;
-    if ($bt_id && $rank_for) {
-        db()->prepare(
-            'UPDATE belt_tests SET rank_testing_for=?, test_date=?, result=?, score=?, fee_paid=?, belt_awarded=?
-             WHERE id=? AND student_id=?'
-        )->execute([$rank_for, $test_date, $result, $score, $fee_paid, $belt_awarded, $bt_id, $id]);
-        if ($belt_awarded) {
-            db()->prepare('DELETE FROM student_ranks WHERE student_id=? AND rank_id=?')->execute([$id, $rank_for]);
-            db()->prepare('INSERT INTO student_ranks (student_id, rank_id, achieved_date) VALUES (?,?,?)')->execute([$id, $rank_for, $test_date]);
-        } else {
-            // If this test is no longer a pass, remove the rank record unless another passing test still exists
-            $other = db()->prepare('SELECT COUNT(*) FROM belt_tests WHERE student_id=? AND rank_testing_for=? AND belt_awarded=1 AND id!=?');
-            $other->execute([$id, $rank_for, $bt_id]);
-            if ((int)$other->fetchColumn() === 0) {
-                db()->prepare('DELETE FROM student_ranks WHERE student_id=? AND rank_id=?')->execute([$id, $rank_for]);
-            }
-        }
-        audit('update_belt_test', 'student', $id);
-    }
-    if (empty($_SERVER['HTTP_HX_REQUEST'])) {
-        header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
-        exit;
-    }
-}
-
 // Delete belt test
 if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delete_belt_test') {
     verify_csrf();
@@ -497,7 +435,6 @@ if (!$id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ==
 }
 
 $student      = null;
-$last_attended = null;
 $linked_user   = null;
 $ranks        = [];
 $belt_tests   = [];
@@ -517,14 +454,6 @@ if ($id) {
         $lu->execute([$student['user_id']]);
         $linked_user = $lu->fetch();
     }
-
-    $la = db()->prepare(
-        'SELECT MAX(cs.session_date) FROM attendance a
-         JOIN class_sessions cs ON cs.id = a.session_id
-         WHERE a.student_id = ? AND a.present = 1'
-    );
-    $la->execute([$id]);
-    $last_attended = $la->fetchColumn() ?: null;
 
     $att_stmt = db()->prepare(
         'SELECT cs.session_date, cs.id AS session_id, COALESCE(a.present, 0) AS present
@@ -630,7 +559,7 @@ include __DIR__ . '/../includes/header.php';
 ?>
 
 <div class="d-flex align-items-center gap-3 mb-4">
-    <h4 class="mb-0"><?= $id ? 'Edit: '.htmlspecialchars($student['first_name'].' '.$student['last_name']) : 'New Student' ?></h4>
+    <h4 class="mb-0"><?= $id ? 'Edit: '.hn($student['first_name'].' '.$student['last_name']) : 'New Student' ?></h4>
 </div>
 
 <?php if ($msg):   ?><div class="alert alert-success"><?= $msg ?></div><?php endif; ?>
@@ -642,7 +571,6 @@ $acct_val    = $student['student_type'] ?? 'guest';
 $is_active   = (bool)($student['active'] ?? 0);
 $ov_raw      = $student['active_override'] ?? null;
 $ov_val      = $ov_raw === null ? 'auto' : (string)(int)$ov_raw;
-$mode_labels = ['auto' => 'Auto', '1' => 'Set Active', '0' => 'Set Inactive'];
 $injury_done = (bool)($student['injury_waiver'] ?? 0);
 $injury_date = $student['injury_waiver_date'] ?? null;
 ?>
@@ -665,9 +593,9 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                     <span>Profile Info</span>
                     <div class="d-flex gap-2">
                         <button type="button" id="profileCancelBtn" class="btn btn-sm btn-secondary" style="display:none"
-                                onclick="cardCancel('profile')">Cancel</button>
+                                data-fn="cardCancel" data-arg="profile">Cancel</button>
                         <button type="button" id="profileEditBtn" class="btn btn-sm btn-success"
-                                onclick="cardToggle('profile')">Edit</button>
+                                data-fn="cardToggle" data-arg="profile">Edit</button>
                     </div>
                 </div>
                 <div class="card-body">
@@ -687,8 +615,8 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                             htmlspecialchars($student['city_state_zip'] ?? ''),
                         ]);
                         $pv = [
-                            'First Name'        => htmlspecialchars($student['first_name'] ?? '') ?: '—',
-                            'Last Name'         => htmlspecialchars($student['last_name']  ?? '') ?: '—',
+                            'First Name'        => hn($student['first_name'] ?? '') ?: '—',
+                            'Last Name'         => hn($student['last_name']  ?? '') ?: '—',
                             'Date of Birth'     => $student['date_of_birth'] ? date('d M Y', strtotime($student['date_of_birth'])) : '—',
                             'Phone'             => ($student['phone'] ?? '') ? fmt_phone($student['phone']) : '—',
                             'Email'             => htmlspecialchars($student['email'] ?? '') ?: '—',
@@ -737,15 +665,16 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                                     <?php if ($injury_date): ?><span class="ms-1"><?= date('d M Y', strtotime($injury_date)) ?></span><?php endif; ?>
                                     <a href="waiver_view.php?student_id=<?= $id ?>" class="btn btn-sm btn-outline-secondary ms-2">View</a>
                                 <?php else: ?>
-                                    —
+                                    <span class="text-muted">Not completed</span>
+                                    <a href="waiver_view.php?student_id=<?= $id ?>" class="btn btn-sm btn-success ms-2">+ Enter Waiver</a>
                                 <?php endif; ?>
                             </div>
                         </div>
-                        <div class="d-flex py-1">
+                        <div class="d-flex py-1 border-bottom">
                             <div class="text-muted small" style="min-width:160px">Uniform Size</div>
                             <div><?= htmlspecialchars($student['uniform_size'] ?? '') ?: '—' ?></div>
                         </div>
-                        <div class="d-flex py-1">
+                        <div class="d-flex py-1 border-bottom">
                             <div class="text-muted small" style="min-width:160px">Belt Size</div>
                             <div><?= htmlspecialchars($student['belt_size'] ?? '') ?: '—' ?></div>
                         </div>
@@ -815,6 +744,15 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                                 <option value="instructor"  <?= $acct_val==='instructor'  ? 'selected':'' ?>>Instructor</option>
                             </select>
                         </div>
+                        <div class="col-6">
+                            <label class="form-label">Active Status</label>
+                            <select name="active_override" class="form-select">
+                                <option value="auto" <?= $ov_val==='auto' ? 'selected':'' ?>>Auto — inactive after 3 months no attendance</option>
+                                <option value="1"    <?= $ov_val==='1'    ? 'selected':'' ?>>Set Active</option>
+                                <option value="0"    <?= $ov_val==='0'    ? 'selected':'' ?>>Set Inactive</option>
+                            </select>
+                        </div>
+                        <div class="col-12"><hr class="my-1"></div>
                         <div class="col-md-6">
                             <label class="form-label">Uniform Size</label>
                             <select name="uniform_size" class="form-select">
@@ -833,6 +771,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                                 <?php endforeach; ?>
                             </select>
                         </div>
+                        <div class="col-12"><hr class="my-1"></div>
                         <div class="col-12">
                             <label class="form-label">Medical Note</label>
                             <textarea name="medical_note" class="form-control" rows="2"
@@ -902,6 +841,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                                 <option value="instructor">Instructor</option>
                             </select>
                         </div>
+                        <div class="col-12"><hr class="my-1"></div>
                         <div class="col-md-6">
                             <label class="form-label">Uniform Size</label>
                             <select name="uniform_size" class="form-select">
@@ -920,6 +860,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                                 <?php endforeach; ?>
                             </select>
                         </div>
+                        <div class="col-12"><hr class="my-1"></div>
                         <div class="col-12">
                             <label class="form-label">Medical Note</label>
                             <textarea name="medical_note" class="form-control" rows="2"
@@ -944,9 +885,9 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                 <?php if (!empty($attendance)): ?>
                 <div class="d-flex gap-2">
                     <button type="button" class="btn btn-sm btn-secondary" id="attCancelBtn" style="display:none"
-                            onclick="attCancel()">Cancel</button>
+                            data-fn="attCancel">Cancel</button>
                     <button type="button" class="btn btn-sm btn-success" id="attEditBtn"
-                            onclick="toggleAttEdit()">Edit</button>
+                            data-fn="toggleAttEdit">Edit</button>
                 </div>
                 <?php endif; ?>
             </div>
@@ -989,55 +930,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
             </form>
         </div>
 
-        <!-- Active Status -->
-        <?php if ($id): ?>
-        <form id="active-form" method="post"
-              hx-post="student_edit.php?id=<?= $id ?>"
-              hx-target="#active-form" hx-swap="outerHTML" hx-select="#active-form">
-            <?= csrf_input() ?>
-            <input type="hidden" name="action" value="update_active_status">
-            <div class="card border-0 shadow-sm">
-                <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
-                    <span>Active Status</span>
-                    <div class="d-flex gap-2">
-                        <button type="button" id="activeCancelBtn" class="btn btn-sm btn-secondary" style="display:none"
-                                onclick="cardCancel('active')">Cancel</button>
-                        <button type="button" id="activeEditBtn" class="btn btn-sm btn-success"
-                                onclick="cardToggle('active')">Edit</button>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <div id="active-view">
-                        <?= $is_active
-                            ? '<span class="badge bg-success me-2">Active</span>'
-                            : '<span class="badge bg-secondary me-2">Inactive</span>' ?>
-                        <span class="text-muted small"><?= $mode_labels[$ov_val] ?></span>
-                        <?php if ($last_attended): ?>
-                            <div class="form-text mt-1">
-                                Last attended: <strong><?= date('d M Y', strtotime($last_attended)) ?></strong>
-                                <?php
-                                $months_ago = (new DateTime($last_attended))->diff(new DateTime())->days / 30;
-                                echo $months_ago > 3
-                                    ? ' — <span class="text-danger">over 3 months ago</span>'
-                                    : ' — <span class="text-success">within 3 months</span>';
-                                ?>
-                            </div>
-                        <?php elseif ($id): ?>
-                            <div class="form-text mt-1">No attendance on record.</div>
-                        <?php endif; ?>
-                    </div>
-                    <div id="active-edit" style="display:none">
-                        <select name="active_override" class="form-select">
-                            <option value="auto" <?= $ov_val==='auto' ? 'selected':'' ?>>Auto — inactive after 3 months no attendance</option>
-                            <option value="1"    <?= $ov_val==='1'    ? 'selected':'' ?>>Set Active</option>
-                            <option value="0"    <?= $ov_val==='0'    ? 'selected':'' ?>>Set Inactive</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-        </form>
-        <?php endif; ?>
-        <?php endif; // $id — hide attendance + active status for new student ?>
+        <?php endif; // $id — hide attendance for new student ?>
 
     </div><!-- /left col -->
 
@@ -1053,10 +946,10 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                 <div class="d-flex gap-2">
                     <?php if (!empty($payments)): ?>
                     <button id="payEditToggle" type="button" class="btn btn-sm btn-success"
-                            onclick="togglePayEdit()">Edit</button>
+                            data-fn="togglePayEdit">Edit</button>
                     <?php endif; ?>
                     <button type="button" class="btn btn-sm btn-success"
-                            onclick="toggleBox('pay-add-box')">+ Add Payment</button>
+                            data-fn="toggleBox" data-arg="pay-add-box">+ Add Payment</button>
                 </div>
             </div>
             <div id="pay-add-box" style="display:none">
@@ -1102,7 +995,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                         <div class="d-flex gap-2">
                             <button type="submit" class="btn btn-sm btn-success">Save</button>
                             <button type="button" class="btn btn-sm btn-secondary"
-                                    onclick="toggleBox('pay-add-box')">Cancel</button>
+                                    data-fn="toggleBox" data-arg="pay-add-box">Cancel</button>
                         </div>
                     </form>
                 </div>
@@ -1129,12 +1022,12 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                             <td><?= ['paypal'=>'PayPal','cash'=>'Cash','check'=>'Check','mail'=>'Mail'][$p['payment_method']] ?? ucfirst($p['payment_method']) ?></td>
                             <td class="text-end">$<?= number_format($p['amount'], 2) ?></td>
                             <td class="pay-action-col text-end text-nowrap">
-                                <button type="button" class="btn btn-sm btn-outline-primary py-0 me-1"
-                                        onclick="togglePayRow(<?= $p['id'] ?>)">Edit</button>
-                                <form method="post" class="d-inline"
+                                <button type="button" class="btn btn-sm btn-outline-primary py-0 me-1 toggle-pay-row-btn"
+                                        data-id="<?= $p['id'] ?>">Edit</button>
+                                <form method="post" class="d-inline confirm-submit-form"
                                       hx-post="student_edit.php?id=<?= $id ?>"
                                       hx-target="#pay-card" hx-swap="outerHTML" hx-select="#pay-card"
-                                      onsubmit="return confirm('Delete this payment?')">
+                                      data-confirm="Delete this payment?">
                                     <?= csrf_input() ?>
                                     <input type="hidden" name="action" value="delete_payment">
                                     <input type="hidden" name="payment_id" value="<?= $p['id'] ?>">
@@ -1181,8 +1074,8 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                                     </div>
                                     <div class="col-auto">
                                         <button type="submit" class="btn btn-sm btn-success">Save</button>
-                                        <button type="button" class="btn btn-sm btn-secondary"
-                                                onclick="togglePayRow(<?= $p['id'] ?>)">Cancel</button>
+                                        <button type="button" class="btn btn-sm btn-secondary toggle-pay-row-btn"
+                                                data-id="<?= $p['id'] ?>">Cancel</button>
                                     </div>
                                 </form>
                             </td>
@@ -1195,16 +1088,16 @@ $injury_date = $student['injury_waiver_date'] ?? null;
         </div>
 
         <!-- Rank History -->
-        <div id="rank-card" class="card border-0 shadow-sm"<?= $oob_rank_card ? ' hx-swap-oob="outerHTML"' : '' ?>>
+        <div id="rank-card" class="card border-0 shadow-sm">
             <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
                 <span>Rank History</span>
                 <div class="d-flex gap-2">
                     <?php if (!empty($ranks)): ?>
                     <button id="rankEditToggle" type="button" class="btn btn-sm btn-success"
-                            onclick="rankEdit()">Edit</button>
+                            data-fn="rankEdit">Edit</button>
                     <?php endif; ?>
                     <button type="button" class="btn btn-sm btn-success"
-                            onclick="toggleBox('rank-add-box')">+ Record Rank</button>
+                            data-fn="toggleBox" data-arg="rank-add-box">+ Record Rank</button>
                 </div>
             </div>
             <!-- Record rank form (collapsed) -->
@@ -1236,17 +1129,17 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                         <div class="d-flex gap-2">
                             <button type="submit" class="btn btn-sm btn-success">Save</button>
                             <button type="button" class="btn btn-sm btn-secondary"
-                                    onclick="toggleBox('rank-add-box')">Cancel</button>
+                                    data-fn="toggleBox" data-arg="rank-add-box">Cancel</button>
                         </div>
                     </form>
                 </div>
             </div>
             <!-- Detached delete forms — display:none keeps them out of layout -->
             <?php foreach ($ranks as $r): ?>
-            <form id="rankDeleteForm-<?= $r['sr_id'] ?>" method="post" style="display:none"
+            <form id="rankDeleteForm-<?= $r['sr_id'] ?>" method="post" style="display:none" class="confirm-submit-form"
                   hx-post="student_edit.php?id=<?= $id ?>"
                   hx-target="#rank-card" hx-swap="outerHTML" hx-select="#rank-card"
-                  onsubmit="return confirm('Delete this rank?')">
+                  data-confirm="Delete this rank?">
                 <?= csrf_input() ?>
                 <input type="hidden" name="action" value="delete_rank">
                 <input type="hidden" name="sr_id" value="<?= $r['sr_id'] ?>">
@@ -1306,85 +1199,27 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                 <div class="d-flex gap-2">
                     <?php if (!empty($belt_tests)): ?>
                     <button id="btEditToggle" type="button" class="btn btn-sm btn-success"
-                            onclick="toggleBtEdit()">Edit</button>
+                            data-fn="toggleBtEdit">Edit</button>
                     <?php endif; ?>
-                    <button type="button" class="btn btn-sm btn-success"
-                            onclick="toggleBox('bt-add-box')">+ Record Test</button>
-                </div>
-            </div>
-            <!-- Record test form (collapsed) -->
-            <div id="bt-add-box" style="display:none">
-                <div class="card-body border-bottom pb-3">
-                    <form method="post"
-                          hx-post="student_edit.php?id=<?= $id ?>"
-                          hx-target="#bt-card" hx-swap="outerHTML" hx-select="#bt-card">
-                        <?= csrf_input() ?>
-                        <input type="hidden" name="action" value="add_belt_test">
-                        <div class="row g-2 mb-2">
-                            <div class="col-6">
-                                <label class="form-label small">Date *</label>
-                                <input type="date" name="test_date" class="form-control form-control-sm"
-                                       value="<?= date('Y-m-d') ?>" required>
-                            </div>
-                            <div class="col-6">
-                                <label class="form-label small">Score % <span class="text-muted">(blank = pending)</span></label>
-                                <div class="input-group input-group-sm">
-                                    <input type="number" name="score" class="form-control form-control-sm"
-                                           min="0" max="100" step="1" placeholder="0–100">
-                                    <span class="input-group-text">%</span>
-                                </div>
-                            </div>
-                            <div class="col-12">
-                                <label class="form-label small">Testing For *</label>
-                                <select name="rank_testing_for" class="form-select form-select-sm" required>
-                                    <option value="">— select rank —</option>
-                                    <?php foreach ($all_ranks as $ar): ?>
-                                    <option value="<?= $ar['id'] ?>">
-                                        <?= htmlspecialchars($ar['kyu_dan'].' — '.$ar['name']) ?>
-                                    </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                            <div class="col-6">
-                                <div class="form-check mt-1">
-                                    <input type="checkbox" class="form-check-input" name="fee_paid" id="bt_fee" value="1">
-                                    <label class="form-check-label small" for="bt_fee">Fee Paid</label>
-                                </div>
-                            </div>
-                            <div class="col-6">
-                                <div class="form-check mt-1">
-                                    <input type="checkbox" class="form-check-input" name="belt_awarded" id="bt_belt" value="1">
-                                    <label class="form-check-label small" for="bt_belt">Test Passed</label>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="d-flex gap-2">
-                            <button type="submit" class="btn btn-sm btn-success">Save</button>
-                            <button type="button" class="btn btn-sm btn-secondary"
-                                    onclick="toggleBox('bt-add-box')">Cancel</button>
-                        </div>
-                    </form>
+                    <a href="../instructor/belt_test_edit.php?student_id=<?= $id ?>&ref_pid=<?= $id ?>"
+                       class="btn btn-sm btn-success">+ New Test</a>
                 </div>
             </div>
             <div class="card-body p-0" style="max-height:300px;overflow-y:auto">
                 <?php if (empty($belt_tests)): ?>
                     <p class="p-3 text-muted">No belt tests on record.</p>
                 <?php else: ?>
-                <?php foreach ($belt_tests as $bt): ?>
-                <form id="btEditForm-<?= $bt['id'] ?>" method="post"
-                      hx-post="student_edit.php?id=<?= $id ?>"
-                      hx-target="#bt-card" hx-swap="outerHTML" hx-select="#bt-card">
-                    <?= csrf_input() ?>
-                    <input type="hidden" name="action" value="update_belt_test">
-                    <input type="hidden" name="bt_id" value="<?= $bt['id'] ?>">
-                </form>
-                <?php endforeach; ?>
                 <div id="btList">
                 <?php foreach ($belt_tests as $bt): ?>
                 <div class="border-bottom px-3 py-2">
                     <div class="bt-row-view-<?= $bt['id'] ?> d-flex align-items-center gap-3 flex-wrap">
                         <span class="text-nowrap"><?= date('d M Y', strtotime($bt['test_date'])) ?></span>
-                        <span class="flex-grow-1"><?= htmlspecialchars($bt['kyu_dan']) ?></span>
+                        <span class="flex-grow-1">
+                            <a href="../instructor/belt_test_edit.php?id=<?= $bt['id'] ?>&ref_pid=<?= $id ?>"
+                               class="text-primary text-decoration-none">
+                                <?= htmlspecialchars($bt['kyu_dan']) ?>
+                            </a>
+                        </span>
                         <?php if (isset($bt['score']) && $bt['score'] !== null): ?>
                             <?php if ($bt['result']==='pass'): ?>
                                 <span class="badge bg-success"><?= (int)$bt['score'] ?>%</span>
@@ -1397,67 +1232,15 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                         <span>Fee <?= $bt['fee_paid'] ? '<span class="text-success">✓</span>' : '' ?></span>
                         <span>Passed <?= $bt['result'] === 'pass' ? '<span class="text-success">✓</span>' : ($bt['result'] === 'fail' ? '<span class="text-danger">✗</span>' : '<span class="text-muted">—</span>') ?></span>
                         <div class="d-flex gap-2 ms-auto">
-                            <button type="button" onclick="btRowEdit(<?= $bt['id'] ?>)"
-                                    class="btn btn-sm btn-success py-0">Edit</button>
-                            <form method="post" class="d-inline bt-delete-btn"
+                            <form method="post" class="d-inline bt-delete-btn confirm-submit-form"
                                   hx-post="student_edit.php?id=<?= $id ?>"
                                   hx-target="#bt-card" hx-swap="outerHTML" hx-select="#bt-card"
-                                  onsubmit="return confirm('Delete this belt test?')">
+                                  data-confirm="Delete this belt test?">
                                 <?= csrf_input() ?>
                                 <input type="hidden" name="action" value="delete_belt_test">
                                 <input type="hidden" name="bt_id" value="<?= $bt['id'] ?>">
                                 <button class="btn btn-sm btn-outline-danger py-0">✕</button>
                             </form>
-                        </div>
-                    </div>
-                    <div class="bt-row-edit-<?= $bt['id'] ?>" style="display:none">
-                        <div class="row g-2 mt-1 mb-2">
-                            <div class="col-auto">
-                                <label class="form-label small mb-1">Date</label>
-                                <input type="date" name="test_date" form="btEditForm-<?= $bt['id'] ?>"
-                                       class="form-control form-control-sm"
-                                       value="<?= htmlspecialchars($bt['test_date']) ?>">
-                            </div>
-                            <div class="col">
-                                <label class="form-label small mb-1">Testing For</label>
-                                <select name="rank_testing_for" form="btEditForm-<?= $bt['id'] ?>"
-                                        class="form-select form-select-sm">
-                                    <?php foreach ($all_ranks as $ar): ?>
-                                    <option value="<?= $ar['id'] ?>" <?= $ar['id'] == $bt['rank_testing_for'] ? 'selected' : '' ?>>
-                                        <?= htmlspecialchars($ar['kyu_dan'].' — '.$ar['name']) ?>
-                                    </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="d-flex align-items-center gap-3 flex-wrap">
-                            <div>
-                                <label class="form-label small mb-1">Score % <span class="text-muted">(blank = pending)</span></label>
-                                <div class="input-group input-group-sm" style="width:120px">
-                                    <input type="number" name="score" form="btEditForm-<?= $bt['id'] ?>"
-                                           class="form-control form-control-sm" min="0" max="100" step="1"
-                                           value="<?= (isset($bt['score']) && $bt['score'] !== null) ? (int)$bt['score'] : '' ?>">
-                                    <span class="input-group-text">%</span>
-                                </div>
-                            </div>
-                            <div class="form-check">
-                                <input type="checkbox" class="form-check-input" name="fee_paid"
-                                       form="btEditForm-<?= $bt['id'] ?>" value="1"
-                                       id="fee_<?= $bt['id'] ?>" <?= $bt['fee_paid'] ? 'checked' : '' ?>>
-                                <label class="form-check-label small" for="fee_<?= $bt['id'] ?>">Fee Paid</label>
-                            </div>
-                            <div class="form-check">
-                                <input type="checkbox" class="form-check-input" name="belt_awarded"
-                                       form="btEditForm-<?= $bt['id'] ?>" value="1"
-                                       id="belt_<?= $bt['id'] ?>" <?= $bt['belt_awarded'] ? 'checked' : '' ?>>
-                                <label class="form-check-label small" for="belt_<?= $bt['id'] ?>">Test Passed</label>
-                            </div>
-                            <div class="d-flex gap-2 ms-auto">
-                                <button type="button" class="btn btn-sm btn-secondary"
-                                        onclick="btRowCancel(<?= $bt['id'] ?>)">Cancel</button>
-                                <button type="submit" form="btEditForm-<?= $bt['id'] ?>"
-                                        class="btn btn-sm btn-success">Save</button>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -1474,10 +1257,10 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                 <div class="d-flex gap-2">
                     <?php if (!empty($payment_waivers)): ?>
                     <button id="pwEditToggle" type="button" class="btn btn-sm btn-success"
-                            onclick="togglePwEdit()">Edit</button>
+                            data-fn="togglePwEdit">Edit</button>
                     <?php endif; ?>
                     <button type="button" class="btn btn-sm btn-success"
-                            onclick="toggleBox('pw-add-box')">+ Add Exemption</button>
+                            data-fn="toggleBox" data-arg="pw-add-box">+ Add Exemption</button>
                 </div>
             </div>
             <!-- Add waiver form (collapsed) -->
@@ -1514,7 +1297,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                         <div class="d-flex gap-2">
                             <button type="submit" class="btn btn-sm btn-success">Save</button>
                             <button type="button" class="btn btn-sm btn-secondary"
-                                    onclick="toggleBox('pw-add-box')">Cancel</button>
+                                    data-fn="toggleBox" data-arg="pw-add-box">Cancel</button>
                         </div>
                     </form>
                 </div>
@@ -1535,12 +1318,12 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                             </td>
                             <td class="text-nowrap"><?= date('d M Y', strtotime($pw['granted_date'])) ?></td>
                             <td class="pw-action-col text-end text-nowrap">
-                                <button type="button" class="btn btn-sm btn-outline-primary py-0 me-1"
-                                        onclick="togglePwRow(<?= $pw['id'] ?>)">Edit</button>
-                                <form method="post" class="d-inline"
+                                <button type="button" class="btn btn-sm btn-outline-primary py-0 me-1 toggle-pw-row-btn"
+                                        data-id="<?= $pw['id'] ?>">Edit</button>
+                                <form method="post" class="d-inline confirm-submit-form"
                                       hx-post="student_edit.php?id=<?= $id ?>"
                                       hx-target="#pw-card" hx-swap="outerHTML" hx-select="#pw-card"
-                                      onsubmit="return confirm('Delete this waiver?')">
+                                      data-confirm="Delete this waiver?">
                                     <?= csrf_input() ?>
                                     <input type="hidden" name="action" value="delete_waiver">
                                     <input type="hidden" name="waiver_id" value="<?= $pw['id'] ?>">
@@ -1576,8 +1359,8 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                                     </div>
                                     <div class="col-auto">
                                         <button type="submit" class="btn btn-sm btn-success">Save</button>
-                                        <button type="button" class="btn btn-sm btn-secondary"
-                                                onclick="togglePwRow(<?= $pw['id'] ?>)">Cancel</button>
+                                        <button type="button" class="btn btn-sm btn-secondary toggle-pw-row-btn"
+                                                data-id="<?= $pw['id'] ?>">Cancel</button>
                                     </div>
                                 </form>
                             </td>
@@ -1596,10 +1379,10 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                 <div class="d-flex gap-2">
                     <?php if (!empty($guardian_links)): ?>
                     <button id="guardianEditToggle" type="button" class="btn btn-sm btn-success"
-                            onclick="toggleGuardianEdit()">Edit</button>
+                            data-fn="toggleGuardianEdit">Edit</button>
                     <?php endif; ?>
                     <button type="button" class="btn btn-sm btn-success"
-                            onclick="toggleBox('guardian-add-box')">+ Link</button>
+                            data-fn="toggleBox" data-arg="guardian-add-box">+ Link</button>
                 </div>
             </div>
             <div id="guardian-add-box" style="display:none">
@@ -1615,7 +1398,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                                 <option value="">— select —</option>
                                 <?php foreach ($guardian_candidates as $gc): ?>
                                     <option value="<?= $gc['id'] ?>">
-                                        <?= htmlspecialchars($gc['first_name'] . ' ' . $gc['last_name']) ?>
+                                        <?= hn($gc['first_name'] . ' ' . $gc['last_name']) ?>
                                     </option>
                                 <?php endforeach; ?>
                             </select>
@@ -1626,7 +1409,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                             </span>
                         <?php endif; ?>
                         <button type="button" class="btn btn-sm btn-secondary"
-                                onclick="toggleBox('guardian-add-box')">Cancel</button>
+                                data-fn="toggleBox" data-arg="guardian-add-box">Cancel</button>
                     </form>
                 </div>
             </div>
@@ -1641,14 +1424,14 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                             <td>
                                 <a href="student_edit.php?id=<?= $gl['student_id'] ?>"
                                    class="text-decoration-none">
-                                    <?= htmlspecialchars($gl['first_name'] . ' ' . $gl['last_name']) ?>
+                                    <?= hn($gl['first_name'] . ' ' . $gl['last_name']) ?>
                                 </a>
                             </td>
                             <td class="guardian-delete-col text-end">
-                                <form method="post" class="d-inline"
+                                <form method="post" class="d-inline confirm-submit-form"
                                       hx-post="student_edit.php?id=<?= $id ?>"
                                       hx-target="#guardian-card" hx-swap="outerHTML" hx-select="#guardian-card"
-                                      onsubmit="return confirm('Remove this link?')">
+                                      data-confirm="Remove this link?">
                                     <?= csrf_input() ?>
                                     <input type="hidden" name="action" value="remove_guardian">
                                     <input type="hidden" name="guardian_link_id" value="<?= $gl['link_id'] ?>">
@@ -1663,33 +1446,12 @@ $injury_date = $student['injury_waiver_date'] ?? null;
             </div>
         </div>
 
-        <!-- Waiver -->
-        <div class="card border-0 shadow-sm">
-            <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
-                <span>Waiver</span>
-                <a href="waiver_view.php?student_id=<?= $id ?>" class="btn btn-sm btn-success">
-                    <?= $injury_done ? 'View' : '+ Enter Waiver' ?>
-                </a>
-            </div>
-            <div class="card-body">
-                <?php if ($injury_done): ?>
-                    <span class="badge bg-success">Completed</span>
-                    <?php if ($injury_date): ?>
-                        <span class="ms-1"><?= date('d M Y', strtotime($injury_date)) ?></span>
-                    <?php endif; ?>
-                <?php else: ?>
-                    <span class="text-muted">Not completed</span>
-                <?php endif; ?>
-            </div>
-        </div>
-
-
     <?php endif; /* $id */ ?>
     </div><!-- /right col -->
 
 </div><!-- /row -->
 
-<style>
+<style nonce="<?= csp_nonce() ?>">
     .pw-action-col      { display:none !important; }
     .rank-delete-col    { display:none !important; }
     .note-delete        { display:none !important; }
@@ -1703,7 +1465,37 @@ $injury_date = $student['injury_waiver_date'] ?? null;
     #payTable.editing      .pay-action-col      { display:table-cell !important; }
     #guardianTable.editing .guardian-delete-col { display:table-cell !important; }
 </style>
-<script>
+<script nonce="<?= csp_nonce() ?>">
+// Generic dispatcher for simple no-arg / single-string-arg button actions
+// (data-fn="funcName" [data-arg="value"]) — many cards on this page get
+// replaced wholesale by htmx on save, so this is delegated from document
+// rather than bound per-element.
+document.addEventListener('click', function(e) {
+    var btn = e.target.closest('[data-fn]');
+    if (!btn) return;
+    var fn = window[btn.dataset.fn];
+    if (typeof fn !== 'function') return;
+    if (btn.dataset.arg !== undefined) fn(btn.dataset.arg);
+    else fn();
+});
+
+// Per-row toggle buttons (dynamic id via data-id)
+document.addEventListener('click', function(e) {
+    var btn;
+    if ((btn = e.target.closest('.toggle-pay-row-btn'))) { togglePayRow(btn.dataset.id); return; }
+    if ((btn = e.target.closest('.toggle-pw-row-btn')))  { togglePwRow(btn.dataset.id); return; }
+    if ((btn = e.target.closest('.note-edit-btn')))      { noteEdit(btn.dataset.id); return; }
+    if ((btn = e.target.closest('.note-cancel-btn')))    { noteCancel(btn.dataset.id); return; }
+});
+
+// Shared confirm-before-submit for forms with class="confirm-submit-form"
+// and a data-confirm message.
+document.addEventListener('submit', function(e) {
+    var form = e.target.closest('.confirm-submit-form');
+    if (!form) return;
+    if (!confirm(form.dataset.confirm)) e.preventDefault();
+});
+
 // Generic: toggle a collapsible add-box
 function toggleBox(id) {
     var el = document.getElementById(id);
@@ -1837,28 +1629,6 @@ function togglePwRow(wid) {
     if (closing && typeof setFormClean === 'function') setFormClean();
 }
 
-// Belt awarded can't be checked when result is Fail
-function wireBeltAwarded(resultSel, beltCb) {
-    function sync() {
-        var isFail = resultSel.value !== 'pass';
-        beltCb.disabled = isFail;
-        if (isFail) beltCb.checked = false;
-    }
-    resultSel.addEventListener('change', sync);
-    sync();
-}
-
-// Belt test row — Edit hides view row, reveals 2 edit rows
-function btRowEdit(id) {
-    document.querySelector('.bt-row-view-' + id).style.display = 'none';
-    document.querySelectorAll('.bt-row-edit-' + id).forEach(function(el) { el.style.display = ''; });
-}
-function btRowCancel(id) {
-    document.querySelector('.bt-row-view-' + id).style.display = '';
-    document.querySelectorAll('.bt-row-edit-' + id).forEach(function(el) { el.style.display = 'none'; });
-    if (typeof setFormClean === 'function') setFormClean();
-}
-
 // Belt tests card — Edit reveals ✕ buttons
 function toggleBtEdit() {
     var list = document.getElementById('btList');
@@ -1867,22 +1637,6 @@ function toggleBtEdit() {
     btn.textContent = on ? 'Done' : 'Edit';
     btn.className   = on ? 'btn btn-sm btn-danger' : 'btn btn-sm btn-success';
 }
-
-// Wire belt-awarded constraint for "Record Test" add form
-(function() {
-    var rs = document.querySelector('#bt-add-box select[name="result"]');
-    var bc = document.querySelector('#bt-add-box input[name="belt_awarded"]');
-    if (rs && bc) wireBeltAwarded(rs, bc);
-})();
-
-// Wire belt-awarded constraint for each per-row edit form
-<?php foreach ($belt_tests as $bt): ?>
-(function() {
-    var rs = document.querySelector('select[name="result"][form="btEditForm-<?= $bt['id'] ?>"]');
-    var bc = document.querySelector('input[name="belt_awarded"][form="btEditForm-<?= $bt['id'] ?>"]');
-    if (rs && bc) wireBeltAwarded(rs, bc);
-})();
-<?php endforeach; ?>
 
 // Rank history — edit makes selects/dates visible + reveals ✕, Confirm submits
 var rankEditing = false;
@@ -1912,7 +1666,7 @@ function rankEdit() {
         <div class="d-flex gap-2">
             <?php if (!empty($notes)): ?>
             <button type="button" id="notesEditBtn" class="btn btn-sm btn-success"
-                    onclick="toggleNotesEdit()">Edit</button>
+                    data-fn="toggleNotesEdit">Edit</button>
             <?php endif; ?>
         </div>
     </div>
@@ -1948,12 +1702,12 @@ function rankEdit() {
                     · <strong><?= htmlspecialchars($n['username'] ?? 'unknown') ?></strong>
                 </small>
                 <div class="d-flex gap-1 flex-shrink-0">
-                    <button type="button" class="btn btn-sm btn-success py-0"
-                            onclick="noteEdit(<?= $n['id'] ?>)">Edit</button>
-                    <form method="post" class="d-inline note-delete"
+                    <button type="button" class="btn btn-sm btn-success py-0 note-edit-btn"
+                            data-id="<?= $n['id'] ?>">Edit</button>
+                    <form method="post" class="d-inline note-delete confirm-submit-form"
                           hx-post="student_edit.php?id=<?= $id ?>"
                           hx-target="#notes-card" hx-swap="outerHTML" hx-select="#notes-card"
-                          onsubmit="return confirm('Delete this note?')">
+                          data-confirm="Delete this note?">
                         <?= csrf_input() ?>
                         <input type="hidden" name="action" value="delete_note">
                         <input type="hidden" name="note_id" value="<?= $n['id'] ?>">
@@ -1972,8 +1726,8 @@ function rankEdit() {
                           required><?= htmlspecialchars($n['content']) ?></textarea>
                 <div class="d-flex gap-2">
                     <button type="submit" class="btn btn-sm btn-primary">Save</button>
-                    <button type="button" class="btn btn-sm btn-secondary"
-                            onclick="noteCancel(<?= $n['id'] ?>)">Cancel</button>
+                    <button type="button" class="btn btn-sm btn-secondary note-cancel-btn"
+                            data-id="<?= $n['id'] ?>">Cancel</button>
                 </div>
             </form>
         </div>
@@ -1983,7 +1737,7 @@ function rankEdit() {
     </div>
 </div>
 
-<script>
+<script nonce="<?= csp_nonce() ?>">
 // Student notes — edit reveals ✕ buttons
 var notesEditing = false;
 function toggleNotesEdit() {
@@ -2013,7 +1767,7 @@ function noteCancel(id) {
     if (typeof setFormClean === 'function') setFormClean();
 }
 </script>
-<script>
+<script nonce="<?= csp_nonce() ?>">
 document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
     new bootstrap.Tooltip(el);
 });
@@ -2023,8 +1777,8 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
 
 <?php if ($id): ?>
 <div class="mt-4 text-end">
-    <form method="post" class="d-inline"
-          onsubmit="return confirm('Permanently delete <?= htmlspecialchars(addslashes($student['first_name'] . ' ' . $student['last_name'])) ?>?\n\nThis removes their profile, attendance, payments, and login account. This cannot be undone.')">
+    <form method="post" class="d-inline confirm-submit-form"
+          data-confirm="Permanently delete <?= htmlspecialchars($student['first_name'] . ' ' . $student['last_name']) ?>?&#10;&#10;This removes their profile, attendance, payments, and login account. This cannot be undone.">
         <?= csrf_input() ?>
         <input type="hidden" name="action" value="delete_profile">
         <button type="submit" class="btn btn-outline-danger">Delete Profile</button>

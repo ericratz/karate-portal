@@ -28,9 +28,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
     db()->prepare('DELETE FROM payments WHERE id=?')->execute([$del_id]);
     audit('delete_payment', 'payment', $del_id);
     if ($del_sid) sync_registration_status($del_sid);
-    if (!empty($_SERVER['HTTP_HX_REQUEST'])) { exit; }
-    header('Location: payments.php?' . http_build_query($_GET));
-    exit;
+    if (empty($_SERVER['HTTP_HX_REQUEST'])) {
+        header('Location: payments.php?' . http_build_query($_GET));
+        exit;
+    }
+    // For htmx requests, fall through so hx-select can pull the live count.
 }
 
 // ── Edit a payment ────────────────────────────────────────────
@@ -44,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'edit_
     $month  = $_POST['month_covered']         ?? '';
     $txn    = trim($_POST['transaction_id']   ?? '');
     $notes  = trim($_POST['notes']            ?? '');
-    $valid_types   = ['monthly_tuition','registration','belt_test','slc_training','seminar','other','donation'];
+    $valid_types   = ['monthly_tuition','registration','belt_test','slc_training','seminar','other'];
     $valid_methods = ['paypal','cash','check','mail'];
     if ($pid && $amount > 0 && in_array($type, $valid_types) && in_array($method, $valid_methods)) {
         db()->prepare(
@@ -85,7 +87,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== 'delet
     $txn    = trim($_POST['transaction_id']  ?? '');
     $notes  = trim($_POST['notes']           ?? '');
 
-    $valid_types   = ['monthly_tuition','registration','belt_test','slc_training','seminar','other','donation'];
+    $valid_types   = ['monthly_tuition','registration','belt_test','slc_training','seminar','other'];
     $valid_methods = ['paypal','cash','check','mail'];
 
     $payer_name = trim($_POST['payer_name'] ?? '');
@@ -115,8 +117,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== 'delet
             db()->prepare("UPDATE students SET student_type='student' WHERE id=?")
                  ->execute([$sid]);
         }
-        $msg = 'Payment recorded.';
-
         // Send payment receipt email to student
         $receipt_student = db()->prepare('SELECT first_name, last_name, email FROM students WHERE id = ?');
         $receipt_student->execute([$sid]);
@@ -132,15 +132,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== 'delet
                 $txn ?: null
             );
         }
+
+        header('Location: payments.php?' . http_build_query($_GET + ['recorded' => 1]));
+        exit;
     }
 }
+
+if (isset($_GET['recorded'])) $msg = 'Payment recorded.';
 
 // ── Filters ───────────────────────────────────────────────────
 $f_student = (int)($_GET['student_id'] ?? 0);
 $f_type    = $_GET['type']   ?? '';
 $f_method  = $_GET['method'] ?? '';
-$f_from    = $_GET['from']   ?? date('Y-01-01');
-$f_to      = $_GET['to']     ?? date('Y-m-d');
+$f_year    = (int)($_GET['year'] ?? 0);
 
 $where  = ['1=1'];
 $params = [];
@@ -148,8 +152,14 @@ $params = [];
 if ($f_student) { $where[] = 'p.student_id = ?'; $params[] = $f_student; }
 if ($f_type)    { $where[] = 'p.payment_type = ?'; $params[] = $f_type; }
 if ($f_method)  { $where[] = 'p.payment_method = ?'; $params[] = $f_method; }
-if ($f_from)    { $where[] = 'p.payment_date >= ?'; $params[] = $f_from . ' 00:00:00'; }
-if ($f_to)      { $where[] = 'p.payment_date <= ?'; $params[] = $f_to   . ' 23:59:59'; }
+if ($f_year)    { $where[] = 'YEAR(p.payment_date) = ?'; $params[] = $f_year; }
+
+// Years available for the dropdown — actual payment years plus the current year
+$payment_years = db()->query('SELECT DISTINCT YEAR(payment_date) AS y FROM payments ORDER BY y DESC')
+    ->fetchAll(PDO::FETCH_COLUMN);
+if (!in_array((int)date('Y'), $payment_years)) {
+    array_unshift($payment_years, (int)date('Y'));
+}
 
 $sql = 'SELECT p.*, s.first_name, s.last_name, u.username AS recorded_by_name
         FROM payments p
@@ -200,22 +210,40 @@ include __DIR__ . '/../includes/header.php';
 
                 <div class="col-md-4">
                     <label class="form-label">Student *</label>
-                    <select name="student_id" class="form-select" required>
-                        <option value="">— select —</option>
+                    <?php
+                    $prefill_student_name = '';
+                    if ($prefill_student) {
+                        foreach ($all_students as $s) {
+                            if ((int)$s['id'] === $prefill_student) { $prefill_student_name = $s['first_name'].' '.$s['last_name']; break; }
+                        }
+                    }
+                    ?>
+                    <input type="hidden" name="student_id" id="payGrantStudentId" value="<?= $prefill_student ?: '' ?>">
+                    <div id="payGrantStudentSelected" class="<?= $prefill_student ? 'd-flex' : 'd-none' ?> justify-content-between align-items-center mb-1">
+                        <span class="fw-semibold" id="payGrantStudentName"><?= hn($prefill_student_name) ?></span>
+                        <button type="button" id="clearPayGrantStudentBtn" class="btn btn-link btn-sm p-0 text-muted">change</button>
+                    </div>
+                    <input type="text" id="payGrantStudentFilter" class="form-control" placeholder="Type student name…"
+                           autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+                           <?= $prefill_student ? 'style="display:none"' : '' ?>>
+                    <div id="payGrantStudentList" class="list-group mt-1"
+                         style="<?= count($all_students) > 8 ? 'max-height:200px;overflow-y:auto;' : '' ?><?= $prefill_student ? 'display:none' : '' ?>">
                         <?php foreach ($all_students as $s): ?>
-                            <option value="<?= $s['id'] ?>"
-                                <?= $s['id'] === $prefill_student ? 'selected' : '' ?>>
-                                <?= htmlspecialchars($s['first_name'].' '.$s['last_name']) ?>
-                            </option>
+                        <button type="button" class="list-group-item list-group-item-action pay-grant-stu-btn"
+                                data-id="<?= (int)$s['id'] ?>"
+                                data-name="<?= htmlspecialchars(strtolower($s['first_name'].' '.$s['last_name'].' '.$s['last_name'].' '.$s['first_name'])) ?>"
+                                style="display:none">
+                            <?= hn($s['first_name'].' '.$s['last_name']) ?>
+                        </button>
                         <?php endforeach; ?>
-                    </select>
+                    </div>
                 </div>
 
                 <div class="col-md-2">
                     <label class="form-label">Amount *</label>
                     <div class="input-group">
                         <span class="input-group-text">$</span>
-                        <input type="number" name="amount" class="form-control"
+                        <input type="number" name="amount" id="paymentAmountInput" class="form-control"
                                step="0.01" min="0.01" required
                                value="<?= MONTHLY_FEE ?>">
                     </div>
@@ -223,9 +251,9 @@ include __DIR__ . '/../includes/header.php';
 
                 <div class="col-md-3">
                     <label class="form-label">Type *</label>
-                    <select name="payment_type" class="form-select" required>
+                    <select name="payment_type" id="paymentTypeSelect" class="form-select" required>
                         <?php
-                        $types = ['monthly_tuition','registration','belt_test','slc_training','seminar','other','donation'];
+                        $types = ['monthly_tuition','registration','belt_test','slc_training','seminar','other'];
                         foreach ($types as $t):
                         ?>
                         <option value="<?= $t ?>" <?= $t === $prefill_type ? 'selected' : '' ?>>
@@ -249,13 +277,6 @@ include __DIR__ . '/../includes/header.php';
                     <label class="form-label">Date</label>
                     <input type="date" name="payment_date" class="form-control"
                            value="<?= date('Y-m-d') ?>">
-                </div>
-
-                <div class="col-md-2">
-                    <label class="form-label">Month Covered</label>
-                    <input type="month" name="month_covered" class="form-control"
-                           value="<?= date('Y-m') ?>">
-                    <small class="text-muted">Tuition only</small>
                 </div>
 
                 <div class="col-md-4">
@@ -289,27 +310,48 @@ include __DIR__ . '/../includes/header.php';
     </div>
 </div>
 
+<div id="payments-page-body">
 <!-- ── Filters ── -->
 <div class="card border-0 shadow-sm mb-3">
     <div class="card-body py-2">
         <form method="get" class="row g-2 align-items-end"
-              hx-get="payments.php" hx-target="#payments-results" hx-select="#payments-results" hx-swap="outerHTML" hx-push-url="true">
+              hx-get="payments.php" hx-target="#payments-page-body" hx-select="#payments-page-body" hx-swap="outerHTML" hx-push-url="true"
+              hx-trigger="change from:select[name='type'], change from:select[name='method'], change from:select[name='year'], filter-refresh from:body">
             <div class="col-md-3">
                 <label class="form-label small mb-1">Student</label>
-                <select name="student_id" class="form-select form-select-sm">
-                    <option value="">All Students</option>
+                <?php
+                $f_student_name = '';
+                if ($f_student) {
+                    foreach ($all_students as $s) {
+                        if ((int)$s['id'] === $f_student) { $f_student_name = $s['first_name'].' '.$s['last_name']; break; }
+                    }
+                }
+                ?>
+                <input type="hidden" name="student_id" id="payFilterStudentId" value="<?= $f_student ?: '' ?>">
+                <div id="payFilterStudentSelected" class="<?= $f_student ? 'd-flex' : 'd-none' ?> justify-content-between align-items-center mb-1">
+                    <span class="small fw-semibold" id="payFilterStudentName"><?= hn($f_student_name) ?></span>
+                    <button type="button" id="clearPayFilterStudentBtn" class="btn btn-link btn-sm p-0 text-muted">×</button>
+                </div>
+                <input type="text" id="payFilterStudentFilter" class="form-control form-control-sm" placeholder="Type to filter…"
+                       autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+                       <?= $f_student ? 'style="display:none"' : '' ?>>
+                <div id="payFilterStudentList" class="list-group mt-1"
+                     style="<?= count($all_students) > 8 ? 'max-height:200px;overflow-y:auto;' : '' ?><?= $f_student ? 'display:none' : '' ?>">
                     <?php foreach ($all_students as $s): ?>
-                        <option value="<?= $s['id'] ?>" <?= $s['id'] === $f_student ? 'selected' : '' ?>>
-                            <?= htmlspecialchars($s['first_name'].' '.$s['last_name']) ?>
-                        </option>
+                    <button type="button" class="list-group-item list-group-item-action pay-filter-stu-btn"
+                            data-id="<?= (int)$s['id'] ?>"
+                            data-name="<?= htmlspecialchars(strtolower($s['first_name'].' '.$s['last_name'].' '.$s['last_name'].' '.$s['first_name'])) ?>"
+                            style="display:none">
+                        <?= hn($s['first_name'].' '.$s['last_name']) ?>
+                    </button>
                     <?php endforeach; ?>
-                </select>
+                </div>
             </div>
             <div class="col-md-2">
                 <label class="form-label small mb-1">Type</label>
                 <select name="type" class="form-select form-select-sm">
                     <option value="">All Types</option>
-                    <?php foreach (['monthly_tuition','registration','belt_test','slc_training','seminar','other','donation'] as $t): ?>
+                    <?php foreach (['monthly_tuition','registration','belt_test','slc_training','seminar','other'] as $t): ?>
                         <option value="<?= $t ?>" <?= $t === $f_type ? 'selected' : '' ?>>
                             <?= ucwords(str_replace('_',' ',$t)) ?>
                         </option>
@@ -326,36 +368,22 @@ include __DIR__ . '/../includes/header.php';
                 </select>
             </div>
             <div class="col-md-2">
-                <label class="form-label small mb-1">From</label>
-                <input type="date" name="from" class="form-control form-control-sm"
-                       value="<?= htmlspecialchars($f_from) ?>">
+                <label class="form-label small mb-1">Year</label>
+                <select name="year" class="form-select form-select-sm">
+                    <option value="">All Years</option>
+                    <?php foreach ($payment_years as $y): ?>
+                        <option value="<?= (int)$y ?>" <?= $f_year === (int)$y ? 'selected' : '' ?>><?= (int)$y ?></option>
+                    <?php endforeach; ?>
+                </select>
             </div>
-            <div class="col-md-2">
-                <label class="form-label small mb-1">To</label>
-                <input type="date" name="to" class="form-control form-control-sm"
-                       value="<?= htmlspecialchars($f_to) ?>">
-            </div>
+            <?php if ($f_student || $f_type || $f_method || $f_year): ?>
             <div class="col-auto">
-                <button class="btn btn-filter btn-sm">Filter</button>
-            </div>
-            <div class="col-auto">
-                <a href="payments.php?from=<?= date('Y-m-01') ?>&to=<?= date('Y-m-d') ?>"
-                   hx-get="payments.php?from=<?= date('Y-m-01') ?>&to=<?= date('Y-m-d') ?>"
-                   hx-target="#payments-results" hx-select="#payments-results" hx-swap="outerHTML" hx-push-url="true"
-                   class="btn btn-filter btn-sm <?= ($f_from === date('Y-m-01') && $f_to === date('Y-m-d') && !$f_student && !$f_type && !$f_method) ? 'active' : '' ?>">This Month</a>
-            </div>
-            <div class="col-auto">
-                <a href="payments.php?from=<?= date('Y-01-01') ?>&to=<?= date('Y-m-d') ?>"
-                   hx-get="payments.php?from=<?= date('Y-01-01') ?>&to=<?= date('Y-m-d') ?>"
-                   hx-target="#payments-results" hx-select="#payments-results" hx-swap="outerHTML" hx-push-url="true"
-                   class="btn btn-filter btn-sm <?= ($f_from === date('Y-01-01') && $f_to === date('Y-m-d') && !$f_student && !$f_type && !$f_method) ? 'active' : '' ?>">This Year</a>
-            </div>
-            <div class="col-auto">
-                <a href="payments.php?from=&to="
-                   hx-get="payments.php?from=&to=" hx-target="#payments-results" hx-select="#payments-results"
+                <a href="payments.php"
+                   hx-get="payments.php" hx-target="#payments-page-body" hx-select="#payments-page-body"
                    hx-swap="outerHTML" hx-push-url="true"
                    class="btn btn-filter btn-sm">Clear</a>
             </div>
+            <?php endif; ?>
         </form>
     </div>
 </div>
@@ -367,8 +395,7 @@ include __DIR__ . '/../includes/header.php';
         <div class="d-flex align-items-center gap-3">
             <span class="text-success fw-semibold">Total: $<?= number_format($total_shown, 2) ?></span>
             <?php if (!empty($payments)): ?>
-            <button id="editToggle" class="btn btn-sm btn-outline-secondary"
-                    onclick="(function(btn){var t=document.getElementById('paymentsTable');var e=t.classList.toggle('editing');btn.textContent=e?'Done':'Edit';btn.className=e?'btn btn-sm btn-warning':'btn btn-sm btn-outline-secondary';if(!e)closeEditRows();})(this)">Edit</button>
+            <button id="editToggle" class="btn btn-sm btn-outline-secondary">Edit</button>
             <?php endif; ?>
         </div>
     </div>
@@ -384,7 +411,6 @@ include __DIR__ . '/../includes/header.php';
                     <th>Date</th>
                     <th>Student</th>
                     <th>Type</th>
-                    <th>Month</th>
                     <th>Method</th>
                     <th>Transaction ID</th>
                     <th>Notes</th>
@@ -398,23 +424,21 @@ include __DIR__ . '/../includes/header.php';
             <?php foreach ($payments as $p): ?>
                 <tr>
                     <td>
-                        <button type="button" class="btn btn-sm btn-outline-success py-0"
-                                onclick="prefillPayment(<?= $p['student_id'] ?>, '<?= addslashes($p['first_name'].' '.$p['last_name']) ?>')"
+                        <button type="button" class="btn btn-sm btn-outline-success py-0 prefill-payment-btn"
+                                data-student-id="<?= $p['student_id'] ?>"
+                                data-student-name="<?= htmlspecialchars($p['first_name'].' '.$p['last_name']) ?>"
                                 title="Add payment for this student">+</button>
                     </td>
                     <td class="text-nowrap"><?= date('d M Y', strtotime($p['payment_date'])) ?></td>
                     <td>
                         <a href="../instructor/student_profile.php?id=<?= $p['student_id'] ?>" class="text-decoration-none">
-                            <?= htmlspecialchars($p['first_name'].' '.$p['last_name']) ?>
+                            <?= hn($p['first_name'].' '.$p['last_name']) ?>
                         </a>
                         <?php if ($p['payer_name']): ?>
                             <div class="text-muted small">paid by <?= htmlspecialchars($p['payer_name']) ?></div>
                         <?php endif; ?>
                     </td>
                     <td><?= ucwords(str_replace('_',' ',$p['payment_type'])) ?></td>
-                    <td class="text-nowrap">
-                        <?= $p['month_covered'] ? date('M Y', strtotime($p['month_covered'])) : '—' ?>
-                    </td>
                     <td><?= ['paypal'=>'PayPal','cash'=>'Cash','check'=>'Check','mail'=>'Mail'][$p['payment_method']] ?? ucfirst($p['payment_method']) ?></td>
                     <td><?= htmlspecialchars($p['transaction_id'] ?? '—') ?></td>
                     <td>
@@ -426,13 +450,13 @@ include __DIR__ . '/../includes/header.php';
                     <td><?= htmlspecialchars($p['recorded_by_name'] ?? '—') ?></td>
                     <td class="text-end fw-semibold">$<?= number_format($p['amount'],2) ?></td>
                     <td class="edit-col">
-                        <button type="button" class="btn btn-sm btn-outline-primary py-0"
-                                onclick="toggleEditRow(<?= $p['id'] ?>)">Edit</button>
+                        <button type="button" class="btn btn-sm btn-outline-primary py-0 toggle-edit-row-btn"
+                                data-id="<?= $p['id'] ?>">Edit</button>
                     </td>
                     <td class="delete-col">
                         <form method="post" class="d-inline"
-                              hx-post="payments.php" hx-target="closest tr"
-                              hx-swap="delete swap:300ms"
+                              hx-post="payments.php" hx-target="#payments-page-body" hx-select="#payments-page-body"
+                              hx-swap="outerHTML swap:300ms"
                               hx-confirm="Delete this payment? This cannot be undone.">
                             <?= csrf_input() ?>
                             <input type="hidden" name="action" value="delete">
@@ -442,7 +466,7 @@ include __DIR__ . '/../includes/header.php';
                     </td>
                 </tr>
                 <tr id="edit-row-<?= $p['id'] ?>" style="display:none">
-                    <td colspan="12">
+                    <td colspan="11">
                         <form method="post" class="row g-2 align-items-end py-1">
                             <?= csrf_input() ?>
                             <input type="hidden" name="action" value="edit_payment">
@@ -455,7 +479,7 @@ include __DIR__ . '/../includes/header.php';
                             <div class="col-auto">
                                 <label class="form-label small mb-1">Type</label>
                                 <select name="payment_type" class="form-select form-select-sm">
-                                    <?php foreach (['monthly_tuition'=>'Monthly Tuition','registration'=>'Registration Fee','belt_test'=>'Belt Test Fee','slc_training'=>'SLC Training','seminar'=>'Seminar','other'=>'Other','donation'=>'Donation'] as $tv=>$tl): ?>
+                                    <?php foreach (['monthly_tuition'=>'Monthly Tuition','registration'=>'Registration Fee','belt_test'=>'Belt Test Fee','slc_training'=>'SLC Training','seminar'=>'Seminar','other'=>'Other'] as $tv=>$tl): ?>
                                     <option value="<?= $tv ?>" <?= $p['payment_type']===$tv?'selected':'' ?>><?= $tl ?></option>
                                     <?php endforeach; ?>
                                 </select>
@@ -468,11 +492,8 @@ include __DIR__ . '/../includes/header.php';
                                     <?php endforeach; ?>
                                 </select>
                             </div>
-                            <div class="col-auto">
-                                <label class="form-label small mb-1">Month</label>
-                                <input type="month" name="month_covered" class="form-control form-control-sm"
-                                       value="<?= $p['month_covered'] ? date('Y-m', strtotime($p['month_covered'])) : '' ?>">
-                            </div>
+                            <input type="hidden" name="month_covered"
+                                   value="<?= $p['month_covered'] ? date('Y-m', strtotime($p['month_covered'])) : '' ?>">
                             <div class="col-auto" style="width:110px">
                                 <label class="form-label small mb-1">Amount</label>
                                 <div class="input-group input-group-sm">
@@ -493,8 +514,8 @@ include __DIR__ . '/../includes/header.php';
                             </div>
                             <div class="col-auto">
                                 <button type="submit" class="btn btn-sm btn-success">Save</button>
-                                <button type="button" class="btn btn-sm btn-secondary"
-                                        onclick="toggleEditRow(<?= $p['id'] ?>)">Cancel</button>
+                                <button type="button" class="btn btn-sm btn-secondary toggle-edit-row-btn"
+                                        data-id="<?= $p['id'] ?>">Cancel</button>
                             </div>
                         </form>
                     </td>
@@ -506,14 +527,40 @@ include __DIR__ . '/../includes/header.php';
         <?php endif; ?>
     </div>
 </div>
+</div><!-- /payments-page-body -->
 
-<style>
+<style nonce="<?= csp_nonce() ?>">
     .delete-col { display: none; }
     .edit-col   { display: none; }
     table.editing .delete-col { display: table-cell; }
     table.editing .edit-col   { display: table-cell; }
 </style>
-<script>
+<script nonce="<?= csp_nonce() ?>">
+const TYPE_FEES = {
+    monthly_tuition: <?= (float)MONTHLY_FEE ?>,
+    registration:    <?= (float)REG_FEE ?>,
+    belt_test:       <?= (float)TEST_FEE ?>,
+    slc_training:    <?= (float)SLC_FEE ?>,
+    seminar:         <?= (float)SEMINAR_FEE ?>
+};
+(function() {
+    var typeSel = document.getElementById('paymentTypeSelect');
+    var amountInput = document.getElementById('paymentAmountInput');
+    if (!typeSel || !amountInput) return;
+    var lastAutoValue = amountInput.value;
+    function updateAmount() {
+        var current = parseFloat(amountInput.value);
+        var isBlankOrZero = !amountInput.value || isNaN(current) || current === 0;
+        var isUntouched   = amountInput.value === lastAutoValue;
+        if ((isBlankOrZero || isUntouched) && TYPE_FEES.hasOwnProperty(typeSel.value)) {
+            amountInput.value = TYPE_FEES[typeSel.value];
+            lastAutoValue = amountInput.value;
+        }
+    }
+    typeSel.addEventListener('change', updateAmount);
+    updateAmount();
+})();
+
 function closeEditRows() {
     document.querySelectorAll('#paymentsTable tr[id^="edit-row-"]').forEach(function(r) { r.style.display = 'none'; });
     if (typeof setFormClean === 'function') setFormClean();
@@ -526,15 +573,105 @@ function toggleEditRow(pid) {
     if (closing && typeof setFormClean === 'function') setFormClean();
 }
 
+// Delegated — #payments-page-body gets replaced wholesale by htmx on
+// filter/delete, so bind from document to survive swaps.
+document.addEventListener('click', function(e) {
+    var btn;
+    if ((btn = e.target.closest('#clearPayFilterStudentBtn'))) {
+        clearPayFilterStudent();
+        return;
+    }
+    if ((btn = e.target.closest('.pay-filter-stu-btn'))) {
+        selectPayFilterStudent(parseInt(btn.dataset.id, 10), btn.textContent.trim());
+        return;
+    }
+    if ((btn = e.target.closest('#editToggle'))) {
+        var t = document.getElementById('paymentsTable');
+        var editing = t.classList.toggle('editing');
+        btn.textContent = editing ? 'Done' : 'Edit';
+        btn.className   = editing ? 'btn btn-sm btn-warning' : 'btn btn-sm btn-outline-secondary';
+        if (!editing) closeEditRows();
+        return;
+    }
+    if ((btn = e.target.closest('.toggle-edit-row-btn'))) {
+        toggleEditRow(btn.dataset.id);
+        return;
+    }
+});
+
 function prefillPayment(studentId, studentName) {
-    // Open the add-payment form and select this student
     const collapse = document.getElementById('addPaymentForm');
     const bsCollapse = bootstrap.Collapse.getOrCreateInstance(collapse);
     bsCollapse.show();
-    const sel = collapse.querySelector('select[name="student_id"]');
-    if (sel) sel.value = studentId;
+    selectPayGrantStudent(studentId, studentName);
     collapse.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
+
+// Delegated — the "+" prefill button lives inside #payments-page-body, which
+// htmx replaces wholesale on filter/delete, so bind from document.
+document.addEventListener('click', function(e) {
+    var btn = e.target.closest('.prefill-payment-btn');
+    if (!btn) return;
+    prefillPayment(parseInt(btn.dataset.studentId, 10), btn.dataset.studentName);
+});
+
+// Grant form student filter
+function selectPayGrantStudent(id, label) {
+    document.getElementById('payGrantStudentId').value = id;
+    document.getElementById('payGrantStudentName').textContent = label;
+    var sel = document.getElementById('payGrantStudentSelected');
+    sel.classList.remove('d-none'); sel.classList.add('d-flex');
+    document.getElementById('payGrantStudentFilter').style.display = 'none';
+    document.getElementById('payGrantStudentList').style.display = 'none';
+}
+function clearPayGrantStudent() {
+    document.getElementById('payGrantStudentId').value = '';
+    var sel = document.getElementById('payGrantStudentSelected');
+    sel.classList.add('d-none'); sel.classList.remove('d-flex');
+    var f = document.getElementById('payGrantStudentFilter');
+    f.style.display = ''; f.value = '';
+    document.getElementById('payGrantStudentList').style.display = '';
+    document.querySelectorAll('.pay-grant-stu-btn').forEach(function(b) { b.style.display = 'none'; });
+}
+document.getElementById('clearPayGrantStudentBtn').addEventListener('click', clearPayGrantStudent);
+document.querySelectorAll('.pay-grant-stu-btn').forEach(function(b) {
+    b.addEventListener('click', function() {
+        selectPayGrantStudent(parseInt(b.dataset.id, 10), b.textContent.trim());
+    });
+});
+document.getElementById('payGrantStudentFilter').addEventListener('input', function() {
+    var q = this.value.toLowerCase().trim();
+    document.querySelectorAll('.pay-grant-stu-btn').forEach(function(b) {
+        b.style.display = (q.length > 0 && b.dataset.name.indexOf(q) !== -1) ? '' : 'none';
+    });
+});
+
+// Filter bar student filter
+function selectPayFilterStudent(id, label) {
+    document.getElementById('payFilterStudentId').value = id;
+    document.getElementById('payFilterStudentName').textContent = label;
+    var sel = document.getElementById('payFilterStudentSelected');
+    sel.classList.remove('d-none'); sel.classList.add('d-flex');
+    document.getElementById('payFilterStudentFilter').style.display = 'none';
+    document.getElementById('payFilterStudentList').style.display = 'none';
+    document.body.dispatchEvent(new Event('filter-refresh'));
+}
+function clearPayFilterStudent() {
+    document.getElementById('payFilterStudentId').value = '';
+    var sel = document.getElementById('payFilterStudentSelected');
+    sel.classList.add('d-none'); sel.classList.remove('d-flex');
+    var f = document.getElementById('payFilterStudentFilter');
+    f.style.display = ''; f.value = '';
+    document.getElementById('payFilterStudentList').style.display = '';
+    document.querySelectorAll('.pay-filter-stu-btn').forEach(function(b) { b.style.display = 'none'; });
+    document.body.dispatchEvent(new Event('filter-refresh'));
+}
+document.getElementById('payFilterStudentFilter').addEventListener('input', function() {
+    var q = this.value.toLowerCase().trim();
+    document.querySelectorAll('.pay-filter-stu-btn').forEach(function(b) {
+        b.style.display = (q.length > 0 && b.dataset.name.indexOf(q) !== -1) ? '' : 'none';
+    });
+});
 </script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>

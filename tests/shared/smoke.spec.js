@@ -8,20 +8,23 @@ test.describe('admin smoke', () => {
 
     test('admin pages load without errors', async ({ page }) => {
         const pages = [
-            ['/admin/',                    'admin dashboard'],
-            ['/admin/students.php',        'students list'],
-            ['/admin/student_edit.php',    'new student form'],
-            ['/admin/payments.php',        'payments'],
-            ['/admin/expenses.php',        'expenses'],
-            ['/admin/waivers.php',         'waivers'],
-            ['/admin/users.php',           'users'],
-            ['/admin/general_notes.php',   'general notes'],
-            ['/admin/student_notes.php',   'student notes'],
-            ['/admin/email_students.php',  'email students'],
-            ['/admin/donations.php',       'donations'],
-            ['/admin/audit_log.php',       'audit log'],
-            ['/admin/logs.php',            'combined logs'],
-            ['/admin/email_log.php',       'email log'],
+            ['/admin/',                            'admin dashboard'],
+            ['/admin/students.php',                'students list'],
+            ['/admin/student_edit.php',            'new student form'],
+            ['/admin/payments.php',                'payments'],
+            ['/admin/expenses.php',                'expenses'],
+            ['/admin/waivers.php',                 'waivers'],
+            ['/admin/users.php',                   'users'],
+            ['/admin/general_notes.php',           'general notes'],
+            ['/admin/student_notes.php',           'student notes'],
+            ['/admin/email_students.php',          'email students'],
+            ['/admin/donations.php',               'donations'],
+            ['/admin/audit_log.php',               'audit log'],
+            ['/admin/logs.php',                    'combined logs'],
+            ['/admin/email_log.php',               'email log'],
+            ['/admin/checkin_pin.php',             'checkin pin admin'],
+            ['/admin/member_card.php?student_id=2','member card'],
+            ['/admin/certificate.php?student_id=2&rank_id=1', 'certificate'],
         ];
         for (const [path, label] of pages) await visit(page, path, label);
         // app_log.php intentionally displays error log entries that may contain
@@ -128,6 +131,20 @@ test.describe('student smoke', () => {
         // Nav brand routes correctly
         const href = await page.getAttribute('.navbar-brand', 'href');
         expect(href).toMatch(/\/(student|instructor|admin)\//);
+    });
+});
+
+test.describe('public checkin smoke', () => {
+    // checkin.php is unauthenticated — no storageState needed
+
+    test('checkin.php loads and shows PIN gate', async ({ page }) => {
+        await page.goto(BASE + '/checkin.php');
+        // Page should render (no PHP fatal errors) and show PIN entry UI
+        const body = await page.textContent('body');
+        expect(body).not.toContain('Fatal error');
+        expect(body).not.toContain('Parse error');
+        await expect(page.locator('input[name="pin"]')).toBeVisible();
+        await expect(page.locator('button:has-text("Enter")')).toBeVisible();
     });
 });
 

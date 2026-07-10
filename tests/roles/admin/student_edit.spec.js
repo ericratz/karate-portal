@@ -44,35 +44,19 @@ test.describe('Student Edit Cards', () => {
         await expect(page.locator('.card-header').filter({ hasText: 'Belt Test History' })).toBeVisible();
     });
 
-    test('+ Record Test button is visible', async ({ page }) => {
-        await expect(page.locator('button:has-text("+ Record Test")')).toBeVisible();
+    test('+ New Test link is visible and points to belt_test_edit.php', async ({ page }) => {
+        const link = page.locator('a:has-text("+ New Test")');
+        await expect(link).toBeVisible();
+        const href = await link.getAttribute('href');
+        expect(href).toContain('belt_test_edit.php');
+        expect(href).toContain(`student_id=${STUDENT_ID}`);
     });
 
-    test('+ Record Test reveals add form with required fields', async ({ page }) => {
-        await page.click('button:has-text("+ Record Test")');
-        await expect(page.locator('#bt-add-box')).toBeVisible();
-        await expect(page.locator('#bt-add-box input[name="test_date"]')).toBeVisible();
-        await expect(page.locator('#bt-add-box select[name="rank_testing_for"]')).toBeVisible();
-    });
-
-    test('bt-add-box has Fee Paid and Belt Awarded checkboxes', async ({ page }) => {
-        await page.click('button:has-text("+ Record Test")');
-        await expect(page.locator('#bt-add-box input[name="fee_paid"]')).toBeVisible();
-        await expect(page.locator('#bt-add-box input[name="belt_awarded"]')).toBeVisible();
-    });
-
-    test('Cancel button in bt-add-box hides the form', async ({ page }) => {
-        await page.click('button:has-text("+ Record Test")');
-        await expect(page.locator('#bt-add-box')).toBeVisible();
-        await page.locator('#bt-add-box button:has-text("Cancel")').click();
-        await expect(page.locator('#bt-add-box')).toBeHidden();
-    });
-
-    test('bt-add-box score input controls result (no result select)', async ({ page }) => {
-        await page.click('button:has-text("+ Record Test")');
-        // bt-add-box uses a score number input (name="score"), not a result select
-        await expect(page.locator('#bt-add-box input[name="score"]')).toBeVisible();
-        expect(await page.locator('#bt-add-box select[name="result"]').count()).toBe(0);
+    test('existing belt test row links to belt_test_edit.php for editing', async ({ page }) => {
+        const link = page.locator('#btList a[href*="belt_test_edit.php"]').first();
+        if (await link.count() === 0) return; // no belt tests on record
+        const href = await link.getAttribute('href');
+        expect(href).toContain('belt_test_edit.php?id=');
     });
 
     // â”€â”€ EXEMPT CARD (formerly Payment Waivers) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -107,11 +91,12 @@ test.describe('Student Edit Cards', () => {
 
     // â”€â”€ WAIVER CARD (redesigned â€” now links to waiver_view.php) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-    test('Waiver card is visible', async ({ page }) => {
-        await expect(page.locator('.card-header').filter({ hasText: 'Waiver' }).first()).toBeVisible();
+    test('Waiver row is visible in Profile Info card', async ({ page }) => {
+        // Waiver was merged into the Profile Info card (no longer its own card)
+        await expect(page.locator('#profile-view').filter({ hasText: 'Waiver' })).toBeVisible();
     });
 
-    test('Waiver card links to waiver_view.php', async ({ page }) => {
+    test('Waiver row links to waiver_view.php', async ({ page }) => {
         const link = page.locator('a[href*="waiver_view.php"]').first();
         await expect(link).toBeVisible();
     });

@@ -32,15 +32,16 @@ test('admin: account type dropdown shows valid value', async ({ page }) => {
 });
 
 test('admin: active_override Force Active saves and can be reset', async ({ page }) => {
+    // Active Status is now part of the Profile Info card, toggled via #profileEditBtn
     await page.goto(BASE + '/admin/student_edit.php?id=2');
-    await page.click('#activeEditBtn');
+    await page.click('#profileEditBtn');
     await page.selectOption('select[name="active_override"]', '1');
-    await page.click('#activeEditBtn');
+    await page.click('#profileEditBtn');
     await page.waitForLoadState('domcontentloaded');
     await assertNoPhpErrors(page, 'active override saved');
-    await page.click('#activeEditBtn');
+    await page.click('#profileEditBtn');
     await page.selectOption('select[name="active_override"]', 'auto');
-    await page.click('#activeEditBtn');
+    await page.click('#profileEditBtn');
     await page.waitForLoadState('domcontentloaded');
 });
 

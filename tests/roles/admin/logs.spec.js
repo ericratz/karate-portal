@@ -39,10 +39,10 @@ test.describe('Combined logs page', () => {
         await expect(page.locator('a.nav-link.active:has-text("Mail")')).toBeVisible();
     });
 
-    test('Activity tab has action and user filter inputs', async ({ page }) => {
+    test('Activity tab has action and user filter selects', async ({ page }) => {
         await page.goto(BASE + '/admin/logs.php?tab=activity');
-        await expect(page.locator('select[name="action"], input[name="action"]')).toBeVisible();
-        await expect(page.locator('input[name="user"]')).toBeVisible();
+        await expect(page.locator('select[name="action"]')).toBeVisible();
+        await expect(page.locator('select[name="user"]')).toBeVisible();
     });
 
     test('Errors tab has level filter', async ({ page }) => {

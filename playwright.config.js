@@ -21,9 +21,8 @@ module.exports = defineConfig({
         headless: true,
         screenshot: 'only-on-failure',
         video: 'off',
-        channel: 'chrome',
     },
     projects: [
-        { name: 'chrome', use: { channel: 'chrome' } },
+        { name: 'chromium',},
     ],
 });

@@ -61,14 +61,12 @@ test.describe('Guest auto-promotion', () => {
         await page.goto(BASE + '/admin/payments.php?action=add');
         await page.waitForSelector('#addPaymentForm.show');
 
-        // Find the option whose text contains the student's unique last name, then select by value
-        const studentSelect = page.locator('#addPaymentForm select[name="student_id"]');
-        const sid = await studentSelect.evaluate((sel, name) => {
-            const opt = Array.from(sel.options).find(o => o.text.includes(name));
-            return opt ? opt.value : null;
-        }, `Me${TS}`);
-        expect(sid).not.toBeNull();
-        await studentSelect.selectOption(sid);
+        // Student selector is now type-to-filter — type the unique last name to find the student
+        await page.fill('#payGrantStudentFilter', `Me${TS}`);
+        await page.waitForTimeout(300);
+        const btn = page.locator('.pay-grant-stu-btn:visible').first();
+        await expect(btn).toBeVisible({ timeout: 5000 });
+        await btn.click();
 
         await page.fill('#addPaymentForm input[name="amount"]', '15');
         await page.selectOption('#addPaymentForm select[name="payment_type"]', 'registration');

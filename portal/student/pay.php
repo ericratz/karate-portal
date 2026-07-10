@@ -23,16 +23,18 @@ $paid_reg = db()->prepare(
 $paid_reg->execute([$student['id']]);
 $already_paid_reg = (int)$paid_reg->fetchColumn() > 0;
 
-// Month options for tuition picker (current + next 3 months)
+// Month options for tuition picker (previous month + current + next 3 months)
 $month_options = [];
-for ($i = 0; $i <= 3; $i++) {
+for ($i = -1; $i <= 3; $i++) {
     $ts = mktime(0, 0, 0, date('n') + $i, 1);
     $month_options[] = [
         'value' => date('Y-m-01', $ts),
         'label' => date('F Y', $ts),
     ];
 }
-$default_month = $already_paid ? $month_options[1]['value'] : $month_options[0]['value'];
+$current_month_value = date('Y-m-01');
+$next_month_value    = date('Y-m-01', mktime(0, 0, 0, date('n') + 1, 1));
+$default_month        = $already_paid ? $next_month_value : $current_month_value;
 
 $fees = [
     'monthly_tuition' => ['label' => 'Monthly Tuition',  'amount' => MONTHLY_FEE],
@@ -250,7 +252,7 @@ include __DIR__ . '/../includes/header.php';
 
 <script src="https://www.paypal.com/sdk/js?client-id=<?= htmlspecialchars(PAYPAL_CLIENT_ID) ?>&currency=USD"></script>
 
-<script>
+<script nonce="<?= csp_nonce() ?>">
 const FEES        = <?= json_encode($fees) ?>;
 const CSRF        = document.querySelector('meta[name="csrf-token"]').content;
 const PAID_MONTHS = <?= json_encode(array_values($paid_months)) ?>;

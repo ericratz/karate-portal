@@ -25,11 +25,8 @@ if (!$student_id) {
     $page_title = 'Student Notes';
     include __DIR__ . '/../includes/header.php';
 
-    function notes_table(array $rows, string $empty_msg): void {
-        if (empty($rows)) {
-            echo '<p class="p-3 text-muted mb-0">' . $empty_msg . '</p>';
-            return;
-        }
+    function notes_table(array $rows): void {
+        if (empty($rows)) return;
         echo '<table class="table table-sm table-hover mb-0" style="table-layout:fixed;width:100%">';
         echo '<colgroup>
                 <col style="width:28%">
@@ -43,8 +40,9 @@ if (!$student_id) {
               </tr></thead><tbody>';
         foreach ($rows as $s) {
             $att = $s['last_attended'] ? date('d M Y', strtotime($s['last_attended'])) : 'Never';
-            echo '<tr>';
-            echo '<td class="fw-semibold">' . htmlspecialchars($s['first_name'].' '.$s['last_name']) . '</td>';
+            $search_name = strtolower($s['last_name'].' '.$s['first_name'].' '.$s['first_name'].' '.$s['last_name']);
+            echo '<tr data-name="' . htmlspecialchars($search_name) . '">';
+            echo '<td class="fw-semibold">' . hn($s['first_name'].' '.$s['last_name']) . '</td>';
             echo '<td>' . $att . '</td>';
             echo '<td>';
             echo $s['active'] ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-secondary">Inactive</span>';
@@ -61,44 +59,66 @@ if (!$student_id) {
     <div class="d-flex align-items-center justify-content-between mb-4">
         <h3 class="mb-0">Student Notes</h3>
         <input type="text" id="rosterSearch" class="form-control form-control-sm"
-               placeholder="Search name…" style="width:200px" oninput="filterRoster(this.value)">
+               placeholder="Search name…" style="width:200px">
     </div>
 
-    <div class="card border-0 shadow-sm mb-4">
+    <?php if (!empty($instructors)): ?>
+    <div class="card border-0 shadow-sm mb-4" id="card-instructors">
         <div class="card-header bg-white fw-semibold">
-            Instructors <span class="badge bg-primary ms-2"><?= count($instructors) ?></span>
+            Instructors <span class="badge bg-primary ms-2" id="count-instructors"><?= count($instructors) ?></span>
         </div>
-        <div class="card-body p-0"><?php notes_table($instructors, 'No instructors on roster.'); ?></div>
+        <div class="card-body p-0"><?php notes_table($instructors); ?></div>
     </div>
+    <?php endif; ?>
 
-    <div class="card border-0 shadow-sm mb-4">
+    <?php if (!empty($parents)): ?>
+    <div class="card border-0 shadow-sm mb-4" id="card-parents">
         <div class="card-header bg-white fw-semibold">
-            Parents <span class="badge bg-primary ms-2"><?= count($parents) ?></span>
+            Parents <span class="badge bg-primary ms-2" id="count-parents"><?= count($parents) ?></span>
         </div>
-        <div class="card-body p-0"><?php notes_table($parents, 'No parents on roster.'); ?></div>
+        <div class="card-body p-0"><?php notes_table($parents); ?></div>
     </div>
+    <?php endif; ?>
 
-    <div class="card border-0 shadow-sm mb-4">
+    <?php if (!empty($students)): ?>
+    <div class="card border-0 shadow-sm mb-4" id="card-students">
         <div class="card-header bg-white fw-semibold">
-            Students <span class="badge bg-primary ms-2"><?= count($students) ?></span>
+            Students <span class="badge bg-primary ms-2" id="count-students"><?= count($students) ?></span>
         </div>
-        <div class="card-body p-0"><?php notes_table($students, 'No students on roster.'); ?></div>
+        <div class="card-body p-0"><?php notes_table($students); ?></div>
     </div>
+    <?php endif; ?>
 
-    <div class="card border-0 shadow-sm mb-4">
+    <?php if (!empty($guests)): ?>
+    <div class="card border-0 shadow-sm mb-4" id="card-guests">
         <div class="card-header bg-white fw-semibold">
-            Guests <span class="badge bg-primary ms-2"><?= count($guests) ?></span>
+            Guests <span class="badge bg-primary ms-2" id="count-guests"><?= count($guests) ?></span>
         </div>
-        <div class="card-body p-0"><?php notes_table($guests, 'No guests on roster.'); ?></div>
+        <div class="card-body p-0"><?php notes_table($guests); ?></div>
     </div>
+    <?php endif; ?>
 
-    <script>
+    <script nonce="<?= csp_nonce() ?>">
     function filterRoster(q) {
         q = q.toLowerCase().trim();
-        document.querySelectorAll('tbody tr').forEach(function(row) {
-            var name = row.querySelector('td');
-            if (name) row.style.display = (!q || name.textContent.toLowerCase().includes(q)) ? '' : 'none';
+        document.querySelectorAll('tbody tr[data-name]').forEach(function(row) {
+            row.style.display = (!q || row.dataset.name.includes(q)) ? '' : 'none';
         });
+        ['instructors','parents','students','guests'].forEach(function(key) {
+            var card = document.getElementById('card-' + key);
+            if (!card) return;
+            var count = 0;
+            card.querySelectorAll('tbody tr[data-name]').forEach(function(r) {
+                if (r.style.display !== 'none') count++;
+            });
+            var badge = document.getElementById('count-' + key);
+            if (badge) badge.textContent = count;
+            card.style.display = count === 0 ? 'none' : '';
+        });
+    }
+    var rosterSearch = document.getElementById('rosterSearch');
+    if (rosterSearch) {
+        rosterSearch.addEventListener('input', function() { filterRoster(this.value); });
     }
     </script>
 
@@ -119,9 +139,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
     verify_csrf();
     db()->prepare('DELETE FROM student_notes WHERE id = ? AND student_id = ?')
          ->execute([(int)$_POST['id'], $student_id]);
-    if (!empty($_SERVER['HTTP_HX_REQUEST'])) { exit; }
-    header("Location: student_notes.php?student_id=$student_id");
-    exit;
+    if (empty($_SERVER['HTTP_HX_REQUEST'])) {
+        header("Location: student_notes.php?student_id=$student_id");
+        exit;
+    }
+    // For htmx requests, fall through so hx-select can pull the live count.
 }
 
 // Add note
@@ -132,9 +154,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['content'])) {
         db()->prepare(
             'INSERT INTO student_notes (student_id, content, created_by) VALUES (?,?,?)'
         )->execute([$student_id, $content, current_user_id()]);
-        $msg = 'Note added.';
+        header("Location: student_notes.php?student_id=$student_id&added=1");
+        exit;
     }
 }
+
+if (isset($_GET['added'])) $msg = 'Note added.';
 
 
 // Load all notes newest first
@@ -154,7 +179,7 @@ include __DIR__ . '/../includes/header.php';
 
 <div class="d-flex align-items-center gap-3 mb-4">
     <a href="student_notes.php" class="btn btn-outline-secondary btn-sm">← Student Notes</a>
-    <h4 class="mb-0">Notes — <?= htmlspecialchars($student['first_name'] . ' ' . $student['last_name']) ?></h4>
+    <h4 class="mb-0">Notes — <?= hn($student['first_name'] . ' ' . $student['last_name']) ?></h4>
 </div>
 
 <?php if ($msg): ?><div class="alert alert-success"><?= htmlspecialchars($msg) ?></div><?php endif; ?>
@@ -189,8 +214,7 @@ include __DIR__ . '/../includes/header.php';
             <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
                 <span>All Notes (<?= count($notes) ?>)</span>
                 <?php if (!empty($notes)): ?>
-                <button id="editToggle" class="btn btn-sm btn-outline-secondary"
-                        onclick="(function(btn){var c=document.getElementById('notesContainer');var e=c.classList.toggle('editing');btn.textContent=e?'Done':'Edit';btn.className=e?'btn btn-sm btn-danger':'btn btn-sm btn-outline-secondary';})(this)">Edit</button>
+                <button id="editToggle" class="btn btn-sm btn-outline-secondary">Edit</button>
                 <?php endif; ?>
             </div>
             <div id="notesContainer" class="card-body p-0" style="max-height:500px;overflow-y:auto">
@@ -206,8 +230,8 @@ include __DIR__ . '/../includes/header.php';
                         </span>
                         <form method="post" class="d-inline delete-btn"
                               hx-post="student_notes.php?student_id=<?= $student_id ?>"
-                              hx-target="closest .note-entry"
-                              hx-swap="delete swap:300ms"
+                              hx-target="#student-notes-card" hx-select="#student-notes-card"
+                              hx-swap="outerHTML swap:300ms"
                               hx-confirm="Delete this note?">
                             <?= csrf_input() ?>
                             <input type="hidden" name="action" value="delete">
@@ -225,10 +249,23 @@ include __DIR__ . '/../includes/header.php';
 
 </div>
 
-<style>
+<style nonce="<?= csp_nonce() ?>">
     .delete-btn { display: none !important; }
     #notesContainer.editing .delete-btn { display: inline-block !important; }
 </style>
+
+<script nonce="<?= csp_nonce() ?>">
+// #student-notes-card gets replaced wholesale by htmx on delete, so delegate
+// from document to survive swaps.
+document.addEventListener('click', function(e) {
+    var btn = e.target.closest('#editToggle');
+    if (!btn) return;
+    var c = document.getElementById('notesContainer');
+    var editing = c.classList.toggle('editing');
+    btn.textContent = editing ? 'Done' : 'Edit';
+    btn.className   = editing ? 'btn btn-sm btn-danger' : 'btn btn-sm btn-outline-secondary';
+});
+</script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>
 

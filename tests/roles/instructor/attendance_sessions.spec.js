@@ -37,10 +37,9 @@ test.describe('Attendance sessions page', () => {
 
     // â”€â”€ FILTER FORM â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-    test('date filter form has from / to / type inputs', async ({ page }) => {
+    test('filter form has year / type selects', async ({ page }) => {
         await page.goto(BASE + '/instructor/attendance_sessions.php');
-        await expect(page.locator('input[name="from"]')).toBeVisible();
-        await expect(page.locator('input[name="to"]')).toBeVisible();
+        await expect(page.locator('select[name="year"]')).toBeVisible();
         await expect(page.locator('select[name="type"]')).toBeVisible();
     });
 
@@ -52,40 +51,49 @@ test.describe('Attendance sessions page', () => {
         );
     });
 
-    test('This Month quick-filter link exists', async ({ page }) => {
+    test('Year select has current year as an option', async ({ page }) => {
         await page.goto(BASE + '/instructor/attendance_sessions.php');
-        await expect(page.locator('a:has-text("This Month")')).toBeVisible();
+        const currentYear = new Date().getFullYear().toString();
+        await expect(page.locator(`select[name="year"] option[value="${currentYear}"]`)).toHaveCount(1);
     });
 
-    test('This Year quick-filter link exists', async ({ page }) => {
+    test('selecting a year loads filtered results without PHP errors', async ({ page }) => {
         await page.goto(BASE + '/instructor/attendance_sessions.php');
-        await expect(page.locator('a:has-text("This Year")')).toBeVisible();
-    });
-
-    test('This Month link loads filtered results without PHP errors', async ({ page }) => {
-        await page.goto(BASE + '/instructor/attendance_sessions.php');
-        await page.click('a:has-text("This Month")');
-        await page.waitForLoadState('domcontentloaded');
-        await assertNoPhpErrors(page, 'sessions this month');
-        // URL should contain from= and to= params
-        expect(page.url()).toContain('from=');
-        expect(page.url()).toContain('to=');
+        const currentYear = new Date().getFullYear().toString();
+        await Promise.all([
+            page.waitForResponse(r => r.url().includes('/instructor/attendance_sessions.php')),
+            page.selectOption('select[name="year"]', currentYear),
+        ]);
+        await assertNoPhpErrors(page, 'sessions filtered by year');
+        expect(page.url()).toContain('year=' + currentYear);
     });
 
     test('Clear filter link appears after filtering', async ({ page }) => {
         await page.goto(BASE + '/instructor/attendance_sessions.php');
-        await page.click('a:has-text("This Month")');
-        await page.waitForLoadState('domcontentloaded');
+        const currentYear = new Date().getFullYear().toString();
+        await Promise.all([
+            page.waitForResponse(r => r.url().includes('/instructor/attendance_sessions.php')),
+            page.selectOption('select[name="year"]', currentYear),
+        ]);
         await expect(page.locator('a:has-text("Clear")')).toBeVisible();
     });
 
     test('Clear link resets to unfiltered list', async ({ page }) => {
         await page.goto(BASE + '/instructor/attendance_sessions.php');
-        await page.click('a:has-text("This Month")');
-        await page.waitForLoadState('domcontentloaded');
-        await page.click('a:has-text("Clear")');
-        await page.waitForLoadState('domcontentloaded');
-        expect(page.url()).not.toContain('from=');
+        const currentYear = new Date().getFullYear().toString();
+        await Promise.all([
+            page.waitForResponse(r => r.url().includes('/instructor/attendance_sessions.php')),
+            page.selectOption('select[name="year"]', currentYear),
+        ]);
+        await Promise.all([
+            page.waitForResponse(r => r.url().includes('/instructor/attendance_sessions.php')),
+            page.click('a:has-text("Clear")'),
+        ]);
+        // htmx swaps the URL via history.pushState asynchronously after the
+        // response — wait for the Clear link itself to disappear (filtering
+        // is now false) before checking the URL.
+        await expect(page.locator('a:has-text("Clear")')).toHaveCount(0);
+        expect(page.url()).not.toContain('year=');
     });
 
     // â”€â”€ DATE LINK IN SESSION ROW â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

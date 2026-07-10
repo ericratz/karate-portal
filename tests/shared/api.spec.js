@@ -115,19 +115,21 @@ test('add payment with amount=0 does not save a payment', async ({ page }) => {
 });
 
 test('add note with empty content is rejected by server', async ({ page }) => {
+    // add_note.php was removed — note-adding is now an inline form on
+    // instructor/student_profile.php.
     await login(page, INST_USER, INST_PASS);
-    await page.goto(BASE + '/instructor/add_note.php?student_id=2');
+    await page.goto(BASE + '/instructor/student_profile.php?id=2');
     const token = await getCsrfToken(page);
     const res = await page.evaluate(async ({ url, token }) => {
         const res = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: new URLSearchParams({
-                csrf_token: token, student_id: '2', content: '',
+                csrf_token: token, action: 'add_note', note_content: '',
             }).toString(),
         });
         return { status: res.status, body: await res.text() };
-    }, { url: BASE + '/instructor/add_note.php', token });
+    }, { url: BASE + '/instructor/student_profile.php?id=2', token });
     expect(res.body).toContain('empty');
     await logout(page);
 });

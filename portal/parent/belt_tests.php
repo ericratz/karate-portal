@@ -54,7 +54,7 @@ function badge_result(string $r, ?int $score): string {
 ?>
 
 <div class="d-flex align-items-center gap-3 mb-4">
-    <h4 class="mb-0">Belt Test History — <?= htmlspecialchars($student['first_name'] . ' ' . $student['last_name']) ?></h4>
+    <h4 class="mb-0">Belt Test History — <?= hn($student['first_name'] . ' ' . $student['last_name']) ?></h4>
 </div>
 
 <div class="row g-3 mb-4">

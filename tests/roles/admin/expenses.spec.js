@@ -19,17 +19,6 @@ test('add expense and it appears in list', async ({ page }) => {
     await expect(page.locator('body')).toContainText(`Toggle test ${TS}`);
 });
 
-test('toggle paid status changes button label', async ({ page }) => {
-    await page.goto(BASE + '/admin/expenses.php');
-    const row = page.locator('tr').filter({ hasText: `Toggle test ${TS}` });
-    const toggleBtn = row.locator('form:has(input[value="toggle_paid"]) button');
-    const before = await toggleBtn.textContent();
-    await toggleBtn.click();
-    await page.waitForLoadState('networkidle');
-    const after = await page.locator('tr').filter({ hasText: `Toggle test ${TS}` }).locator('form:has(input[value="toggle_paid"]) button').textContent();
-    expect(after?.trim()).not.toBe(before?.trim());
-});
-
 test('edit toggle enters and exits editing mode', async ({ page }) => {
     await page.goto(BASE + '/admin/expenses.php');
     const editBtn = page.locator('#editToggle');

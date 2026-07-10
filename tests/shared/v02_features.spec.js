@@ -347,9 +347,10 @@ test.describe('Waiver label', () => {
         expect(body).not.toContain('Injury Waiver');
     });
 
-    test('student_edit.php calls the waiver card "Waiver"', async ({ page }) => {
+    test('student_edit.php labels the waiver row "Waiver"', async ({ page }) => {
+        // Waiver was merged into the Profile Info card (no longer its own card)
         await page.goto(BASE + '/admin/student_edit.php?id=2');
-        await expect(page.locator('.card-header').filter({ hasText: 'Waiver' }).first()).toBeVisible();
+        await expect(page.locator('#profile-view').filter({ hasText: 'Waiver' })).toBeVisible();
     });
 
 });

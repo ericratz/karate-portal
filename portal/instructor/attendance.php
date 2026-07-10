@@ -63,8 +63,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $ins->execute([$sid, $session_id, current_user_id()]);
         }
 
-        $msg = 'Attendance saved for ' . date('d M Y', strtotime($post_date)) . ' — ' . count($present_ids) . ' present.';
+        if (empty($present_ids)) {
+            // No one present — an empty class isn't worth keeping a record of
+            $db->prepare('DELETE FROM class_sessions WHERE id = ?')->execute([$session_id]);
+            header('Location: attendance.php?' . http_build_query(['date' => $post_date, 'sort' => $sort, 'removed' => 1]));
+            exit;
+        }
+
+        header('Location: attendance.php?' . http_build_query(['date' => $post_date, 'sort' => $sort, 'saved' => count($present_ids)]));
+        exit;
     }
+}
+
+if (isset($_GET['saved'])) {
+    $msg = 'Attendance saved for ' . date('d M Y', strtotime($date)) . ' — ' . (int)$_GET['saved'] . ' present.';
+} elseif (isset($_GET['removed'])) {
+    $msg = 'No students were marked present, so the class for ' . date('d M Y', strtotime($date)) . ' was removed.';
 }
 
 // ── Load session ─────────────────────────────────────────────
@@ -109,20 +123,18 @@ include __DIR__ . '/../includes/header.php';
 
 function row(array $s): void {
     global $sort;
-    ?><tr id="row-<?= $s['id'] ?>"
-        style="cursor:pointer"
-        onclick="toggleRow(<?= $s['id'] ?>)">
+    ?><tr id="row-<?= $s['id'] ?>" class="att-row" data-id="<?= $s['id'] ?>"
+        style="cursor:pointer">
         <td class="text-center">
             <input type="checkbox" class="form-check-input presence-cb"
                    name="present[]" value="<?= $s['id'] ?>"
                    id="cb-<?= $s['id'] ?>"
-                   <?= $s['present'] ? 'checked' : '' ?>
-                   onclick="event.stopPropagation()">
+                   <?= $s['present'] ? 'checked' : '' ?>>
         </td>
         <td class="row-name">
-            <?= htmlspecialchars($sort === 'last_name'
-                ? $s['last_name'] . ', ' . $s['first_name']
-                : $s['first_name'] . ' ' . $s['last_name']) ?>
+            <?= $sort === 'last_name'
+                ? hn($s['last_name']) . ', ' . hn($s['first_name'])
+                : hn($s['first_name'] . ' ' . $s['last_name']) ?>
         </td>
         <td class="small">
             <?= $s['last_attended'] ? date('d M Y', strtotime($s['last_attended'])) : '<em>never</em>' ?>
@@ -192,7 +204,7 @@ function row(array $s): void {
     </div>
 
     <!-- ── INSTRUCTORS ── -->
-    <div class="card border-0 shadow-sm mb-4">
+    <div class="card border-0 shadow-sm mb-4" id="card-instructors">
         <div class="card-header bg-white fw-semibold">
             Instructors <span class="badge bg-primary" id="count-instructors"><?= count($instructors) ?></span>
         </div>
@@ -218,7 +230,7 @@ function row(array $s): void {
     </div>
 
     <!-- ── PARENTS ── -->
-    <div class="card border-0 shadow-sm mb-4">
+    <div class="card border-0 shadow-sm mb-4" id="card-parents">
         <div class="card-header bg-white fw-semibold">
             Parents <span class="badge bg-primary" id="count-parents"><?= count($parents) ?></span>
         </div>
@@ -244,7 +256,7 @@ function row(array $s): void {
     </div>
 
     <!-- ── STUDENTS ── -->
-    <div class="card border-0 shadow-sm mb-4">
+    <div class="card border-0 shadow-sm mb-4" id="card-students">
         <div class="card-header bg-white fw-semibold">
             Students <span class="badge bg-primary" id="count-students"><?= count($students) ?></span>
         </div>
@@ -270,7 +282,7 @@ function row(array $s): void {
     </div>
 
     <!-- ── GUESTS ── -->
-    <div class="card border-0 shadow-sm mb-4">
+    <div class="card border-0 shadow-sm mb-4" id="card-guests">
         <div class="card-header bg-white fw-semibold">
             Guests <span class="badge bg-primary" id="count-guests"><?= count($guests) ?></span>
             <small class="text-muted fw-normal ms-2">(registration fee not yet paid)</small>
@@ -301,8 +313,8 @@ function row(array $s): void {
 <div class="d-flex justify-content-between align-items-center mt-2">
     <button type="submit" form="att-form" class="btn btn-primary px-4">Save Attendance</button>
     <?php if ($session_id): ?>
-    <form method="post" action="attendance.php"
-          onsubmit="return confirm('Delete the class for <?= date('d M Y', strtotime($date)) ?>?\n\nThis will remove all attendance records for this day and cannot be undone.')">
+    <form method="post" action="attendance.php" id="deleteSessionForm"
+          data-confirm="Delete the class for <?= date('d M Y', strtotime($date)) ?>?&#10;&#10;This will remove all attendance records for this day and cannot be undone.">
         <?= csrf_input() ?>
         <input type="hidden" name="action" value="delete_session">
         <input type="hidden" name="session_date" value="<?= htmlspecialchars($date) ?>">
@@ -311,7 +323,7 @@ function row(array $s): void {
     <?php endif; ?>
 </div>
 
-<script>
+<script nonce="<?= csp_nonce() ?>">
 function toggleRow(id) {
     const cb = document.getElementById('cb-' + id);
     cb.checked = !cb.checked;
@@ -320,6 +332,20 @@ function toggleRow(id) {
 document.querySelectorAll('.presence-cb').forEach(cb => {
     cb.addEventListener('change', () => {/* no absent styling needed */});
 });
+
+document.querySelectorAll('.att-row').forEach(function(row) {
+    row.addEventListener('click', function(e) {
+        if (e.target.closest('.presence-cb')) return;
+        toggleRow(row.dataset.id);
+    });
+});
+
+var deleteSessionForm = document.getElementById('deleteSessionForm');
+if (deleteSessionForm) {
+    deleteSessionForm.addEventListener('submit', function(e) {
+        if (!confirm(deleteSessionForm.dataset.confirm)) e.preventDefault();
+    });
+}
 
 // Navigate to selected date when date field changes
 (function () {
@@ -357,13 +383,18 @@ document.getElementById('nameFilter').addEventListener('input', function () {
         const name = row.querySelector('.row-name');
         if (name) row.style.display = name.textContent.toLowerCase().includes(q) ? '' : 'none';
     });
-    [['instructors-body','count-instructors'],['students-body','count-students'],
-     ['guests-body','count-guests'],['parents-body','count-parents']].forEach(function([bodyId, badgeId]) {
+    [['instructors-body','count-instructors','card-instructors'],
+     ['students-body','count-students','card-students'],
+     ['guests-body','count-guests','card-guests'],
+     ['parents-body','count-parents','card-parents']].forEach(function([bodyId, badgeId, cardId]) {
+        const body  = document.getElementById(bodyId);
+        if (!body) return; // section had no members at all — leave its "No X." message alone
         const badge = document.getElementById(badgeId);
-        if (!badge) return;
+        const card  = document.getElementById(cardId);
         let count = 0;
-        document.querySelectorAll('#' + bodyId + ' tr').forEach(r => { if (r.style.display !== 'none') count++; });
-        badge.textContent = count;
+        body.querySelectorAll('tr').forEach(r => { if (r.style.display !== 'none') count++; });
+        if (badge) badge.textContent = count;
+        if (card)  card.style.display = count === 0 ? 'none' : '';
     });
 });
 </script>

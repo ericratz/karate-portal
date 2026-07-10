@@ -236,8 +236,10 @@ if ($step === 'confirm' && ($sel['type'] ?? '') === 'claim') {
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Register — <?= htmlspecialchars(SITE_NAME) ?></title>
     <link rel="stylesheet"
-          href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
-    <style>
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+          integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
+          crossorigin="anonymous">
+    <style nonce="<?= csp_nonce() ?>">
         body { background: #f0f0f0; }
         .register-card { max-width: 520px; margin: 48px auto 80px; }
         .register-card .card-header {
@@ -368,10 +370,10 @@ if ($step === 'confirm' && ($sel['type'] ?? '') === 'claim') {
                 $dob_fmt = $m['date_of_birth'] ? date('d M', strtotime($m['date_of_birth'])) : null;
                 $masked  = $m['email'] ? mask_email($m['email']) : null;
             ?>
-            <div class="option-card match-card p-3"
-                 onclick="selectMatch('claim', <?= (int)$m['id'] ?>, this)">
+            <div class="option-card match-card select-match-card p-3"
+                 data-type="claim" data-student-id="<?= (int)$m['id'] ?>">
                 <div class="d-flex justify-content-between align-items-start">
-                    <span class="fw-semibold"><?= htmlspecialchars($m['first_name'].' '.$m['last_name']) ?></span>
+                    <span class="fw-semibold"><?= hn($m['first_name'].' '.$m['last_name']) ?></span>
                     <?php if ($m['rank_name']): ?>
                     <span class="badge bg-secondary" style="font-size:.7rem"><?= htmlspecialchars($m['rank_name']) ?></span>
                     <?php endif; ?>
@@ -384,8 +386,8 @@ if ($step === 'confirm' && ($sel['type'] ?? '') === 'claim') {
             </div>
             <?php endforeach; ?>
 
-            <div class="option-card p-3 d-flex align-items-start gap-3"
-                 onclick="selectMatch('new', 0, this)">
+            <div class="option-card select-match-card p-3 d-flex align-items-start gap-3"
+                 data-type="new" data-student-id="0">
                 <span class="fs-4 lh-1 mt-1">🥋</span>
                 <div>
                     <div class="fw-semibold">I'm a new student</div>
@@ -393,8 +395,8 @@ if ($step === 'confirm' && ($sel['type'] ?? '') === 'claim') {
                 </div>
             </div>
 
-            <div class="option-card p-3 d-flex align-items-start gap-3"
-                 onclick="selectMatch('not_listed', 0, this)">
+            <div class="option-card select-match-card p-3 d-flex align-items-start gap-3"
+                 data-type="not_listed" data-student-id="0">
                 <span class="fs-4 lh-1 mt-1">🔍</span>
                 <div>
                     <div class="fw-semibold">My record isn't listed</div>
@@ -437,7 +439,7 @@ if ($step === 'confirm' && ($sel['type'] ?? '') === 'claim') {
                     <div class="col-12">
                         <div class="c-label">Name</div>
                         <div class="c-value fw-semibold">
-                            <?= htmlspecialchars($confirm_student['first_name'].' '.$confirm_student['last_name']) ?>
+                            <?= hn($confirm_student['first_name'].' '.$confirm_student['last_name']) ?>
                         </div>
                     </div>
                     <?php if ($confirm_student['rank_name']): ?>
@@ -489,7 +491,7 @@ if ($step === 'confirm' && ($sel['type'] ?? '') === 'claim') {
                 <div class="row g-2">
                     <div class="col-12">
                         <div class="c-label">Name</div>
-                        <div class="c-value fw-semibold"><?= htmlspecialchars($reg_data['first_name'].' '.$reg_data['last_name']) ?></div>
+                        <div class="c-value fw-semibold"><?= hn($reg_data['first_name'].' '.$reg_data['last_name']) ?></div>
                     </div>
                     <div class="col-6">
                         <div class="c-label">Username</div>
@@ -534,7 +536,7 @@ if ($step === 'confirm' && ($sel['type'] ?? '') === 'claim') {
                 <div class="row g-2">
                     <div class="col-12">
                         <div class="c-label">Name</div>
-                        <div class="c-value fw-semibold"><?= htmlspecialchars($reg_data['first_name'].' '.$reg_data['last_name']) ?></div>
+                        <div class="c-value fw-semibold"><?= hn($reg_data['first_name'].' '.$reg_data['last_name']) ?></div>
                     </div>
                     <div class="col-6">
                         <div class="c-label">Username</div>
@@ -586,7 +588,7 @@ if ($step === 'confirm' && ($sel['type'] ?? '') === 'claim') {
 </div><!-- /register-card -->
 
 <?php if ($step === 'match'): ?>
-<script>
+<script nonce="<?= csp_nonce() ?>">
 function selectMatch(type, studentId, el) {
     document.querySelectorAll('.option-card').forEach(c => c.classList.remove('selected'));
     el.classList.add('selected');
@@ -596,9 +598,16 @@ function selectMatch(type, studentId, el) {
     btn.disabled    = false;
     btn.textContent = (type === 'claim') ? 'This is me — Continue →' : 'Continue →';
 }
+document.querySelectorAll('.select-match-card').forEach(function(card) {
+    card.addEventListener('click', function() {
+        selectMatch(card.dataset.type, parseInt(card.dataset.studentId, 10), card);
+    });
+});
 </script>
 <?php endif; ?>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+        crossorigin="anonymous"></script>
 </body>
 </html>

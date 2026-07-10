@@ -44,8 +44,13 @@ if (!$signed && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $mail_csz      = trim($_POST['mailing_city_state_zip'] ?? '');
     $agreed        = isset($_POST['i_agree']);
 
-    if (!$print_name || !$signature) {
-        $error = 'Please print your name and provide your signature.';
+    $dob_check = !empty($dob) ? (new DateTime($dob))->diff(new DateTime())->y < 18 : $is_minor;
+    if (!$print_name) {
+        $error = 'Please print the student\'s name.';
+    } elseif (!$dob_check && !$signature) {
+        $error = 'Please provide your signature.';
+    } elseif ($dob_check && !$guardian_sig) {
+        $error = 'A parent or guardian signature is required for minors.';
     } elseif (!$agreed) {
         $error = 'You must check the agreement box to submit.';
     } elseif (!$cell || !$email || !$street || !$csz) {
@@ -77,6 +82,12 @@ if (!$signed && $_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+// Determine minor status
+$is_minor = false;
+if (!empty($student['date_of_birth'])) {
+    $is_minor = (new DateTime($student['date_of_birth']))->diff(new DateTime())->y < 18;
+}
+
 // Data source for pre-filling fields
 $d = $submission ?: [];
 $s = $student;
@@ -88,7 +99,7 @@ $page_title = 'Waiver';
 include __DIR__ . '/../includes/header.php';
 ?>
 
-<style>
+<style nonce="<?= csp_nonce() ?>">
 .waiver-wrap { max-width: 760px; }
 .waiver-doc  { font-size: .92rem; line-height: 1.8; }
 .waiver-doc h2 { font-size: 1.15rem; font-weight: 700; text-align: center; margin-bottom: 0; }
@@ -172,38 +183,40 @@ include __DIR__ . '/../includes/header.php';
                value="<?= $signed ? wv($d,'print_name') : htmlspecialchars(trim(($s['first_name']??'').' '.($s['last_name']??''))) ?>"
                <?= $signed ? 'readonly' : 'required' ?>>
 
-        <!-- Signature + Date -->
-        <div class="row g-4 align-items-end mt-1">
+        <!-- Signature + Date (adults only) -->
+        <?php if (!$is_minor || $signed): ?>
+        <div class="row g-4 align-items-end mt-1" <?= $is_minor && $signed && empty($d['signature']) ? 'style="display:none"' : '' ?>>
             <div class="col">
                 <span class="w-label">X &nbsp; Your signature<?= !$signed ? ' <span style="font-size:.72rem;color:#999">(type your name — constitutes your electronic signature)</span>' : '' ?></span>
                 <input type="text" name="signature" class="w-input w-sig"
                        value="<?= wv($d,'signature') ?>"
-                       <?= $signed ? 'readonly' : 'required placeholder="Type your full name"' ?>>
+                       <?= $signed ? 'readonly' : (!$is_minor ? 'required placeholder="Type your full name"' : 'placeholder="Type your full name"') ?>>
             </div>
             <div class="col-auto" style="min-width:160px">
                 <span class="w-label">Date</span>
                 <?php if ($signed): ?>
                     <div class="w-static"><?= !empty($d['signed_date']) ? date('d M Y', strtotime($d['signed_date'])) : ($student['injury_waiver_date'] ? date('d M Y', strtotime($student['injury_waiver_date'])) : '') ?></div>
                 <?php else: ?>
-                    <input type="date" name="signed_date" class="w-input" value="<?= date('Y-m-d') ?>" required>
+                    <input type="date" name="signed_date" class="w-input" value="<?= date('Y-m-d') ?>" <?= !$is_minor ? 'required' : '' ?>>
                 <?php endif; ?>
             </div>
         </div>
+        <?php endif; ?>
 
         <!-- Guardian Signature + Date -->
         <div class="row g-4 align-items-end mt-1">
             <div class="col">
-                <span class="w-label">X &nbsp; Signature of parent or guardian (if you are under 21 years of age)</span>
+                <span class="w-label">X &nbsp; Signature of parent or guardian<?= $is_minor && !$signed ? ' <span style="font-size:.72rem;color:#999">(required for minors)</span>' : ' (if under 21 years of age)' ?></span>
                 <input type="text" name="guardian_signature" class="w-input w-sig"
                        value="<?= wv($d,'guardian_signature') ?>"
-                       <?= $signed ? 'readonly' : 'placeholder="Guardian full name (if applicable)"' ?>>
+                       <?= $signed ? 'readonly' : ($is_minor ? 'required placeholder="Guardian full name"' : 'placeholder="Guardian full name (if applicable)"') ?>>
             </div>
             <div class="col-auto" style="min-width:160px">
                 <span class="w-label">Date</span>
                 <?php if ($signed): ?>
                     <div class="w-static"><?= !empty($d['guardian_signed_date']) ? date('d M Y', strtotime($d['guardian_signed_date'])) : '' ?></div>
                 <?php else: ?>
-                    <input type="date" name="guardian_signed_date" class="w-input">
+                    <input type="date" name="guardian_signed_date" class="w-input" <?= $is_minor ? 'required' : '' ?>>
                 <?php endif; ?>
             </div>
         </div>
@@ -238,13 +251,13 @@ include __DIR__ . '/../includes/header.php';
         <!-- Street Address -->
         <span class="w-label">Local Street Address</span>
         <input type="text" name="street_address" class="w-input"
-               value="<?= wv($d,'street_address') ?>"
+               value="<?= $signed ? wv($d,'street_address') : htmlspecialchars($s['street_address'] ?? '') ?>"
                <?= $signed ? 'readonly' : 'required' ?>>
 
         <!-- City State ZIP -->
         <span class="w-label">City, State, ZIP</span>
         <input type="text" name="city_state_zip" class="w-input" style="max-width:420px"
-               value="<?= wv($d,'city_state_zip') ?>"
+               value="<?= $signed ? wv($d,'city_state_zip') : htmlspecialchars($s['city_state_zip'] ?? '') ?>"
                <?= $signed ? 'readonly' : 'required' ?>>
 
         <!-- Mailing Address -->

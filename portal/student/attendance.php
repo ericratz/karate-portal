@@ -36,7 +36,7 @@ include __DIR__ . '/../includes/header.php';
 ?>
 
 <div class="d-flex align-items-center gap-3 mb-4">
-    <h4 class="mb-0">Attendance History — <?= htmlspecialchars($student['first_name'] . ' ' . $student['last_name']) ?></h4>
+    <h4 class="mb-0">Attendance History — <?= hn($student['first_name'] . ' ' . $student['last_name']) ?></h4>
 </div>
 
 <!-- Summary -->

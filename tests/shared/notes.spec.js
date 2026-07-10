@@ -10,19 +10,21 @@ test.describe('instructor notes', () => {
     test.describe.configure({ mode: 'serial' });
     test.use({ storageState: AUTH.instructor });
 
-    test('instructor: add note page loads and empty note shows error', async ({ page }) => {
-        await visit(page, '/instructor/add_note.php?student_id=2', 'add note');
-        await expect(page.locator('textarea[name="content"]')).toBeVisible();
+    // add_note.php was removed — adding a note is now an inline form on
+    // instructor/student_profile.php's "Add Note" card.
+    test('instructor: add note form on student_profile.php loads and empty note shows error', async ({ page }) => {
+        await visit(page, '/instructor/student_profile.php?id=2', 'add note');
+        await expect(page.locator('textarea[name="note_content"]')).toBeVisible();
         // Empty note triggers server error
-        await page.evaluate(() => document.querySelector('textarea[name="content"]').removeAttribute('required'));
+        await page.evaluate(() => document.querySelector('textarea[name="note_content"]').removeAttribute('required'));
         await page.click('button:has-text("Save Note")');
         await page.waitForLoadState('domcontentloaded');
         await expect(page.locator('.alert-danger').first()).toContainText('empty');
     });
 
     test('instructor: valid note saves and shows success', async ({ page }) => {
-        await page.goto(BASE + '/instructor/add_note.php?student_id=2');
-        await page.fill('textarea[name="content"]', `Playwright note ${TS}`);
+        await page.goto(BASE + '/instructor/student_profile.php?id=2');
+        await page.fill('textarea[name="note_content"]', `Playwright note ${TS}`);
         await page.click('button:has-text("Save Note")');
         await page.waitForLoadState('domcontentloaded');
         await expect(page.locator('.alert-success').first()).toContainText('saved');
