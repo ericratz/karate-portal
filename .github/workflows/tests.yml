@@ -14,6 +14,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # Default clean (git clean -ffdx) would remove the portal/vendor
+          # junction below on every run — keep it off so vendor/ persists.
+          clean: false
 
       # credentials.js is gitignored — recreate it from GitHub secrets
       - name: Write credentials file
