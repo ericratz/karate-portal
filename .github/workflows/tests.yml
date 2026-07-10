@@ -10,6 +10,11 @@ jobs:
   test:
     runs-on: self-hosted
     timeout-minutes: 30
+    env:
+      # The runner service runs as SYSTEM, which has no ms-playwright cache
+      # of its own — point it at the browsers already installed for the
+      # interactive user instead of running `npx playwright install` here.
+      PLAYWRIGHT_BROWSERS_PATH: C:\Users\ericratz\AppData\Local\ms-playwright
 
     steps:
       - name: Checkout
