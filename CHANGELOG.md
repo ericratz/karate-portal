@@ -4,6 +4,20 @@ Full version history for the Shotokan Karate Portal. See `README.md` for the cur
 
 ---
 
+## V3.6
+
+- **Static analysis with Psalm** — codebase brought up to Psalm level 4, with a baseline file for pre-existing issues below that bar; integrated into CI as two dedicated steps (standard + taint analysis) on every push
+- **Backup/restore drill documented** — `tests/RESTORE_RUNBOOK.md` walks through recovering the live database from a backup, exercised end-to-end to verify the process actually works, not just that a backup file exists
+- **PayPal webhook idempotency fix** — new `webhook_events` table (unique key on `event_id`) lets `api/paypal_webhook.php` drop retried deliveries before touching any payment row; PayPal resends webhooks it didn't get a timely 200 for, so a slow request previously risked applying the same payment twice. Race-safe (two simultaneous deliveries both attempt the insert, only one wins). Covered by a new `WebhookIdempotencyTest`
+- **`includes/paypal.php` rewritten around a single request helper** — every PayPal call (token, order, capture, subscription, cancel, webhook verify) now goes through one `paypal_request()` that sets connect/response timeouts, detects transport failures, and validates the response is JSON before returning. Fixes real bugs the old per-call `curl_exec()` copies had: `paypal_capture_order()` silently returned `[]` on a failed capture instead of surfacing the error; `paypal_cancel_subscription()` never checked PayPal's response status, so a rejected cancel could still be recorded locally as cancelled while PayPal kept charging — it now throws unless PayPal returns 204
+- **Mobile-friendly pass** — layout and touch-target fixes across most pages so the portal is usable on phone-width viewports; new `tests/shared/mobile.spec.js` suite exercises the core flows at mobile viewport sizes
+- **Class Notes and Student Notes combined** — `admin/general_notes.php` removed; its functionality merged into `admin/student_notes.php` as a single notes page instead of two overlapping ones
+- **Browser console cleanup** — worked through every warning/error surfaced in Chrome DevTools across the app and resolved them
+- **Widespread page touch-ups** — most pages received changes this release, largely as a side effect of the mobile-friendly pass, Psalm level-4 compliance, and test fixes
+- **Test coverage** — 515 Playwright tests (39 spec files), 94 PHPUnit tests, all passing
+
+---
+
 ## V3.5
 
 - **Parent-card real-time bug fixed** — changing a student's account type to Parent on `admin/student_edit.php` now updates the Guardian/Parent card to "Linked Family" immediately via an htmx out-of-band swap (`hx-swap-oob` on `#guardian-card`), instead of requiring an exit-and-re-enter workaround

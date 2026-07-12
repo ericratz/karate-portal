@@ -297,7 +297,6 @@ test.describe('Admin dropdown reorganisation', () => {
         expect(menu).toContain('Student Info');
         expect(menu).toContain('Finances');
         expect(menu).toContain('Security');
-        expect(menu).toContain('Communication');
         expect(menu).not.toContain('Other');
         // Specific links in correct sections
         const donations = page.locator('a.dropdown-item:has-text("Donations")');

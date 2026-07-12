@@ -129,6 +129,7 @@ foreach ($all_students as $s) {
         <span id="recipientCount" class="badge bg-secondary">0 selected</span>
     </div>
     <div class="card-body p-0" style="max-height:420px;overflow-y:auto">
+        <div class="table-responsive">
         <table class="table table-sm table-hover mb-0" id="recipientTable">
             <thead class="table-light">
                 <tr>
@@ -167,6 +168,7 @@ foreach ($all_students as $s) {
                 <?php endforeach; ?>
             </tbody>
         </table>
+        </div>
     </div>
 </div>
 

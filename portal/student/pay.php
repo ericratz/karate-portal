@@ -26,14 +26,14 @@ $already_paid_reg = (int)$paid_reg->fetchColumn() > 0;
 // Month options for tuition picker (previous month + current + next 3 months)
 $month_options = [];
 for ($i = -1; $i <= 3; $i++) {
-    $ts = mktime(0, 0, 0, date('n') + $i, 1);
+    $ts = mktime(0, 0, 0, (int)date('n') + $i, 1);
     $month_options[] = [
         'value' => date('Y-m-01', $ts),
         'label' => date('F Y', $ts),
     ];
 }
 $current_month_value = date('Y-m-01');
-$next_month_value    = date('Y-m-01', mktime(0, 0, 0, date('n') + 1, 1));
+$next_month_value    = date('Y-m-01', mktime(0, 0, 0, (int)date('n') + 1, 1));
 $default_month        = $already_paid ? $next_month_value : $current_month_value;
 
 $fees = [
@@ -76,6 +76,7 @@ include __DIR__ . '/../includes/header.php';
             <div class="card-body">
 
                 <!-- Checkbox fee list -->
+                <div class="table-responsive">
                 <table class="table table-hover mb-3">
                     <tbody>
                     <?php foreach ($fees as $key => $fee): ?>
@@ -140,11 +141,18 @@ include __DIR__ . '/../includes/header.php';
                                 <input type="number" id="donationAmountInput" class="form-control"
                                        placeholder="0.00" step="0.01" min="1">
                             </div>
+                            <div class="form-check mt-1">
+                                <input type="checkbox" class="form-check-input" id="donationAnonymous">
+                                <label class="form-check-label small text-muted" for="donationAnonymous">
+                                    Donate anonymously (won't appear in your payment history)
+                                </label>
+                            </div>
                         </td>
                     </tr>
 
                     </tbody>
                 </table>
+                </div>
 
                 <!-- Custom amount row -->
                 <div class="border rounded p-3 mb-3">
@@ -250,7 +258,9 @@ include __DIR__ . '/../includes/header.php';
     </div>
 </div>
 
+<?php if (PAYPAL_CLIENT_ID !== ''): // unconfigured dev environment — page JS falls back to a warning ?>
 <script src="https://www.paypal.com/sdk/js?client-id=<?= htmlspecialchars(PAYPAL_CLIENT_ID) ?>&currency=USD"></script>
+<?php endif; ?>
 
 <script nonce="<?= csp_nonce() ?>">
 const FEES        = <?= json_encode($fees) ?>;
@@ -287,7 +297,11 @@ function buildItems() {
         if (!chk.checked) return;
         if (chk.dataset.key === 'donation') {
             var dAmt = parseFloat(document.getElementById('donationAmountInput').value) || 0;
-            if (dAmt > 0) items.push({ type: 'donation', amount: dAmt });
+            if (dAmt > 0) items.push({
+                type: 'donation',
+                amount: dAmt,
+                anonymous: document.getElementById('donationAnonymous').checked,
+            });
             return;
         }
         var item = { type: chk.dataset.key, amount: parseFloat(chk.dataset.amount) };
@@ -314,6 +328,14 @@ function renderButtons() {
     }
     show('paypalSection');
     hide('noSelectionMsg');
+
+    // SDK failed to load (blocked, offline, or unconfigured dev environment)
+    if (typeof paypal === 'undefined') {
+        container.innerHTML = '<div class="alert alert-warning mb-0">' +
+            'PayPal checkout could not be loaded. Please disable content blockers ' +
+            'and refresh, or contact the instructor to pay another way.</div>';
+        return;
+    }
 
     var capturedItems = [];
 
@@ -413,6 +435,7 @@ function updateRow(chk) {
         document.getElementById('row-donation-amount').style.display = chk.checked ? '' : 'none';
         if (!chk.checked) {
             document.getElementById('donationAmountInput').value = '';
+            document.getElementById('donationAnonymous').checked = false;
             chk.dataset.amount = '0';
             document.getElementById('donation-amount-display').textContent = '—';
         }

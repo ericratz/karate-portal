@@ -78,8 +78,8 @@ try {
          VALUES (?,?,?,?,?,?,?)'
     );
     $insert_donation = db()->prepare(
-        'INSERT INTO donations (amount, payment_method, payment_date, donor_name, notes)
-         VALUES (?, ?, CURDATE(), ?, ?)'
+        'INSERT INTO donations (student_id, amount, payment_method, payment_date, donor_name, notes)
+         VALUES (?, ?, ?, CURDATE(), ?, ?)'
     );
 
     foreach ($pending['items'] as $item) {
@@ -88,11 +88,16 @@ try {
             : fee_for_type($item['type']);
 
         if ($item['type'] === 'donation') {
-            $donor_name = $student_row
+            // Anonymous donations carry no student link or donor name
+            $anonymous  = !empty($item['anonymous']);
+            $donor_name = (!$anonymous && $student_row)
                 ? trim($student_row['first_name'] . ' ' . $student_row['last_name'])
                 : null;
             $dnotes = $txn_id ? "PayPal: $txn_id" : null;
-            $insert_donation->execute([$amount, 'paypal', $donor_name, $dnotes]);
+            $insert_donation->execute([
+                $anonymous ? null : $student_id,
+                $amount, 'paypal', $donor_name, $dnotes,
+            ]);
         } else {
             $insert_payment->execute([
                 $student_id,

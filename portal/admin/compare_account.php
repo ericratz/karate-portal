@@ -198,6 +198,7 @@ function cmp_class(string $a, string $b): string {
                 <a href="user_profile.php?id=<?= $user_id ?>" class="btn btn-sm btn-outline-secondary">View</a>
             </div>
             <div class="card-body p-0">
+                <div class="table-responsive">
                 <table class="table table-sm mb-0 compare-table">
                     <tbody>
                         <tr class="<?= $student ? cmp_class($user['first_name'] ?? '', $student['first_name']) : '' ?>">
@@ -244,6 +245,7 @@ function cmp_class(string $a, string $b): string {
                         </tr>
                     </tbody>
                 </table>
+                </div>
             </div>
         </div>
     </div>
@@ -261,6 +263,7 @@ function cmp_class(string $a, string $b): string {
                 <?php if (!$student): ?>
                     <p class="p-3 text-muted mb-0">Select a student record above to compare.</p>
                 <?php else: ?>
+                <div class="table-responsive">
                 <table class="table table-sm mb-0 compare-table">
                     <tbody>
                         <tr class="<?= cmp_class($user['first_name'] ?? '', $student['first_name']) ?>">
@@ -324,6 +327,7 @@ function cmp_class(string $a, string $b): string {
                         </tr>
                     </tbody>
                 </table>
+                </div>
                 <?php endif; ?>
             </div>
         </div>

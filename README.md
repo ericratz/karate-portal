@@ -1,6 +1,6 @@
-# Shotokan Karate Portal — V3.5
+# Shotokan Karate Portal — V3.6
 
-A full-stack membership management platform for a martial arts dojo — role-based dashboards, attendance tracking, belt test progression, payments (PayPal + manual), digital waivers, and self-service check-in. Built with PHP, MySQL, and htmx; verified by a 500+ test Playwright + PHPUnit suite running on every push via GitHub Actions.
+A full-stack membership management platform for a martial arts dojo — role-based dashboards, attendance tracking, belt test progression, payments (PayPal + manual), digital waivers, and self-service check-in. Built with PHP, MySQL, and htmx; verified by a 500+ test Playwright + PHPUnit suite and Psalm static analysis running on every push via GitHub Actions.
 
 See [`CHANGELOG.md`](CHANGELOG.md) for full version history.
 
@@ -13,10 +13,11 @@ See [`CHANGELOG.md`](CHANGELOG.md) for full version history.
 - **Hardened CSP** — nonce-only `script-src`, zero inline event handlers anywhere in the codebase, enforced by a dedicated regression test
 - **Defense-in-depth access control** — role checks on every protected page, plus per-record ownership scoping (a parent can only ever query their own linked children's data, verified server-side, not just hidden client-side)
 - **Digital workflows end-to-end** — self-service registration with duplicate-account detection, digital injury waivers, PayPal one-time + subscription payments, PDF rank certificates, PIN-gated self check-in
-- **500+ Playwright tests + 90+ PHPUnit tests**, run on every push via a self-hosted GitHub Actions CI pipeline
-- **15 shipped releases in 5 weeks**, solo — from a bare attendance tracker to a full multi-role membership platform with payments, security hardening, and CI (see [`CHANGELOG.md`](CHANGELOG.md))
+- **Mobile-friendly** — layout and touch targets tuned for phone-width viewports, with a dedicated Playwright suite exercising core flows at mobile sizes
+- **515 Playwright tests + 94 PHPUnit tests**, plus Psalm static + taint analysis at level 4, run on every push via a self-hosted GitHub Actions CI pipeline
+- **16 shipped releases in 5+ weeks**, solo — from a bare attendance tracker to a full multi-role membership platform with payments, security hardening, static analysis, and CI (see [`CHANGELOG.md`](CHANGELOG.md))
 - **Iterative data-model refinement** — guardian/family relationships and user-identity fields were each reworked once real usage patterns emerged, rather than over-designed upfront
-- **Security matured alongside features** — CSP hardening, an external verification pass (ZAP, sqlmap, Burp Suite, nmap, Nikto), and a full test-suite audit for coverage gaps came after the core product was stable, not as an afterthought
+- **Security matured alongside features** — CSP hardening, an external verification pass (ZAP, sqlmap, Burp Suite, nmap, Nikto), a full test-suite audit for coverage gaps, and a documented/drilled backup-restore process came after the core product was stable, not as an afterthought
 
 ---
 
@@ -29,7 +30,8 @@ See [`CHANGELOG.md`](CHANGELOG.md) for full version history.
 | Frontend | Bootstrap 5 (CDN), vanilla JS, htmx |
 | Payments | PayPal JS SDK (one-time + subscriptions) |
 | Auth | Username/password + Google OAuth |
-| Tests | Playwright 1.60 (503 tests) + PHPUnit 9.6 (91 tests) |
+| Tests | Playwright 1.60 (515 tests) + PHPUnit 9.6 (94 tests) |
+| Static analysis | Psalm (level 4, + taint analysis) |
 | CI | GitHub Actions — self-hosted Windows runner, runs on every push to `main` |
 
 ---
@@ -61,12 +63,14 @@ Role is derived at login from account state — not stored as an editable field 
 - Per-record ownership scoping on every parent/student-facing endpoint, independent of role checks
 - Full audit log of logins, edits, deletions, and payments, with time-based retention
 - Verified with nmap, Nikto, OWASP ZAP, sqlmap, and Burp Suite
+- Psalm static + taint analysis (level 4) on every push, catching type and injection issues before merge
+- Backup/restore process documented and drilled end-to-end (see [`tests/RESTORE_RUNBOOK.md`](tests/RESTORE_RUNBOOK.md))
 
 ---
 
 ## Testing
 
-503 Playwright tests across all four roles (dashboards, HTMX flows, access-control boundaries, security regressions) plus 91 PHPUnit unit/integration tests, run automatically on every push via GitHub Actions.
+515 Playwright tests across all four roles (dashboards, HTMX flows, access-control boundaries, security regressions, mobile viewport) plus 94 PHPUnit unit/integration tests, run automatically on every push via GitHub Actions alongside Psalm static and taint analysis.
 
 Payment/OAuth callbacks, live email delivery, and scheduled cron jobs are validated through manual verification against the staging/production environment, since they depend on publicly reachable callback URLs and real third-party services.
 
@@ -125,7 +129,7 @@ karate/
 │   │                   #   users, audit log, email, donations, backup,
 │   │                   #   member cards, rank certificates, check-in PIN
 │   └── cron/           # Scheduled jobs
-├── tests/              # Playwright test suite (503 tests, 39 spec files)
+├── tests/              # Playwright test suite (515 tests, 39 spec files)
 ├── migrations/         # SQL migration scripts
 ├── karate_schema.sql   # Fresh-install schema with seed data
 ├── CHANGELOG.md        # Full version history

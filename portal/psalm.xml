@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<psalm
+    errorLevel="4"
+    phpVersion="8.2"
+    resolveFromConfigFile="true"
+    findUnusedBaselineEntry="false"
+    findUnusedCode="false"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns="https://getpsalm.org/schema/config"
+    xsi:schemaLocation="https://getpsalm.org/schema/config vendor/vimeo/psalm/config.xsd"
+    errorBaseline="psalm-baseline.xml"
+>
+    <projectFiles>
+        <directory name="." />
+        <ignoreFiles>
+            <directory name="vendor" />
+            <file name="composer-setup.php" />
+        </ignoreFiles>
+    </projectFiles>
+
+    <issueHandlers>
+        <!-- False positive: every header() here builds the Location from an
+             (int)-cast id and urlencode()'d ref, so CRLF injection is impossible -->
+        <TaintedHeader>
+            <errorLevel type="suppress">
+                <file name="admin/student_edit.php" />
+            </errorLevel>
+        </TaintedHeader>
+    </issueHandlers>
+</psalm>

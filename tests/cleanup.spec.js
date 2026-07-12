@@ -127,7 +127,7 @@ test('delete leftover Playwright general notes', async ({ page }) => {
     await login(page, ADMIN_USER, ADMIN_PASS);
     let found = true;
     while (found) {
-        await page.goto(BASE + '/admin/general_notes.php');
+        await page.goto(BASE + '/admin/student_notes.php');
         await page.waitForLoadState('domcontentloaded');
         const editBtn = page.locator('#editToggle');
         if (await editBtn.count() === 0) { found = false; break; }

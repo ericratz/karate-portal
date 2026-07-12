@@ -175,6 +175,41 @@
         }
         a { text-decoration: none; }
         a:hover { text-decoration: none; }
+
+        /* Mobile: bump .btn-sm in tables up to a comfortable touch target */
+        @media (max-width: 767px) {
+            .table .btn-sm {
+                padding: .375rem .75rem;
+                font-size: .875rem;
+            }
+
+            /* Footer collapses to just the chevron tab — tapping it reveals
+               the whole bar (contact card + trademark/copyright text) */
+            #site-footer .footer-grid { display: none !important; }
+            #site-footer.footer-open .footer-grid {
+                display: grid !important;
+                /* !important — must beat the inline 3-column style */
+                grid-template-columns: 1fr !important; /* stack: card, then texts */
+                padding: 10px 12px;
+                /* never grow past the viewport — keeps the chevron reachable */
+                max-height: 70vh;
+                overflow-y: auto;
+            }
+            #site-footer.footer-open .footer-grid > div { width: auto !important; }
+            #site-footer .footer-side-text { display: none; }
+            #site-footer.footer-open .footer-side-text {
+                display: block;
+                text-align: center !important;
+            }
+            body { padding-bottom: 34px; } /* only the chevron tab needs room */
+
+            /* The expanded header menu itself never scrolls — only the open
+               dropdown does, capped so it can't run off the screen */
+            .navbar .dropdown-menu {
+                max-height: 55vh !important; /* beats the inline max-height */
+                overflow-y: auto;
+            }
+        }
         .btn-outline-secondary, .btn-outline-primary {
             --bs-btn-bg: #198754;
             --bs-btn-color: #fff;
@@ -219,7 +254,7 @@
                 else                            echo 'My Dashboard';
             ?>
         </a>
-        <button class="navbar-toggler" type="button"
+        <button class="navbar-toggler" type="button" aria-label="Toggle navigation menu"
                 data-bs-toggle="collapse" data-bs-target="#navMenu">
             <span class="navbar-toggler-icon"></span>
         </button>
@@ -243,9 +278,10 @@
                         <li><h6 class="dropdown-header">Student Info</h6></li>
                         <li><a class="dropdown-item" href="<?= SITE_URL ?>/instructor/attendance_sessions.php">Attendance</a></li>
                         <li><a class="dropdown-item" href="<?= SITE_URL ?>/instructor/belt_tests_all.php">Belt Tests</a></li>
+                        <li><a class="dropdown-item" href="<?= SITE_URL ?>/admin/student_notes.php">Class Notes</a></li>
+                        <li><a class="dropdown-item" href="<?= SITE_URL ?>/admin/email_students.php">Email Students</a></li>
                         <li><a class="dropdown-item" href="<?= SITE_URL ?>/instructor/">Instructor Dashboard</a></li>
                         <li><a class="dropdown-item" href="<?= SITE_URL ?>/admin/students.php">Roster</a></li>
-                        <li><a class="dropdown-item" href="<?= SITE_URL ?>/admin/student_notes.php">Student Notes</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><h6 class="dropdown-header">Finances</h6></li>
                         <li><a class="dropdown-item" href="<?= SITE_URL ?>/admin/donations.php">Donations</a></li>
@@ -256,17 +292,13 @@
                         <li><h6 class="dropdown-header">Security</h6></li>
                         <li><a class="dropdown-item" href="<?= SITE_URL ?>/admin/logs.php">Logs</a></li>
                         <li><a class="dropdown-item" href="<?= SITE_URL ?>/admin/users.php">Users</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><h6 class="dropdown-header">Communication</h6></li>
-                        <li><a class="dropdown-item" href="<?= SITE_URL ?>/admin/general_notes.php">Class Notes</a></li>
-                        <li><a class="dropdown-item" href="<?= SITE_URL ?>/admin/email_students.php">Email Students</a></li>
                     </ul>
                 </li>
                 <?php endif; ?>
 
             </ul>
             <div class="d-flex align-items-center gap-3">
-                <button id="dark-toggle" title="Toggle dark mode"
+                <button id="dark-toggle" title="Toggle dark mode" aria-label="Toggle dark mode"
                         style="position:relative;width:78px;height:28px;border-radius:14px;
                                border:2px solid #888;cursor:pointer;
                                transition:background .25s,border-color .25s;background:#3d1a7a;flex-shrink:0">

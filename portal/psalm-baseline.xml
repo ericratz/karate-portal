@@ -1,0 +1,558 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<files psalm-version="5.26.1@d747f6500b38ac4f7dfc5edbcae6e4b637d7add0">
+  <file src="admin/db_backup.php">
+    <RedundantCondition>
+      <code><![CDATA[$pdo->quote($v)]]></code>
+    </RedundantCondition>
+    <TypeDoesNotContainNull>
+      <code><![CDATA[$v === null]]></code>
+    </TypeDoesNotContainNull>
+  </file>
+  <file src="admin/logs.php">
+    <RedundantCondition>
+      <code><![CDATA[$pdo->quote($v)]]></code>
+      <code><![CDATA[$tab === 'mail']]></code>
+      <code><![CDATA[$tab === 'mail']]></code>
+    </RedundantCondition>
+    <TypeDoesNotContainNull>
+      <code><![CDATA[$v === null]]></code>
+    </TypeDoesNotContainNull>
+  </file>
+  <file src="admin/payments.php">
+    <RedundantCast>
+      <code><![CDATA[(float)MONTHLY_FEE]]></code>
+      <code><![CDATA[(float)REG_FEE]]></code>
+      <code><![CDATA[(float)SEMINAR_FEE]]></code>
+      <code><![CDATA[(float)SLC_FEE]]></code>
+      <code><![CDATA[(float)TEST_FEE]]></code>
+    </RedundantCast>
+  </file>
+  <file src="admin/student_edit.php">
+    <NoValue>
+      <code><![CDATA[$msg]]></code>
+    </NoValue>
+    <TypeDoesNotContainType>
+      <code><![CDATA[$msg]]></code>
+      <code><![CDATA[$msg]]></code>
+    </TypeDoesNotContainType>
+    <UndefinedGlobalVariable>
+      <code><![CDATA[$is_parent_type]]></code>
+    </UndefinedGlobalVariable>
+  </file>
+  <file src="cron/backup.php">
+    <RedundantCondition>
+      <code><![CDATA[$pdo->quote($v)]]></code>
+    </RedundantCondition>
+    <TypeDoesNotContainNull>
+      <code><![CDATA[$v === null]]></code>
+    </TypeDoesNotContainNull>
+  </file>
+  <file src="includes/auto_inactive.php">
+    <UndefinedFunction>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+    </UndefinedFunction>
+  </file>
+  <file src="includes/belt_helpers.php">
+    <RedundantCast>
+      <code><![CDATA[(int)(new DateTime($date_of_birth))->diff(new DateTime())->y]]></code>
+      <code><![CDATA[(int)(new DateTime($date_of_birth))->diff(new DateTime())->y]]></code>
+    </RedundantCast>
+    <UndefinedFunction>
+      <code><![CDATA[db()]]></code>
+    </UndefinedFunction>
+  </file>
+  <file src="includes/config.php">
+    <UndefinedFunction>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+    </UndefinedFunction>
+  </file>
+  <file src="includes/footer.php">
+    <UndefinedConstant>
+      <code><![CDATA[SITE_URL]]></code>
+    </UndefinedConstant>
+    <UndefinedFunction>
+      <code><![CDATA[csp_nonce()]]></code>
+      <code><![CDATA[csrf_token()]]></code>
+    </UndefinedFunction>
+  </file>
+  <file src="includes/header.php">
+    <RedundantCondition>
+      <code><![CDATA[$page_title]]></code>
+      <code><![CDATA[$page_title]]></code>
+      <code><![CDATA[$page_title]]></code>
+      <code><![CDATA[$page_title]]></code>
+      <code><![CDATA[$page_title]]></code>
+      <code><![CDATA[$page_title]]></code>
+      <code><![CDATA[$page_title]]></code>
+      <code><![CDATA[$page_title]]></code>
+      <code><![CDATA[$page_title]]></code>
+      <code><![CDATA[$page_title]]></code>
+      <code><![CDATA[$page_title]]></code>
+      <code><![CDATA[$page_title]]></code>
+      <code><![CDATA[$page_title]]></code>
+      <code><![CDATA[$page_title]]></code>
+      <code><![CDATA[$page_title]]></code>
+      <code><![CDATA[$page_title]]></code>
+      <code><![CDATA[$page_title]]></code>
+      <code><![CDATA[$page_title]]></code>
+      <code><![CDATA[$page_title]]></code>
+      <code><![CDATA[$page_title]]></code>
+      <code><![CDATA[$page_title]]></code>
+      <code><![CDATA[$page_title]]></code>
+      <code><![CDATA[$page_title]]></code>
+      <code><![CDATA[$page_title]]></code>
+      <code><![CDATA[$page_title]]></code>
+      <code><![CDATA[$page_title]]></code>
+      <code><![CDATA[$page_title]]></code>
+      <code><![CDATA[$page_title]]></code>
+      <code><![CDATA[$page_title]]></code>
+      <code><![CDATA[$page_title]]></code>
+      <code><![CDATA[$page_title]]></code>
+      <code><![CDATA[$page_title]]></code>
+      <code><![CDATA[$page_title]]></code>
+    </RedundantCondition>
+    <TypeDoesNotContainNull>
+      <code><![CDATA['Portal']]></code>
+      <code><![CDATA['Portal']]></code>
+      <code><![CDATA['Portal']]></code>
+      <code><![CDATA['Portal']]></code>
+      <code><![CDATA['Portal']]></code>
+      <code><![CDATA['Portal']]></code>
+      <code><![CDATA['Portal']]></code>
+      <code><![CDATA['Portal']]></code>
+      <code><![CDATA['Portal']]></code>
+      <code><![CDATA['Portal']]></code>
+      <code><![CDATA['Portal']]></code>
+      <code><![CDATA['Portal']]></code>
+      <code><![CDATA['Portal']]></code>
+      <code><![CDATA['Portal']]></code>
+      <code><![CDATA['Portal']]></code>
+      <code><![CDATA['Portal']]></code>
+      <code><![CDATA['Portal']]></code>
+      <code><![CDATA['Portal']]></code>
+      <code><![CDATA['Portal']]></code>
+      <code><![CDATA['Portal']]></code>
+      <code><![CDATA['Portal']]></code>
+      <code><![CDATA['Portal']]></code>
+      <code><![CDATA['Portal']]></code>
+      <code><![CDATA['Portal']]></code>
+      <code><![CDATA['Portal']]></code>
+      <code><![CDATA['Portal']]></code>
+      <code><![CDATA['Portal']]></code>
+      <code><![CDATA['Portal']]></code>
+      <code><![CDATA['Portal']]></code>
+      <code><![CDATA['Portal']]></code>
+      <code><![CDATA['Portal']]></code>
+      <code><![CDATA['Portal']]></code>
+      <code><![CDATA['Portal']]></code>
+    </TypeDoesNotContainNull>
+    <UndefinedConstant>
+      <code><![CDATA[SITE_URL]]></code>
+      <code><![CDATA[SITE_URL]]></code>
+      <code><![CDATA[SITE_URL]]></code>
+      <code><![CDATA[SITE_URL]]></code>
+      <code><![CDATA[SITE_URL]]></code>
+      <code><![CDATA[SITE_URL]]></code>
+      <code><![CDATA[SITE_URL]]></code>
+      <code><![CDATA[SITE_URL]]></code>
+      <code><![CDATA[SITE_URL]]></code>
+      <code><![CDATA[SITE_URL]]></code>
+      <code><![CDATA[SITE_URL]]></code>
+      <code><![CDATA[SITE_URL]]></code>
+      <code><![CDATA[SITE_URL]]></code>
+      <code><![CDATA[SITE_URL]]></code>
+      <code><![CDATA[SITE_URL]]></code>
+      <code><![CDATA[SITE_URL]]></code>
+      <code><![CDATA[SITE_URL]]></code>
+      <code><![CDATA[SITE_URL]]></code>
+      <code><![CDATA[SITE_URL]]></code>
+      <code><![CDATA[SITE_URL]]></code>
+    </UndefinedConstant>
+    <UndefinedFunction>
+      <code><![CDATA[csp_nonce()]]></code>
+      <code><![CDATA[csp_nonce()]]></code>
+      <code><![CDATA[csp_nonce()]]></code>
+      <code><![CDATA[csrf_token()]]></code>
+      <code><![CDATA[has_role('admin')]]></code>
+      <code><![CDATA[has_role('admin')]]></code>
+      <code><![CDATA[has_role('admin')]]></code>
+      <code><![CDATA[has_role('instructor')]]></code>
+      <code><![CDATA[has_role('instructor')]]></code>
+      <code><![CDATA[has_role('parent')]]></code>
+      <code><![CDATA[has_role('parent')]]></code>
+    </UndefinedFunction>
+  </file>
+  <file src="includes/log_retention.php">
+    <UndefinedFunction>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+    </UndefinedFunction>
+  </file>
+  <file src="includes/paypal.php">
+    <InvalidScalarArgument>
+      <code><![CDATA[$resp]]></code>
+      <code><![CDATA[$resp]]></code>
+    </InvalidScalarArgument>
+    <TypeDoesNotContainType>
+      <code><![CDATA[PAYPAL_MODE === 'live']]></code>
+    </TypeDoesNotContainType>
+    <UndefinedConstant>
+      <code><![CDATA[MONTHLY_FEE]]></code>
+      <code><![CDATA[PAYPAL_CLIENT_ID]]></code>
+      <code><![CDATA[PAYPAL_MODE]]></code>
+      <code><![CDATA[PAYPAL_PLAN_ID]]></code>
+      <code><![CDATA[PAYPAL_SECRET]]></code>
+      <code><![CDATA[REG_FEE]]></code>
+      <code><![CDATA[SEMINAR_FEE]]></code>
+      <code><![CDATA[SITE_URL]]></code>
+      <code><![CDATA[SITE_URL]]></code>
+      <code><![CDATA[SLC_FEE]]></code>
+      <code><![CDATA[TEST_FEE]]></code>
+    </UndefinedConstant>
+    <UndefinedFunction>
+      <code><![CDATA[log_event('error', 'payment', 'PayPal request failed (network)', [
+            'path' => $path, 'curl_errno' => $errno, 'curl_error' => $error,
+        ])]]></code>
+      <code><![CDATA[log_event('error', 'payment', 'PayPal returned non-JSON response', [
+            'path' => $path, 'status' => $status, 'body_prefix' => substr($resp, 0, 200),
+        ])]]></code>
+      <code><![CDATA[log_event('error', 'payment', 'PayPal subscription cancel rejected', [
+            'subscription_id' => $subscription_id, 'status' => $result['status'], 'body' => $result['raw'],
+        ])]]></code>
+      <code><![CDATA[log_event('error', 'payment', 'PayPal token request rejected', [
+            'status' => $result['status'],
+            'error'  => $result['data']['error_description'] ?? ($result['data']['error'] ?? 'unknown'),
+        ])]]></code>
+      <code><![CDATA[log_event('error', 'payment', 'PayPal webhook verification errored', ['message' => $e->getMessage()])]]></code>
+    </UndefinedFunction>
+  </file>
+  <file src="includes/registration.php">
+    <UndefinedFunction>
+      <code><![CDATA[db()]]></code>
+    </UndefinedFunction>
+  </file>
+  <file src="parent/attendance.php">
+    <InvalidOperand>
+      <code><![CDATA[$i]]></code>
+    </InvalidOperand>
+  </file>
+  <file src="parent/belt_tests.php">
+    <InvalidOperand>
+      <code><![CDATA[$i]]></code>
+    </InvalidOperand>
+  </file>
+  <file src="parent/payment_history.php">
+    <InvalidOperand>
+      <code><![CDATA[$i]]></code>
+    </InvalidOperand>
+  </file>
+  <file src="parent/waiver.php">
+    <RedundantCondition>
+      <code><![CDATA[!$is_minor]]></code>
+      <code><![CDATA[!$is_minor]]></code>
+      <code><![CDATA[!$is_minor]]></code>
+      <code><![CDATA[!$is_minor]]></code>
+      <code><![CDATA[$signed]]></code>
+    </RedundantCondition>
+    <TypeDoesNotContainType>
+      <code><![CDATA['']]></code>
+      <code><![CDATA['placeholder="Type full name to sign"']]></code>
+    </TypeDoesNotContainType>
+    <UndefinedGlobalVariable>
+      <code><![CDATA[$is_minor]]></code>
+    </UndefinedGlobalVariable>
+  </file>
+  <file src="student/attendance.php">
+    <InvalidOperand>
+      <code><![CDATA[$i]]></code>
+    </InvalidOperand>
+  </file>
+  <file src="student/belt_tests.php">
+    <InvalidOperand>
+      <code><![CDATA[$i]]></code>
+    </InvalidOperand>
+  </file>
+  <file src="student/payment_history.php">
+    <InvalidOperand>
+      <code><![CDATA[$i]]></code>
+    </InvalidOperand>
+  </file>
+  <file src="student/profile_edit.php">
+    <NoValue>
+      <code><![CDATA[$msg]]></code>
+    </NoValue>
+    <RedundantCondition>
+      <code><![CDATA[$email]]></code>
+    </RedundantCondition>
+    <TypeDoesNotContainType>
+      <code><![CDATA[$msg]]></code>
+      <code><![CDATA[$msg]]></code>
+      <code><![CDATA[null]]></code>
+    </TypeDoesNotContainType>
+  </file>
+  <file src="student/waiver.php">
+    <RedundantCondition>
+      <code><![CDATA[!$is_minor]]></code>
+      <code><![CDATA[!$is_minor]]></code>
+      <code><![CDATA[!$is_minor]]></code>
+      <code><![CDATA[!$is_minor]]></code>
+      <code><![CDATA[$signed]]></code>
+    </RedundantCondition>
+    <TypeDoesNotContainType>
+      <code><![CDATA['']]></code>
+      <code><![CDATA['placeholder="Type your full name"']]></code>
+    </TypeDoesNotContainType>
+    <UndefinedGlobalVariable>
+      <code><![CDATA[$is_minor]]></code>
+    </UndefinedGlobalVariable>
+  </file>
+  <file src="tests/Integration/AttemptLoginTest.php">
+    <InvalidScalarArgument>
+      <code><![CDATA[$_SESSION]]></code>
+      <code><![CDATA[$_SESSION]]></code>
+    </InvalidScalarArgument>
+    <UndefinedFunction>
+      <code><![CDATA[attempt_login('no_such_user_xyz_phpunit', 'anypassword')]]></code>
+      <code><![CDATA[attempt_login(self::USER, 'WrongPassword!')]]></code>
+      <code><![CDATA[attempt_login(self::USER, self::PASS)]]></code>
+      <code><![CDATA[attempt_login(self::USER, self::PASS)]]></code>
+      <code><![CDATA[attempt_login(self::USER, self::PASS)]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[is_rate_limited(self::USER, '127.0.0.1')]]></code>
+      <code><![CDATA[is_rate_limited(self::USER, '::1')]]></code>
+    </UndefinedFunction>
+  </file>
+  <file src="tests/Integration/BeltNextRankTest.php">
+    <UndefinedFunction>
+      <code><![CDATA[belt_next_rank('3rd Dan', null)]]></code>
+      <code><![CDATA[belt_next_rank('8th Kyu', null)]]></code>
+      <code><![CDATA[belt_next_rank('9th Kyu', null)]]></code>
+      <code><![CDATA[belt_next_rank('not a real rank', null)]]></code>
+      <code><![CDATA[belt_next_rank(null, $dob)]]></code>
+      <code><![CDATA[belt_next_rank(null, null)]]></code>
+    </UndefinedFunction>
+  </file>
+  <file src="tests/Integration/CheckinPinTest.php">
+    <UndefinedFunction>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+    </UndefinedFunction>
+  </file>
+  <file src="tests/Integration/DbWriteTest.php">
+    <UndefinedFunction>
+      <code><![CDATA[audit(self::AUDIT_ACT)]]></code>
+      <code><![CDATA[audit(self::AUDIT_ACT)]]></code>
+      <code><![CDATA[audit(self::AUDIT_ACT, 'student', 99, 'phpunit detail')]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[log_event('info', self::LOG_CHAN, 'no context')]]></code>
+      <code><![CDATA[log_event('nonsense', self::LOG_CHAN, 'fallback test')]]></code>
+      <code><![CDATA[log_event('warning', self::LOG_CHAN, 'test message', ['key' => 'val'])]]></code>
+      <code><![CDATA[record_failed_login(self::FAIL_USER, self::FAIL_IP)]]></code>
+      <code><![CDATA[record_failed_login(self::FAIL_USER, self::FAIL_IP)]]></code>
+      <code><![CDATA[record_failed_login(self::FAIL_USER, self::FAIL_IP)]]></code>
+    </UndefinedFunction>
+  </file>
+  <file src="tests/Integration/FindMatchesTest.php">
+    <UndefinedFunction>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[find_matches('Someone', 'Else', '', self::EMAIL)]]></code>
+      <code><![CDATA[find_matches('Someone', 'Else', self::DOB, '')]]></code>
+      <code><![CDATA[find_matches('Totally', 'Unrelated', '1901-01-01', 'nobody@nowhere.invalid')]]></code>
+      <code><![CDATA[find_matches(self::FIRST, self::LAST, '', '')]]></code>
+      <code><![CDATA[find_matches(self::FIRST, self::LAST, '', '')]]></code>
+      <code><![CDATA[find_matches(strtoupper(self::FIRST), strtoupper(self::LAST), '', '')]]></code>
+    </UndefinedFunction>
+  </file>
+  <file src="tests/Integration/LogRetentionTest.php">
+    <UndefinedFunction>
+      <code><![CDATA[apply_log_retention()]]></code>
+      <code><![CDATA[apply_log_retention()]]></code>
+      <code><![CDATA[apply_log_retention()]]></code>
+      <code><![CDATA[apply_log_retention()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+    </UndefinedFunction>
+  </file>
+  <file src="tests/Integration/UpdateProfileAuthTest.php">
+    <UndefinedFunction>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+    </UndefinedFunction>
+  </file>
+  <file src="tests/Integration/WebhookIdempotencyTest.php">
+    <UndefinedFunction>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+    </UndefinedFunction>
+  </file>
+  <file src="tests/Unit/AuthSessionTest.php">
+    <UndefinedFunction>
+      <code><![CDATA[current_user_id()]]></code>
+      <code><![CDATA[current_user_id()]]></code>
+      <code><![CDATA[dashboard_url('admin')]]></code>
+      <code><![CDATA[dashboard_url('guest')]]></code>
+      <code><![CDATA[dashboard_url('instructor')]]></code>
+      <code><![CDATA[dashboard_url('parent')]]></code>
+      <code><![CDATA[dashboard_url('something_unknown')]]></code>
+      <code><![CDATA[dashboard_url('student')]]></code>
+      <code><![CDATA[has_role('admin')]]></code>
+      <code><![CDATA[has_role('admin')]]></code>
+      <code><![CDATA[has_role('admin')]]></code>
+      <code><![CDATA[has_role('admin', 'instructor')]]></code>
+      <code><![CDATA[has_role('admin', 'student')]]></code>
+    </UndefinedFunction>
+  </file>
+  <file src="tests/Unit/BeltHelpersTest.php">
+    <UndefinedConstant>
+      <code><![CDATA[HW_INDEX_ADULT]]></code>
+      <code><![CDATA[HW_INDEX_ADULT]]></code>
+      <code><![CDATA[HW_INDEX_ADULT]]></code>
+      <code><![CDATA[HW_INDEX_YOUTH]]></code>
+      <code><![CDATA[HW_INDEX_YOUTH]]></code>
+    </UndefinedConstant>
+    <UndefinedFunction>
+      <code><![CDATA[_belt_hw_file('10th Kyu', false)]]></code>
+      <code><![CDATA[_belt_hw_file('10th Kyu', true)]]></code>
+      <code><![CDATA[_belt_hw_file('1st Dan', false)]]></code>
+      <code><![CDATA[_belt_hw_file('1st Dan', true)]]></code>
+      <code><![CDATA[_belt_hw_file('8th Kyu', false)]]></code>
+      <code><![CDATA[_belt_hw_file('8th Kyu', true)]]></code>
+      <code><![CDATA[_belt_hw_file('99th Kyu', false)]]></code>
+      <code><![CDATA[_belt_test_file('2nd Dan')]]></code>
+      <code><![CDATA[_belt_test_file('7th Kyu')]]></code>
+      <code><![CDATA[_belt_test_file('99th Kyu')]]></code>
+      <code><![CDATA[hw_index_url($dob)]]></code>
+      <code><![CDATA[hw_index_url($dob)]]></code>
+      <code><![CDATA[hw_index_url($dob)]]></code>
+      <code><![CDATA[hw_index_url($dob)]]></code>
+      <code><![CDATA[hw_index_url(null)]]></code>
+    </UndefinedFunction>
+  </file>
+  <file src="tests/Unit/CsrfTest.php">
+    <UndefinedFunction>
+      <code><![CDATA[csrf_input()]]></code>
+      <code><![CDATA[csrf_token()]]></code>
+      <code><![CDATA[csrf_token()]]></code>
+      <code><![CDATA[csrf_token()]]></code>
+      <code><![CDATA[csrf_token()]]></code>
+      <code><![CDATA[csrf_token()]]></code>
+      <code><![CDATA[csrf_token()]]></code>
+      <code><![CDATA[csrf_token()]]></code>
+      <code><![CDATA[csrf_token()]]></code>
+      <code><![CDATA[verify_csrf()]]></code>
+      <code><![CDATA[verify_csrf()]]></code>
+      <code><![CDATA[verify_csrf()]]></code>
+    </UndefinedFunction>
+  </file>
+  <file src="tests/Unit/PaypalFeeTest.php">
+    <UndefinedConstant>
+      <code><![CDATA[MONTHLY_FEE]]></code>
+      <code><![CDATA[REG_FEE]]></code>
+      <code><![CDATA[SEMINAR_FEE]]></code>
+      <code><![CDATA[SLC_FEE]]></code>
+      <code><![CDATA[TEST_FEE]]></code>
+    </UndefinedConstant>
+    <UndefinedFunction>
+      <code><![CDATA[fee_for_type('belt_test')]]></code>
+      <code><![CDATA[fee_for_type('monthly_tuition')]]></code>
+      <code><![CDATA[fee_for_type('not_a_real_type')]]></code>
+      <code><![CDATA[fee_for_type('registration')]]></code>
+      <code><![CDATA[fee_for_type('seminar')]]></code>
+      <code><![CDATA[fee_for_type('slc_training')]]></code>
+    </UndefinedFunction>
+  </file>
+  <file src="tests/Unit/RegistrationHelpersTest.php">
+    <UndefinedFunction>
+      <code><![CDATA[mask_email('a@b.com')]]></code>
+      <code><![CDATA[mask_email('john@Example.COM')]]></code>
+      <code><![CDATA[mask_email('john@doe.com')]]></code>
+      <code><![CDATA[mask_email('not-an-email')]]></code>
+    </UndefinedFunction>
+  </file>
+</files>

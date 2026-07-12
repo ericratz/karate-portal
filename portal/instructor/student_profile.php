@@ -147,12 +147,16 @@ $belt_tests = db()->prepare(
 $belt_tests->execute([$id]);
 $belt_tests = $belt_tests->fetchAll();
 
-// Payment history
+// Payment history — linked donations merged in as type 'donation'
 $payments = db()->prepare(
     'SELECT payment_date, payment_type, payment_method, amount, transaction_id, notes
-     FROM payments WHERE student_id = ? ORDER BY payment_date DESC'
+     FROM payments WHERE student_id = ?
+     UNION ALL
+     SELECT payment_date, \'donation\', payment_method, amount, NULL, notes
+     FROM donations WHERE student_id = ?
+     ORDER BY payment_date DESC'
 );
-$payments->execute([$id]);
+$payments->execute([$id, $id]);
 $payments = $payments->fetchAll();
 
 // Notes (instructor/admin only)
@@ -448,16 +452,21 @@ include __DIR__ . '/../includes/header.php';
                     <?php if (empty($attendance)): ?>
                         <p class="p-3 text-muted">No classes recorded.</p>
                     <?php else: ?>
+                    <div class="table-responsive">
                     <table class="table table-sm table-hover mb-0">
                         <tbody>
                         <?php foreach ($attendance as $a): ?>
                             <?php if (!$a['present']): continue; endif; ?>
                             <tr>
                                 <td>
+                                    <?php if (has_role('instructor', 'admin')): ?>
                                     <a href="attendance.php?date=<?= $a['session_date'] ?>"
                                        class="text-primary text-decoration-none">
                                         <?= date('D d M Y', strtotime($a['session_date'])) ?>
                                     </a>
+                                    <?php else: // students can't open the take-attendance page ?>
+                                    <?= date('D d M Y', strtotime($a['session_date'])) ?>
+                                    <?php endif; ?>
                                 </td>
                                 <?php if (has_role('instructor') && !has_role('admin')): ?>
                                 <td>
@@ -473,6 +482,7 @@ include __DIR__ . '/../includes/header.php';
                         <?php endforeach; ?>
                         </tbody>
                     </table>
+                    </div>
                     <?php endif; ?>
                 </div>
             </form>
@@ -490,6 +500,7 @@ include __DIR__ . '/../includes/header.php';
                 <?php if (empty($payments)): ?>
                     <p class="p-3 text-muted">No payments on record.</p>
                 <?php else: ?>
+                <div class="table-responsive">
                 <table class="table table-sm table-hover mb-0">
                     <thead class="table-light">
                         <tr>
@@ -510,6 +521,7 @@ include __DIR__ . '/../includes/header.php';
                     <?php endforeach; ?>
                     </tbody>
                 </table>
+                </div>
                 <?php endif; ?>
             </div>
         </div>
@@ -521,6 +533,7 @@ include __DIR__ . '/../includes/header.php';
                 <?php if (empty($ranks)): ?>
                     <p class="p-3 text-muted">No ranks recorded.</p>
                 <?php else: ?>
+                <div class="table-responsive">
                 <table class="table table-sm mb-0">
                     <thead class="table-light">
                         <tr><th>Rank</th><th>Date Achieved</th><th></th></tr>
@@ -538,6 +551,7 @@ include __DIR__ . '/../includes/header.php';
                     <?php endforeach; ?>
                     </tbody>
                 </table>
+                </div>
                 <?php endif; ?>
             </div>
         </div>
@@ -551,6 +565,7 @@ include __DIR__ . '/../includes/header.php';
                 <?php if (empty($belt_tests)): ?>
                     <p class="p-3 text-muted">No belt tests on record.</p>
                 <?php else: ?>
+                <div class="table-responsive">
                 <table class="table table-sm table-hover mb-0">
                     <thead class="table-light">
                         <tr>
@@ -602,6 +617,7 @@ include __DIR__ . '/../includes/header.php';
                     <?php endforeach; ?>
                     </tbody>
                 </table>
+                </div>
                 <?php endif; ?>
             </div>
         </div>
@@ -614,6 +630,7 @@ include __DIR__ . '/../includes/header.php';
         <div class="card border-0 shadow-sm">
             <div class="card-header bg-white fw-semibold">Linked Family</div>
             <div class="card-body p-0">
+                <div class="table-responsive">
                 <table class="table table-sm table-hover mb-0">
                     <tbody>
                     <?php foreach ($related as $rel): ?>
@@ -630,6 +647,7 @@ include __DIR__ . '/../includes/header.php';
                     <?php endforeach; ?>
                     </tbody>
                 </table>
+                </div>
             </div>
         </div>
         <?php endif; ?>
@@ -739,12 +757,5 @@ document.addEventListener('click', function(e) {
     }
 });
 </script>
-<script nonce="<?= csp_nonce() ?>">
-document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
-    new bootstrap.Tooltip(el);
-});
-</script>
-
-
 <?php include __DIR__ . '/../includes/footer.php'; ?>
 

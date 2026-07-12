@@ -74,6 +74,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== 'delet
                  WHERE id=?'
             )->execute([$sid, $date, $rank_id, $result, $score, $fee, $awarded, $notes ?: null, $test_id]);
         } else {
+            // Duplicate check (warning only, never blocks): same student,
+            // date, and rank already recorded — likely entered twice
+            $dup_q = db()->prepare(
+                'SELECT COUNT(*) FROM belt_tests WHERE student_id=? AND test_date=? AND rank_testing_for=?'
+            );
+            $dup_q->execute([$sid, $date, $rank_id]);
+            $is_dup = (int)$dup_q->fetchColumn() > 0;
+
             db()->prepare(
                 'INSERT INTO belt_tests
                  (student_id, test_date, rank_testing_for, result, score, fee_paid, belt_awarded, notes, created_by)
@@ -91,9 +99,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== 'delet
             audit('belt_awarded', 'student', $sid, "rank_id=$rank_id date=$date");
         }
 
+        $dup_param = !empty($is_dup) ? '&dup=1' : '';
         $dest = $rpid
             ? "student_profile.php?id=$rpid"
-            : "belt_test_edit.php?id=$test_id&saved=1";
+            : "belt_test_edit.php?id=$test_id&saved=1$dup_param";
         header("Location: $dest");
         exit;
     }
@@ -130,7 +139,37 @@ foreach ($all_ranks as $r) {
     $rank_kyu_dan_map[(int)$r['id']]      = $r['kyu_dan'];
 }
 
-// Build per-student JS data
+// Build per-student JS data — batched queries, not per-student (100+ students)
+
+// Highest rank per student in one query (rows ordered so the first row seen
+// per student is their highest rank)
+$cur_rank_by_student = [];
+$rank_rows = db()->query(
+    'SELECT sr.student_id, r.id, r.name, r.kyu_dan, r.rank_order
+     FROM student_ranks sr
+     JOIN ranks r ON r.id = sr.rank_id
+     ORDER BY sr.student_id, r.rank_order DESC'
+)->fetchAll();
+foreach ($rank_rows as $rr) {
+    $rsid = (int)$rr['student_id'];
+    if (!isset($cur_rank_by_student[$rsid])) $cur_rank_by_student[$rsid] = $rr;
+}
+
+// All belt-test history in one query, grouped per student
+$history_by_student = [];
+$hist_rows = db()->query(
+    'SELECT bt.student_id, bt.test_date, r.kyu_dan, r.name AS rank_name,
+            bt.result, bt.score, bt.belt_awarded, bt.fee_paid
+     FROM belt_tests bt
+     JOIN ranks r ON r.id = bt.rank_testing_for
+     ORDER BY bt.test_date DESC'
+)->fetchAll(PDO::FETCH_ASSOC);
+foreach ($hist_rows as $hr) {
+    $hsid = (int)$hr['student_id'];
+    unset($hr['student_id']);
+    $history_by_student[$hsid][] = $hr;
+}
+
 $student_info = [];
 foreach ($all_students as $s) {
     $sid = (int)$s['id'];
@@ -142,13 +181,7 @@ foreach ($all_students as $s) {
         $is_adult = ($age >= 16);
     }
 
-    $rank_q = db()->prepare(
-        'SELECT r.id, r.name, r.kyu_dan, r.rank_order FROM student_ranks sr
-         JOIN ranks r ON r.id = sr.rank_id
-         WHERE sr.student_id = ? ORDER BY r.rank_order DESC LIMIT 1'
-    );
-    $rank_q->execute([$sid]);
-    $cur = $rank_q->fetch();
+    $cur = $cur_rank_by_student[$sid] ?? null;
 
     if ($cur) {
         $next_order = (int)$cur['rank_order'] + 1;
@@ -158,16 +191,7 @@ foreach ($all_students as $s) {
         $next_rank = $rank_by_order[$start] ?? null;
     }
 
-    $hist_q = db()->prepare(
-        'SELECT bt.test_date, r.kyu_dan, r.name AS rank_name,
-                bt.result, bt.score, bt.belt_awarded, bt.fee_paid
-         FROM belt_tests bt
-         JOIN ranks r ON r.id = bt.rank_testing_for
-         WHERE bt.student_id = ?
-         ORDER BY bt.test_date DESC'
-    );
-    $hist_q->execute([$sid]);
-    $history = $hist_q->fetchAll(PDO::FETCH_ASSOC);
+    $history = $history_by_student[$sid] ?? [];
 
     $student_info[$sid] = [
         'name'               => trim($s['first_name'] . ' ' . $s['last_name']),
@@ -182,6 +206,9 @@ foreach ($all_students as $s) {
 }
 
 if (isset($_GET['saved'])) $msg = 'Saved.';
+$dup_warning = isset($_GET['dup'])
+    ? 'Heads up: this student already had a belt test recorded for the same date and rank — this may be a duplicate entry.'
+    : '';
 
 // For JS: pass existing test values so edit mode can pre-fill the chart
 $js_existing = $test ? [
@@ -261,6 +288,7 @@ include __DIR__ . '/../includes/header.php';
 </div>
 
 <?php if ($msg):   ?><div class="alert alert-success"><?= htmlspecialchars($msg) ?></div><?php endif; ?>
+<?php if ($dup_warning): ?><div class="alert alert-warning"><?= htmlspecialchars($dup_warning) ?></div><?php endif; ?>
 <?php if ($error): ?><div class="alert alert-danger"><?= htmlspecialchars($error) ?></div><?php endif; ?>
 
 <form method="post" id="mainForm">
@@ -804,7 +832,7 @@ function onStudentChange(sid) {
     if (!info.history || info.history.length === 0) {
         histEl.innerHTML = '<span class="text-muted small">No belt tests on record.</span>';
     } else {
-        let h = '<table class="table table-sm table-bordered mb-0">'
+        let h = '<div class="table-responsive"><table class="table table-sm table-bordered mb-0">'
               + '<thead class="table-light"><tr><th>Date</th><th>Testing For</th><th>Score</th><th>Result</th></tr></thead><tbody>';
         info.history.forEach(function(row) {
             const date  = (row.test_date || '').substring(0, 10);
@@ -816,7 +844,7 @@ function onStudentChange(sid) {
             else if (row.result === 'pending') result = '<span class="badge bg-secondary">Pending</span>';
             h += '<tr><td>' + date + '</td><td>' + rank + '</td><td>' + score + '</td><td>' + result + '</td></tr>';
         });
-        h += '</tbody></table>';
+        h += '</tbody></table></div>';
         histEl.innerHTML = h;
     }
 

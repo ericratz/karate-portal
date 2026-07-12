@@ -363,7 +363,8 @@ $ext_icon = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill
     <div class="col-sm-6 col-lg-3">
         <div class="card text-center h-100 border-0 shadow-sm">
             <div class="card-body d-flex flex-column align-items-center justify-content-center gap-1">
-                <a href="waiver.php?student_id=<?= $tab_id ?>" class="fs-3 fw-bold text-danger text-decoration-none">✗</a>
+                <a href="waiver.php?student_id=<?= $tab_id ?>" class="fs-3 fw-bold text-danger text-decoration-none"
+                   aria-label="Liability waiver not signed — click to sign">✗</a>
                 <div class="text-muted small">Complete Waiver</div>
             </div>
         </div>
@@ -385,8 +386,8 @@ $ext_icon = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill
 
 
 
-<!-- ── Attendance bar graph ── -->
-<div class="card border-0 shadow-sm mb-4">
+<!-- ── Attendance bar graph (hidden on phones — too cramped to read) ── -->
+<div class="card border-0 shadow-sm mb-4 d-none d-md-block">
     <div class="card-header bg-white fw-semibold border-bottom">Attendance — Last 12 Months</div>
     <div class="card-body" style="height:220px;">
         <canvas id="attChart"></canvas>
@@ -550,6 +551,7 @@ $ext_icon = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill
                 <?php if (empty($attendance)): ?>
                     <p class="p-3 text-muted">No attendance recorded yet.</p>
                 <?php else: ?>
+                <div class="table-responsive">
                 <table class="table table-sm table-hover mb-0">
                     <thead class="table-light"><tr><th>Date Attended</th><th>Type</th></tr></thead>
                     <tbody>
@@ -561,6 +563,7 @@ $ext_icon = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill
                     <?php endforeach; ?>
                     </tbody>
                 </table>
+                </div>
                 <?php endif; ?>
             </div>
         </div>
@@ -582,6 +585,7 @@ $ext_icon = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill
                 <?php if (empty($payments)): ?>
                     <p class="p-3 text-muted">No payments on record.</p>
                 <?php else: ?>
+                <div class="table-responsive">
                 <table class="table table-sm table-hover mb-0">
                     <thead class="table-light">
                         <tr><th>Date</th><th>Type</th><th class="text-end">Amount</th></tr>
@@ -596,6 +600,7 @@ $ext_icon = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill
                     <?php endforeach; ?>
                     </tbody>
                 </table>
+                </div>
                 <?php endif; ?>
             </div>
         </div>
@@ -612,6 +617,7 @@ $ext_icon = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill
                 <?php if (empty($belt_tests)): ?>
                     <p class="p-3 text-muted">No belt tests on record.</p>
                 <?php else: ?>
+                <div class="table-responsive">
                 <table class="table table-sm table-hover mb-0">
                     <thead class="table-light">
                         <tr><th>Date</th><th>Testing For</th><th>Score</th><th>Fee</th><th>Awarded</th></tr>
@@ -628,6 +634,7 @@ $ext_icon = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill
                     <?php endforeach; ?>
                     </tbody>
                 </table>
+                </div>
                 <?php endif; ?>
             </div>
         </div>
@@ -639,6 +646,7 @@ $ext_icon = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill
                 <?php if (empty($rank_history)): ?>
                     <p class="p-3 text-muted">No ranks recorded.</p>
                 <?php else: ?>
+                <div class="table-responsive">
                 <table class="table table-sm mb-0">
                     <thead class="table-light">
                         <tr><th>Rank</th><th>Date Achieved</th><th></th></tr>
@@ -656,6 +664,7 @@ $ext_icon = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill
                     <?php endforeach; ?>
                     </tbody>
                 </table>
+                </div>
                 <?php endif; ?>
             </div>
         </div>
@@ -664,6 +673,7 @@ $ext_icon = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill
         <div class="card border-0 shadow-sm">
             <div class="card-header bg-white fw-semibold">Child Summary</div>
             <div class="card-body p-0">
+                <div class="table-responsive">
                 <table class="table table-sm table-hover mb-0">
                     <thead class="table-light">
                         <tr>
@@ -699,6 +709,7 @@ $ext_icon = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill
                     <?php endforeach; ?>
                     </tbody>
                 </table>
+                </div>
             </div>
         </div>
         <?php endif; ?>

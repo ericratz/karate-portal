@@ -8,36 +8,38 @@ $student->execute([current_user_id()]);
 $student = $student->fetch();
 if (!$student) { header('Location: index.php'); exit; }
 
-// Available years for filter
+// Available years for filter — payments plus attributed donations
 $years_stmt = db()->prepare(
-    'SELECT DISTINCT YEAR(payment_date) AS yr
-     FROM payments WHERE student_id = ?
-     ORDER BY yr DESC'
+    'SELECT DISTINCT yr FROM (
+        SELECT YEAR(payment_date) AS yr FROM payments  WHERE student_id = ?
+        UNION
+        SELECT YEAR(payment_date) AS yr FROM donations WHERE student_id = ?
+     ) y ORDER BY yr DESC'
 );
-$years_stmt->execute([$student['id']]);
+$years_stmt->execute([$student['id'], $student['id']]);
 $years = $years_stmt->fetchAll(PDO::FETCH_COLUMN);
 
 $selected_year = isset($_GET['year']) && in_array((int)$_GET['year'], array_map('intval', $years))
     ? (int)$_GET['year']
     : null;
 
-// Payments — filtered or all
+// Payments — filtered or all. Attributed donations are merged in as type 'donation'.
+$history_sql =
+    'SELECT payment_date, payment_type, payment_method, amount, transaction_id, notes, month_covered
+     FROM payments WHERE student_id = ?
+     UNION ALL
+     SELECT payment_date, \'donation\', payment_method, amount, NULL, notes, NULL
+     FROM donations WHERE student_id = ?';
 if ($selected_year) {
     $payments_stmt = db()->prepare(
-        'SELECT payment_date, payment_type, payment_method, amount, transaction_id, notes, month_covered
-         FROM payments
-         WHERE student_id = ? AND YEAR(payment_date) = ?
-         ORDER BY payment_date DESC'
+        "SELECT * FROM ($history_sql) h WHERE YEAR(payment_date) = ? ORDER BY payment_date DESC"
     );
-    $payments_stmt->execute([$student['id'], $selected_year]);
+    $payments_stmt->execute([$student['id'], $student['id'], $selected_year]);
 } else {
     $payments_stmt = db()->prepare(
-        'SELECT payment_date, payment_type, payment_method, amount, transaction_id, notes, month_covered
-         FROM payments
-         WHERE student_id = ?
-         ORDER BY payment_date DESC'
+        "SELECT * FROM ($history_sql) h ORDER BY payment_date DESC"
     );
-    $payments_stmt->execute([$student['id']]);
+    $payments_stmt->execute([$student['id'], $student['id']]);
 }
 $payments = $payments_stmt->fetchAll();
 
@@ -45,8 +47,11 @@ $payments = $payments_stmt->fetchAll();
 $filtered_total = array_sum(array_column($payments, 'amount'));
 
 // All-time total (always unfiltered)
-$tp = db()->prepare('SELECT COALESCE(SUM(amount), 0) AS total FROM payments WHERE student_id = ?');
-$tp->execute([$student['id']]);
+$tp = db()->prepare(
+    'SELECT (SELECT COALESCE(SUM(amount), 0) FROM payments  WHERE student_id = ?)
+          + (SELECT COALESCE(SUM(amount), 0) FROM donations WHERE student_id = ?)'
+);
+$tp->execute([$student['id'], $student['id']]);
 $total_paid = (float)$tp->fetchColumn();
 
 $page_title = 'Payment History';
@@ -119,6 +124,7 @@ function fmt_type(string $t): string {
         <?php if (empty($payments)): ?>
             <p class="p-3 text-muted">No payments <?= $selected_year ? "in $selected_year" : 'on record' ?> yet.</p>
         <?php else: ?>
+        <div class="table-responsive">
         <table class="table table-sm table-hover mb-0">
             <thead class="table-light">
                 <tr>
@@ -146,6 +152,7 @@ function fmt_type(string $t): string {
             <?php endforeach; ?>
             </tbody>
         </table>
+        </div>
         <?php endif; ?>
     </div>
 </div>

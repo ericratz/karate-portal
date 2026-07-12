@@ -126,12 +126,6 @@ test.describe('Pay page', () => {
         await expect(page.locator('.card-header').filter({ hasText: 'Other Payment Options' })).toBeVisible();
     });
 
-    test('PayPal SDK script tag is present', async ({ page }) => {
-        await page.goto(BASE + '/student/pay.php');
-        const count = await page.locator('script[src*="paypal"]').count();
-        expect(count).toBeGreaterThan(0);
-    });
-
     test('selecting multiple fees sums the total correctly', async ({ page }) => {
         await page.goto(BASE + '/student/pay.php');
         // Get amounts from data attributes for the checkboxes we'll tick

@@ -28,8 +28,10 @@ $stats = db()->query(
         (SELECT COUNT(*) FROM students WHERE active = 0)                          AS inactive_students,
         (SELECT COUNT(*) FROM users)                                              AS total_users,
         (SELECT COUNT(*) FROM class_sessions)                                     AS total_sessions,
-        (SELECT COALESCE(SUM(amount),0) FROM payments WHERE YEAR(payment_date)=YEAR(NOW())) AS revenue_ytd,
-        (SELECT COALESCE(SUM(amount),0) FROM payments WHERE MONTH(payment_date)=MONTH(NOW()) AND YEAR(payment_date)=YEAR(NOW())) AS revenue_month,
+        (SELECT COALESCE(SUM(amount),0) FROM payments WHERE YEAR(payment_date)=YEAR(NOW()))
+      + (SELECT COALESCE(SUM(amount),0) FROM donations WHERE YEAR(payment_date)=YEAR(NOW())) AS revenue_ytd,
+        (SELECT COALESCE(SUM(amount),0) FROM payments WHERE MONTH(payment_date)=MONTH(NOW()) AND YEAR(payment_date)=YEAR(NOW()))
+      + (SELECT COALESCE(SUM(amount),0) FROM donations WHERE MONTH(payment_date)=MONTH(NOW()) AND YEAR(payment_date)=YEAR(NOW())) AS revenue_month,
         (SELECT COALESCE(SUM(amount),0) FROM expenses WHERE expense_type=\'rent\' AND paid=1 AND YEAR(expense_date)=YEAR(NOW())) AS rent_ytd
     '
 )->fetch();
@@ -277,8 +279,8 @@ include __DIR__ . '/../includes/header.php';
     <?php endforeach; ?>
 </div>
 
-<!-- ── Revenue chart ── -->
-<div class="card border-0 shadow-sm mb-4">
+<!-- ── Revenue chart (hidden on phones — too cramped to read) ── -->
+<div class="card border-0 shadow-sm mb-4 d-none d-md-block">
     <div class="card-header bg-white fw-semibold">Revenue and Expenses</div>
     <div class="card-body">
         <canvas id="revenueChart" height="80"></canvas>
@@ -301,6 +303,7 @@ include __DIR__ . '/../includes/header.php';
                 <?php if (empty($unpaid)): ?>
                     <p class="p-3 text-success mb-0">All students paid ✓</p>
                 <?php else: ?>
+                <div class="table-responsive">
                 <table class="table table-sm table-hover mb-0">
                     <tbody>
                     <?php foreach ($unpaid as $s): ?>
@@ -318,6 +321,7 @@ include __DIR__ . '/../includes/header.php';
                     <?php endforeach; ?>
                     </tbody>
                 </table>
+                </div>
                 <?php endif; ?>
             </div>
         </div>
@@ -332,6 +336,7 @@ include __DIR__ . '/../includes/header.php';
                 <?php if (empty($no_waiver)): ?>
                     <p class="p-3 text-success mb-0">All waivers signed ✓</p>
                 <?php else: ?>
+                <div class="table-responsive">
                 <table class="table table-sm table-hover mb-0">
                     <tbody>
                     <?php foreach ($no_waiver as $s): ?>
@@ -345,6 +350,7 @@ include __DIR__ . '/../includes/header.php';
                     <?php endforeach; ?>
                     </tbody>
                 </table>
+                </div>
                 <?php endif; ?>
             </div>
         </div>
@@ -357,6 +363,7 @@ include __DIR__ . '/../includes/header.php';
                 <span class="badge" style="background-color:#fd7e14;color:#fff"><?= count($alerts_linking) ?></span>
             </div>
             <div class="card-body p-0">
+                <div class="table-responsive">
                 <table class="table table-sm table-hover mb-0">
                     <thead class="table-light"><tr><th>User</th><th>Date</th><th></th></tr></thead>
                     <tbody>
@@ -375,6 +382,7 @@ include __DIR__ . '/../includes/header.php';
                     <?php endforeach; ?>
                     </tbody>
                 </table>
+                </div>
             </div>
         </div>
         <?php endif; ?>
@@ -387,6 +395,7 @@ include __DIR__ . '/../includes/header.php';
                 <span class="badge" style="background-color:#fd7e14;color:#fff"><?= count($alerts_claimed) ?></span>
             </div>
             <div class="card-body p-0">
+                <div class="table-responsive">
                 <table class="table table-sm table-hover mb-0">
                     <thead class="table-light"><tr><th>Login</th><th>Linked To</th><th>Date</th><th></th></tr></thead>
                     <tbody>
@@ -416,6 +425,7 @@ include __DIR__ . '/../includes/header.php';
                     <?php endforeach; ?>
                     </tbody>
                 </table>
+                </div>
             </div>
         </div>
         <?php endif; ?>
@@ -428,6 +438,7 @@ include __DIR__ . '/../includes/header.php';
                 <span class="badge" style="background-color:#fd7e14;color:#fff"><?= count($alerts_new) ?></span>
             </div>
             <div class="card-body p-0">
+                <div class="table-responsive">
                 <table class="table table-sm table-hover mb-0">
                     <thead class="table-light"><tr><th>User</th><th>Date</th><th></th></tr></thead>
                     <tbody>
@@ -450,6 +461,7 @@ include __DIR__ . '/../includes/header.php';
                     <?php endforeach; ?>
                     </tbody>
                 </table>
+                </div>
             </div>
         </div>
         <?php endif; ?>
@@ -462,6 +474,7 @@ include __DIR__ . '/../includes/header.php';
                 <span class="badge" style="background-color:#fd7e14;color:#fff"><?= count($link_requests) ?></span>
             </div>
             <div class="card-body p-0">
+                <div class="table-responsive">
                 <table class="table table-sm table-hover mb-0">
                     <thead class="table-light">
                         <tr><th>User</th><th>Type</th><th>Notes</th><th>Date</th><th></th></tr>
@@ -494,6 +507,7 @@ include __DIR__ . '/../includes/header.php';
                     <?php endforeach; ?>
                     </tbody>
                 </table>
+                </div>
             </div>
         </div>
         <?php endif; ?>
@@ -506,6 +520,7 @@ include __DIR__ . '/../includes/header.php';
                 <span class="badge" style="background-color:#fd7e14;color:#fff"><?= count($possible_links) ?></span>
             </div>
             <div class="card-body p-0">
+                <div class="table-responsive">
                 <table class="table table-sm table-hover mb-0">
                     <thead class="table-light">
                         <tr>
@@ -539,6 +554,7 @@ include __DIR__ . '/../includes/header.php';
                     <?php endforeach; ?>
                     </tbody>
                 </table>
+                </div>
             </div>
         </div>
         <?php endif; ?>
@@ -558,6 +574,7 @@ include __DIR__ . '/../includes/header.php';
                 <?php if (empty($recent_payments)): ?>
                     <p class="p-3 text-muted">No payments yet.</p>
                 <?php else: ?>
+                <div class="table-responsive">
                 <table class="table table-sm table-hover mb-0">
                     <thead class="table-light">
                         <tr>
@@ -578,6 +595,7 @@ include __DIR__ . '/../includes/header.php';
                     <?php endforeach; ?>
                     </tbody>
                 </table>
+                </div>
                 <?php endif; ?>
             </div>
         </div>

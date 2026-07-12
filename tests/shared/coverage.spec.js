@@ -48,13 +48,6 @@ test('pay.php loads without PHP errors', async ({ page }) => {
     await visit(page, '/student/pay.php', 'pay page');
 });
 
-test('pay.php has PayPal SDK script tag', async ({ page }) => {
-    await login(page, STU_USER, STU_PASS);
-    await page.goto(BASE + '/student/pay.php');
-    const paypalScript = await page.locator('script[src*="paypal"]').count();
-    expect(paypalScript).toBeGreaterThan(0);
-});
-
 test('paypal_create.php rejects unauthenticated request', async ({ page }) => {
     // Hit the endpoint without a session
     const res = await page.goto(BASE + '/api/paypal_create.php');
@@ -168,8 +161,9 @@ test('student: valid password change succeeds and new password works', async ({ 
 
 test('adding a general note saves and appears in the list', async ({ page }) => {
     await login(page, ADMIN_USER, ADMIN_PASS);
-    await page.goto(BASE + '/admin/general_notes.php');
+    await page.goto(BASE + '/admin/student_notes.php');
     const noteText = NOTE_TEXT;
+    await page.click('button:has-text("Add Entry")');
     await page.fill('textarea[name="content"]', noteText);
     await page.click('button:has-text("Save Entry")');
     await page.waitForLoadState('domcontentloaded');

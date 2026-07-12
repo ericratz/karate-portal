@@ -64,7 +64,7 @@ $page_title = 'Classes';
 include __DIR__ . '/../includes/header.php';
 ?>
 
-<div class="d-flex align-items-center gap-3 mb-4">
+<div class="d-flex align-items-center gap-3 mb-4 flex-wrap">
     <h4 class="mb-0">Classes</h4>
     <a href="../checkin.php" target="_blank" class="btn btn-sm ms-2"
        style="background-color:#0052cc;border-color:#0052cc;color:#fff;">
@@ -125,6 +125,7 @@ include __DIR__ . '/../includes/header.php';
         <?= count($sessions) ?> class<?= count($sessions) !== 1 ? 'es' : '' ?>
     </div>
     <div class="card-body p-0">
+        <div class="table-responsive">
         <table class="table table-hover mb-0">
             <thead class="table-light">
                 <tr>
@@ -165,6 +166,7 @@ include __DIR__ . '/../includes/header.php';
             <?php endforeach; ?>
             </tbody>
         </table>
+        </div>
     </div>
 </div>
 <?php endif; ?>

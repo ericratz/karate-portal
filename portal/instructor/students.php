@@ -92,7 +92,10 @@ function student_table($rows, $empty_msg) {
         echo '<p class="p-3 text-muted mb-0">' . $empty_msg . '</p>';
         return;
     }
-    echo '<table class="table table-sm table-hover mb-0" style="table-layout:fixed;width:100%">';
+    // min-width keeps the fixed percentage columns readable on phones —
+    // the .table-responsive wrapper scrolls instead of squeezing headers
+    echo '<div class="table-responsive">';
+    echo '<table class="table table-sm table-hover mb-0" style="table-layout:fixed;width:100%;min-width:560px">';
     echo '<colgroup>
             <col style="width:28%">
             <col style="width:20%">
@@ -106,6 +109,7 @@ function student_table($rows, $empty_msg) {
           </tr></thead><tbody>';
     foreach ($rows as $s) student_row($s);
     echo '</tbody></table>';
+    echo '</div>';
 }
 ?>
 
@@ -242,12 +246,6 @@ function filterRoster() {
 document.getElementById('rosterSearch').addEventListener('input', filterRoster);
 ['filterStatus', 'filterLogin', 'filterRank', 'filterWaiver', 'filterAttendance'].forEach(function(id) {
     document.getElementById(id).addEventListener('change', filterRoster);
-});
-</script>
-
-<script nonce="<?= csp_nonce() ?>">
-document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
-    new bootstrap.Tooltip(el);
 });
 </script>
 

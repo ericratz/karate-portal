@@ -29,18 +29,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== 'delet
     $donor      = trim($_POST['donor_name']         ?? '');
     $notes      = trim($_POST['notes']              ?? '');
     $date       = $_POST['payment_date']            ?? date('Y-m-d');
+    $don_sid    = (int)($_POST['student_id']        ?? 0);
 
     $valid_methods = ['paypal','cash','check','mail'];
+
+    // Optional student link — must be a real student id
+    if ($don_sid) {
+        $chk = db()->prepare('SELECT COUNT(*) FROM students WHERE id = ?');
+        $chk->execute([$don_sid]);
+        if (!$chk->fetchColumn()) $don_sid = 0;
+    }
 
     if ($amount <= 0 || !in_array($method, $valid_methods)) {
         $error = 'Amount and payment method are required.';
     } else {
+        // Linked donations take their name from the student record;
+        // free-typed names are stored as unlinked (anonymous) donor_name.
         db()->prepare(
-            'INSERT INTO donations (amount, payment_method, donor_name, notes, payment_date, recorded_by)
-             VALUES (?,?,?,?,?,?)'
+            'INSERT INTO donations (student_id, amount, payment_method, donor_name, notes, payment_date, recorded_by)
+             VALUES (?,?,?,?,?,?,?)'
         )->execute([
+            $don_sid ?: null,
             $amount, $method,
-            $donor  ?: null,
+            ($don_sid || $donor === '') ? null : $donor,
             $notes  ?: null,
             $date,
             current_user_id(),
@@ -74,9 +85,11 @@ if (!in_array((int)date('Y'), $donation_years)) {
 }
 
 $donations = db()->prepare(
-    'SELECT d.*, u.username AS recorded_by_name
+    'SELECT d.*, u.username AS recorded_by_name,
+            s.first_name AS student_first, s.last_name AS student_last
      FROM donations d
      LEFT JOIN users u ON u.id = d.recorded_by
+     LEFT JOIN students s ON s.id = d.student_id
      WHERE ' . implode(' AND ', $where) . '
      ORDER BY d.payment_date DESC, d.created_at DESC'
 );
@@ -84,6 +97,11 @@ $donations->execute($params);
 $donations = $donations->fetchAll();
 
 $total_shown = array_sum(array_column($donations, 'amount'));
+
+// Students for the optional donor picker
+$all_students = db()->query(
+    'SELECT id, first_name, last_name FROM students ORDER BY first_name, last_name'
+)->fetchAll();
 
 $page_title = 'Donations';
 include __DIR__ . '/../includes/header.php';
@@ -104,14 +122,14 @@ include __DIR__ . '/../includes/header.php';
     <div class="card border-0 shadow-sm">
         <div class="card-header bg-white fw-semibold">Record Donation</div>
         <div class="card-body">
-            <form method="post" class="row g-3">
+            <form method="post" class="row g-3" id="addDonForm">
                 <?= csrf_input() ?>
 
                 <div class="col-md-2">
                     <label class="form-label">Amount *</label>
                     <div class="input-group">
                         <span class="input-group-text">$</span>
-                        <input type="number" name="amount" class="form-control"
+                        <input type="number" name="amount" id="donAmountInput" class="form-control"
                                step="0.01" min="0.01" required placeholder="0.00">
                     </div>
                 </div>
@@ -133,9 +151,25 @@ include __DIR__ . '/../includes/header.php';
                 </div>
 
                 <div class="col-md-4">
-                    <label class="form-label">Donor Name <small class="text-muted">(optional)</small></label>
-                    <input type="text" name="donor_name" class="form-control"
-                           placeholder="Anonymous if blank">
+                    <label class="form-label">Donor <small class="text-muted">(optional — anonymous if blank; pick a student to link, or type any name)</small></label>
+                    <input type="hidden" name="student_id" id="donStudentId" value="">
+                    <div id="donStudentSelected" class="d-none justify-content-between align-items-center mb-1">
+                        <span class="fw-semibold" id="donStudentName"></span>
+                        <button type="button" id="clearDonStudentBtn" class="btn btn-link btn-sm p-0 text-muted">change</button>
+                    </div>
+                    <input type="text" name="donor_name" id="donStudentFilter" class="form-control" placeholder="Type donor name…"
+                           autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                    <div id="donStudentList" class="list-group mt-1"
+                         style="<?= count($all_students) > 8 ? 'max-height:200px;overflow-y:auto;' : '' ?>">
+                        <?php foreach ($all_students as $s): ?>
+                        <button type="button" class="list-group-item list-group-item-action don-stu-btn"
+                                data-id="<?= (int)$s['id'] ?>"
+                                data-name="<?= htmlspecialchars(strtolower($s['first_name'].' '.$s['last_name'].' '.$s['last_name'].' '.$s['first_name'])) ?>"
+                                style="display:none">
+                            <?= hn($s['first_name'].' '.$s['last_name']) ?>
+                        </button>
+                        <?php endforeach; ?>
+                    </div>
                 </div>
 
                 <div class="col-md-8">
@@ -220,7 +254,15 @@ include __DIR__ . '/../includes/header.php';
             <?php foreach ($donations as $d): ?>
                 <tr>
                     <td class="text-nowrap"><?= date('d M Y', strtotime($d['payment_date'])) ?></td>
-                    <td><?= htmlspecialchars($d['donor_name'] ?? '—') ?></td>
+                    <td>
+                        <?php if ($d['student_id']): ?>
+                            <a href="student_edit.php?id=<?= (int)$d['student_id'] ?>" class="text-decoration-none">
+                                <?= hn($d['donor_name'] ?: $d['student_first'].' '.$d['student_last']) ?>
+                            </a>
+                        <?php else: ?>
+                            <?= htmlspecialchars($d['donor_name'] ?? '—') ?>
+                        <?php endif; ?>
+                    </td>
                     <td><?= ['paypal'=>'PayPal','cash'=>'Cash','check'=>'Check','mail'=>'Mail'][$d['payment_method']] ?? ucfirst($d['payment_method']) ?></td>
                     <td class="text-muted small"><?= htmlspecialchars($d['notes'] ?? '') ?></td>
                     <td class="text-muted small"><?= htmlspecialchars($d['recorded_by_name'] ?? '—') ?></td>
@@ -261,6 +303,54 @@ document.addEventListener('click', function(e) {
     var editing = t.classList.toggle('editing');
     btn.textContent = editing ? 'Done' : 'Edit';
     btn.className   = editing ? 'btn btn-sm btn-danger' : 'btn btn-sm btn-outline-secondary';
+});
+
+// Popup on the amount box when it's empty or not a positive value — backstop
+// in case native `required` validation doesn't fire.
+document.getElementById('addDonForm').addEventListener('submit', function(e) {
+    var amt = document.getElementById('donAmountInput');
+    if (!(parseFloat(amt.value) > 0)) {
+        e.preventDefault();
+        amt.setCustomValidity('Please enter a donation amount.');
+        amt.reportValidity();
+    }
+});
+document.getElementById('donAmountInput').addEventListener('input', function() {
+    this.setCustomValidity('');
+});
+
+// Optional student picker on the Record Donation form
+function selectDonStudent(id, label) {
+    document.getElementById('donStudentId').value = id;
+    document.getElementById('donStudentName').textContent = label;
+    var sel = document.getElementById('donStudentSelected');
+    sel.classList.remove('d-none'); sel.classList.add('d-flex');
+    var f = document.getElementById('donStudentFilter');
+    // Clear the typed text so it doesn't post as a free-text donor name too
+    f.value = '';
+    f.style.display = 'none';
+    document.getElementById('donStudentList').style.display = 'none';
+}
+function clearDonStudent() {
+    document.getElementById('donStudentId').value = '';
+    var sel = document.getElementById('donStudentSelected');
+    sel.classList.add('d-none'); sel.classList.remove('d-flex');
+    var f = document.getElementById('donStudentFilter');
+    f.style.display = ''; f.value = '';
+    document.getElementById('donStudentList').style.display = '';
+    document.querySelectorAll('.don-stu-btn').forEach(function(b) { b.style.display = 'none'; });
+}
+document.getElementById('clearDonStudentBtn').addEventListener('click', clearDonStudent);
+document.querySelectorAll('.don-stu-btn').forEach(function(b) {
+    b.addEventListener('click', function() {
+        selectDonStudent(parseInt(b.dataset.id, 10), b.textContent.trim());
+    });
+});
+document.getElementById('donStudentFilter').addEventListener('input', function() {
+    var q = this.value.toLowerCase().trim();
+    document.querySelectorAll('.don-stu-btn').forEach(function(b) {
+        b.style.display = (q.length > 0 && b.dataset.name.indexOf(q) !== -1) ? '' : 'none';
+    });
 });
 </script>
 

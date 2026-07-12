@@ -173,7 +173,22 @@ if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ===
     $pay_type   = $_POST['payment_type']   ?? 'monthly_tuition';
     $pay_method = $_POST['payment_method'] ?? 'cash';
     $amount     = (float)($_POST['amount'] ?? 0);
+    $dup_count  = 0;
     if ($amount > 0) {
+        // Duplicate check (warning only, never blocks): tuition already
+        // recorded covering the same month?
+        if ($pay_type === 'monthly_tuition') {
+            $dup_q = db()->prepare(
+                "SELECT COUNT(*) FROM payments
+                 WHERE student_id=? AND payment_type='monthly_tuition'
+                   AND (month_covered = DATE_FORMAT(?, '%Y-%m-01')
+                        OR (month_covered IS NULL
+                            AND YEAR(payment_date)=YEAR(?) AND MONTH(payment_date)=MONTH(?)))"
+            );
+            $dup_q->execute([$id, $pay_date, $pay_date, $pay_date]);
+            $dup_count = (int)$dup_q->fetchColumn();
+        }
+
         db()->prepare(
             'INSERT INTO payments (student_id, payment_date, payment_type, payment_method, amount, recorded_by)
              VALUES (?,?,?,?,?,?)'
@@ -186,7 +201,8 @@ if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ===
         }
     }
     if (empty($_SERVER['HTTP_HX_REQUEST'])) {
-        header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
+        $dup_param = $dup_count > 0 ? '&dup=' . ($dup_count + 1) : '';
+        header("Location: student_edit.php?id=$id$dup_param&ref=" . urlencode($_GET['ref'] ?? 'students'));
         exit;
     }
 }
@@ -504,11 +520,16 @@ if ($id) {
     $pw_stmt->execute([$id]);
     $payment_waivers = $pw_stmt->fetchAll();
 
+    // Linked donations are merged in read-only — they're managed on donations.php
     $pay_stmt = db()->prepare(
-        'SELECT id, payment_date, payment_type, payment_method, amount
-         FROM payments WHERE student_id = ? ORDER BY payment_date DESC'
+        'SELECT id, payment_date, payment_type, payment_method, amount, 0 AS is_donation
+         FROM payments WHERE student_id = ?
+         UNION ALL
+         SELECT id, payment_date, \'donation\', payment_method, amount, 1
+         FROM donations WHERE student_id = ?
+         ORDER BY payment_date DESC'
     );
-    $pay_stmt->execute([$id]);
+    $pay_stmt->execute([$id, $id]);
     $payments = $pay_stmt->fetchAll();
 
     // Guardian links (student_guardians — no user account required)
@@ -563,6 +584,12 @@ include __DIR__ . '/../includes/header.php';
 </div>
 
 <?php if ($msg):   ?><div class="alert alert-success"><?= $msg ?></div><?php endif; ?>
+<?php if (isset($_GET['dup'])): ?>
+    <div class="alert alert-warning">
+        Heads up: this student now has <?= (int)$_GET['dup'] ?> tuition payments recorded
+        for that month. If this was accidental, delete the extra one in the Payments section.
+    </div>
+<?php endif; ?>
 <?php if ($error): ?><div class="alert alert-danger"><?= htmlspecialchars($error) ?></div><?php endif; ?>
 
 <?php
@@ -900,6 +927,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                     <?php if (empty($attendance)): ?>
                         <p class="p-3 text-muted">No classes recorded.</p>
                     <?php else: ?>
+                    <div class="table-responsive">
                     <table class="table table-sm table-hover mb-0">
                         <tbody>
                         <?php foreach ($attendance as $a): ?>
@@ -925,6 +953,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                         <?php endforeach; ?>
                         </tbody>
                     </table>
+                    </div>
                     <?php endif; ?>
                 </div>
             </form>
@@ -1004,6 +1033,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                 <?php if (empty($payments)): ?>
                     <p class="p-3 text-muted">No payments on record.</p>
                 <?php else: ?>
+                <div class="table-responsive">
                 <table id="payTable" class="table table-sm table-hover mb-0 align-middle">
                     <thead class="table-light">
                         <tr>
@@ -1021,6 +1051,12 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                             <td><?= ucwords(str_replace('_', ' ', $p['payment_type'])) ?></td>
                             <td><?= ['paypal'=>'PayPal','cash'=>'Cash','check'=>'Check','mail'=>'Mail'][$p['payment_method']] ?? ucfirst($p['payment_method']) ?></td>
                             <td class="text-end">$<?= number_format($p['amount'], 2) ?></td>
+                            <?php if ($p['is_donation']): ?>
+                            <td class="pay-action-col text-end text-nowrap">
+                                <a href="donations.php" class="btn btn-sm btn-outline-secondary py-0">Donations</a>
+                            </td>
+                        </tr>
+                            <?php else: ?>
                             <td class="pay-action-col text-end text-nowrap">
                                 <button type="button" class="btn btn-sm btn-outline-primary py-0 me-1 toggle-pay-row-btn"
                                         data-id="<?= $p['id'] ?>">Edit</button>
@@ -1080,9 +1116,11 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                                 </form>
                             </td>
                         </tr>
+                        <?php endif; ?>
                     <?php endforeach; ?>
                     </tbody>
                 </table>
+                </div>
                 <?php endif; ?>
             </div>
         </div>
@@ -1155,6 +1193,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                     <?php if (empty($ranks)): ?>
                         <p class="p-3 text-muted">No ranks recorded.</p>
                     <?php else: ?>
+                    <div class="table-responsive">
                     <table id="rankTable" class="table table-sm mb-0">
                         <thead class="table-light">
                             <tr><th>Rank</th><th>Date Achieved</th><th class="rank-delete-col"></th></tr>
@@ -1187,6 +1226,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                         <?php endforeach; ?>
                         </tbody>
                     </table>
+                    </div>
                     <?php endif; ?>
                 </div>
             </form>
@@ -1306,6 +1346,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                 <?php if (empty($payment_waivers)): ?>
                     <p class="text-muted mb-0">No exemptions on record.</p>
                 <?php else: ?>
+                <div class="table-responsive">
                 <table id="pwTable" class="table table-sm table-hover mb-0 align-middle">
                     <tbody>
                     <?php foreach ($payment_waivers as $pw): ?>
@@ -1368,6 +1409,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                     <?php endforeach; ?>
                     </tbody>
                 </table>
+                </div>
                 <?php endif; ?>
             </div>
         </div>
@@ -1417,6 +1459,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                 <?php if (empty($guardian_links)): ?>
                     <p class="text-muted mb-0">None linked.</p>
                 <?php else: ?>
+                <div class="table-responsive">
                 <table id="guardianTable" class="table table-sm table-hover mb-0 align-middle">
                     <tbody>
                     <?php foreach ($guardian_links as $gl): ?>
@@ -1442,6 +1485,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                     <?php endforeach; ?>
                     </tbody>
                 </table>
+                </div>
                 <?php endif; ?>
             </div>
         </div>
@@ -1572,9 +1616,17 @@ function attCancel() {
 }
 document.querySelectorAll('.att-edit input[type="checkbox"]').forEach(function(cb) {
     cb.addEventListener('change', function() {
-        var badge = this.closest('td').querySelector('.badge');
-        if (this.checked) { badge.className = 'badge bg-success'; badge.textContent = 'Present'; badge.style.display = ''; }
-        else               { badge.style.display = 'none'; }
+        var td    = this.closest('td');
+        var badge = td.querySelector('.badge');
+        if (this.checked) {
+            if (!badge) {
+                badge = document.createElement('span');
+                td.insertBefore(badge, td.querySelector('.att-edit'));
+            }
+            badge.className = 'badge bg-success'; badge.textContent = 'Present'; badge.style.display = '';
+        } else if (badge) {
+            badge.style.display = 'none';
+        }
     });
 });
 
@@ -1767,12 +1819,6 @@ function noteCancel(id) {
     if (typeof setFormClean === 'function') setFormClean();
 }
 </script>
-<script nonce="<?= csp_nonce() ?>">
-document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
-    new bootstrap.Tooltip(el);
-});
-</script>
-
 <?php endif; // $id — notes card ?>
 
 <?php if ($id): ?>

@@ -58,6 +58,18 @@ jobs:
           $src = "C:\Users\ericratz\XAMPP\htdocs\karate\.env"
           if (Test-Path $src) { Copy-Item $src .env }
 
+      # Psalm + taint analysis — vendor/ is a junction into the live htdocs
+      # checkout, so psalm is already installed; no composer install needed.
+      - name: Run Psalm static analysis
+        shell: powershell
+        run: |
+          & "C:\Users\ericratz\XAMPP\php\php.exe" "$env:GITHUB_WORKSPACE\portal\vendor\vimeo\psalm\psalm" --config "$env:GITHUB_WORKSPACE\portal\psalm.xml" --no-cache
+
+      - name: Run Psalm taint analysis
+        shell: powershell
+        run: |
+          & "C:\Users\ericratz\XAMPP\php\php.exe" "$env:GITHUB_WORKSPACE\portal\vendor\vimeo\psalm\psalm" --config "$env:GITHUB_WORKSPACE\portal\psalm.xml" --taint-analysis --no-cache
+
       - name: Run PHPUnit tests
         shell: powershell
         run: |

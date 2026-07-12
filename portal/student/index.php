@@ -278,8 +278,8 @@ $ext_icon = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill
 <?php endif; ?>
 
 
-<!-- ── Attendance bar graph ── -->
-<div class="card border-0 shadow-sm mb-4">
+<!-- ── Attendance bar graph (hidden on phones — too cramped to read) ── -->
+<div class="card border-0 shadow-sm mb-4 d-none d-md-block">
     <div class="card-header bg-white fw-semibold border-bottom">Attendance — Last 12 Months</div>
     <div class="card-body" style="height:220px;">
         <canvas id="attChart"></canvas>
@@ -303,6 +303,7 @@ $ext_icon = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill
                 <?php if (empty($attendance)): ?>
                     <p class="p-3 text-muted">No attendance recorded yet.</p>
                 <?php else: ?>
+                <div class="table-responsive">
                 <table class="table table-sm table-hover mb-0">
                     <thead class="table-light">
                         <tr><th>Date Attended</th><th>Type</th></tr>
@@ -316,6 +317,7 @@ $ext_icon = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill
                     <?php endforeach; ?>
                     </tbody>
                 </table>
+                </div>
                 <?php endif; ?>
             </div>
         </div>
@@ -337,6 +339,7 @@ $ext_icon = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill
                 <?php if (empty($payments)): ?>
                     <p class="p-3 text-muted">No payments on record.</p>
                 <?php else: ?>
+                <div class="table-responsive">
                 <table class="table table-sm table-hover mb-0">
                     <thead class="table-light">
                         <tr>
@@ -357,6 +360,7 @@ $ext_icon = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill
                     <?php endforeach; ?>
                     </tbody>
                 </table>
+                </div>
                 <?php endif; ?>
             </div>
         </div>

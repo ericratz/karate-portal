@@ -180,7 +180,7 @@ CREATE TABLE IF NOT EXISTS payments (
     student_id     INT NOT NULL,
     amount         DECIMAL(8,2) NOT NULL,
     payment_type   ENUM('monthly_tuition','registration','belt_test','slc_training','seminar','other') NOT NULL,
-    payment_method ENUM('paypal','venmo','cash','check','mail') NOT NULL,
+    payment_method ENUM('paypal','paypal_subscription','venmo','cash','check','mail') NOT NULL,
     transaction_id VARCHAR(100),
     payment_date   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     month_covered  DATE,
@@ -189,7 +189,8 @@ CREATE TABLE IF NOT EXISTS payments (
     payer_note     VARCHAR(255),
     recorded_by    INT,
     FOREIGN KEY (student_id)  REFERENCES students(id) ON DELETE CASCADE,
-    FOREIGN KEY (recorded_by) REFERENCES users(id)    ON DELETE SET NULL
+    FOREIGN KEY (recorded_by) REFERENCES users(id)    ON DELETE SET NULL,
+    INDEX idx_payments_payment_date (payment_date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ------------------------------------------------------------
@@ -293,6 +294,7 @@ CREATE TABLE IF NOT EXISTS student_guardians (
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS donations (
     id             INT AUTO_INCREMENT PRIMARY KEY,
+    student_id     INT NULL,
     amount         DECIMAL(8,2) NOT NULL,
     payment_method ENUM('paypal','cash','check','mail') NOT NULL,
     donor_name     VARCHAR(100),
@@ -300,7 +302,8 @@ CREATE TABLE IF NOT EXISTS donations (
     payment_date   DATE NOT NULL,
     recorded_by    INT,
     created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (recorded_by) REFERENCES users(id) ON DELETE SET NULL
+    FOREIGN KEY (recorded_by) REFERENCES users(id) ON DELETE SET NULL,
+    FOREIGN KEY (student_id)  REFERENCES students(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ------------------------------------------------------------
@@ -314,6 +317,19 @@ CREATE TABLE IF NOT EXISTS subscriptions (
     created_at             DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at             DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ------------------------------------------------------------
+-- WEBHOOK EVENTS  (PayPal webhook replay protection)
+-- Retried deliveries reuse the same event id — the UNIQUE key
+-- makes the first delivery win; replays are dropped.
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS webhook_events (
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    event_id    VARCHAR(100) NOT NULL,
+    event_type  VARCHAR(100),
+    received_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_webhook_event (event_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ------------------------------------------------------------

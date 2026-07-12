@@ -96,6 +96,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== 'delet
     if (!$sid || $amount <= 0 || !in_array($type, $valid_types) || !in_array($method, $valid_methods)) {
         $error = 'Please fill in all required fields with valid values.';
     } else {
+        // Duplicate check (warning only, never blocks): tuition already
+        // recorded for this student + month?
+        $dup_count = 0;
+        if ($type === 'monthly_tuition' && $month) {
+            $dup_q = db()->prepare(
+                "SELECT COUNT(*) FROM payments
+                 WHERE student_id=? AND payment_type='monthly_tuition' AND month_covered=?"
+            );
+            $dup_q->execute([$sid, $month . '-01']);
+            $dup_count = (int)$dup_q->fetchColumn();
+        }
+
         db()->prepare(
             'INSERT INTO payments
              (student_id, amount, payment_type, payment_method, transaction_id,
@@ -133,12 +145,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== 'delet
             );
         }
 
-        header('Location: payments.php?' . http_build_query($_GET + ['recorded' => 1]));
+        $done_params = ['recorded' => 1];
+        if ($dup_count > 0) $done_params['dup'] = $dup_count + 1;
+        header('Location: payments.php?' . http_build_query($_GET + $done_params));
         exit;
     }
 }
 
 if (isset($_GET['recorded'])) $msg = 'Payment recorded.';
+$dup_warning = isset($_GET['dup'])
+    ? 'Heads up: this student now has ' . (int)$_GET['dup'] . ' tuition payments recorded for that month. If this was accidental, delete the extra one below.'
+    : '';
 
 // ── Filters ───────────────────────────────────────────────────
 $f_student = (int)($_GET['student_id'] ?? 0);
@@ -198,6 +215,7 @@ include __DIR__ . '/../includes/header.php';
 </div>
 
 <?php if ($msg):   ?><div class="alert alert-success"><?= $msg ?></div><?php endif; ?>
+<?php if ($dup_warning): ?><div class="alert alert-warning"><?= htmlspecialchars($dup_warning) ?></div><?php endif; ?>
 <?php if ($error): ?><div class="alert alert-danger"><?= htmlspecialchars($error) ?></div><?php endif; ?>
 
 <!-- ── Add payment form (collapsible) ── -->
@@ -205,7 +223,7 @@ include __DIR__ . '/../includes/header.php';
     <div class="card border-0 shadow-sm">
         <div class="card-header bg-white fw-semibold">Record Manual Payment</div>
         <div class="card-body">
-            <form method="post" class="row g-3">
+            <form method="post" class="row g-3" id="addPayForm">
                 <?= csrf_input() ?>
 
                 <div class="col-md-4">
@@ -225,7 +243,7 @@ include __DIR__ . '/../includes/header.php';
                     </div>
                     <input type="text" id="payGrantStudentFilter" class="form-control" placeholder="Type student name…"
                            autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
-                           <?= $prefill_student ? 'style="display:none"' : '' ?>>
+                           <?= $prefill_student ? 'style="display:none"' : 'required' ?>>
                     <div id="payGrantStudentList" class="list-group mt-1"
                          style="<?= count($all_students) > 8 ? 'max-height:200px;overflow-y:auto;' : '' ?><?= $prefill_student ? 'display:none' : '' ?>">
                         <?php foreach ($all_students as $s): ?>
@@ -621,7 +639,10 @@ function selectPayGrantStudent(id, label) {
     document.getElementById('payGrantStudentName').textContent = label;
     var sel = document.getElementById('payGrantStudentSelected');
     sel.classList.remove('d-none'); sel.classList.add('d-flex');
-    document.getElementById('payGrantStudentFilter').style.display = 'none';
+    var filt = document.getElementById('payGrantStudentFilter');
+    filt.style.display = 'none';
+    filt.required = false;
+    filt.setCustomValidity('');
     document.getElementById('payGrantStudentList').style.display = 'none';
 }
 function clearPayGrantStudent() {
@@ -630,6 +651,7 @@ function clearPayGrantStudent() {
     sel.classList.add('d-none'); sel.classList.remove('d-flex');
     var f = document.getElementById('payGrantStudentFilter');
     f.style.display = ''; f.value = '';
+    f.required = true;
     document.getElementById('payGrantStudentList').style.display = '';
     document.querySelectorAll('.pay-grant-stu-btn').forEach(function(b) { b.style.display = 'none'; });
 }
@@ -639,7 +661,19 @@ document.querySelectorAll('.pay-grant-stu-btn').forEach(function(b) {
         selectPayGrantStudent(parseInt(b.dataset.id, 10), b.textContent.trim());
     });
 });
+// Block submit when no student is selected — the student_id input is hidden,
+// so native `required` validation can't cover it. Show the browser's own
+// validation bubble on the visible filter box instead.
+document.getElementById('addPayForm').addEventListener('submit', function(e) {
+    if (!document.getElementById('payGrantStudentId').value) {
+        e.preventDefault();
+        var f = document.getElementById('payGrantStudentFilter');
+        f.setCustomValidity('Please select a student.');
+        f.reportValidity();
+    }
+});
 document.getElementById('payGrantStudentFilter').addEventListener('input', function() {
+    this.setCustomValidity('');
     var q = this.value.toLowerCase().trim();
     document.querySelectorAll('.pay-grant-stu-btn').forEach(function(b) {
         b.style.display = (q.length > 0 && b.dataset.name.indexOf(q) !== -1) ? '' : 'none';

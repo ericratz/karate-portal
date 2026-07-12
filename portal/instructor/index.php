@@ -51,7 +51,11 @@ include __DIR__ . '/../includes/header.php';
     <?php else: ?>
     <a href="student_profile.php?id=<?= (int)$own_student_id ?>" class="btn btn-outline-secondary">View Profile</a>
     <?php endif; ?>
+    <?php if ($has_children): ?>
     <a href="../parent/pay.php?student_id=<?= (int)$own_student_id ?>" class="btn btn-success">Make a Payment</a>
+    <?php else: ?>
+    <a href="../student/pay.php" class="btn btn-success">Make a Payment</a>
+    <?php endif; ?>
 </div>
 <?php endif; ?>
 
@@ -83,6 +87,7 @@ include __DIR__ . '/../includes/header.php';
                 <?php if (empty($recent_sessions)): ?>
                     <p class="p-3 text-muted">No classes recorded yet.</p>
                 <?php else: ?>
+                <div class="table-responsive">
                 <table class="table table-sm table-hover mb-0">
                     <thead class="table-light">
                         <tr><th>Date</th><th>Type</th></tr>
@@ -100,6 +105,7 @@ include __DIR__ . '/../includes/header.php';
                     <?php endforeach; ?>
                     </tbody>
                 </table>
+                </div>
                 <?php endif; ?>
             </div>
         </div>
@@ -125,6 +131,7 @@ include __DIR__ . '/../includes/header.php';
                 <?php if (empty($belt_tests)): ?>
                     <p class="p-3 text-muted">No belt tests on record.</p>
                 <?php else: ?>
+                <div class="table-responsive">
                 <table class="table table-sm table-hover mb-0">
                     <thead class="table-light">
                         <tr>
@@ -157,6 +164,7 @@ include __DIR__ . '/../includes/header.php';
                     <?php endforeach; ?>
                     </tbody>
                 </table>
+                </div>
                 <?php endif; ?>
             </div>
         </div>

@@ -53,7 +53,8 @@ test.describe('admin notes', () => {
     test('admin: general notes add, search, and roster', async ({ page }) => {
         test.setTimeout(20000);
         const text = `Search test ${TS}`;
-        await page.goto(BASE + '/admin/general_notes.php');
+        await page.goto(BASE + '/admin/student_notes.php');
+        await page.click('button:has-text("Add Entry")');
         await page.fill('textarea[name="content"]', text);
         await page.click('button:has-text("Save Entry")');
         await page.waitForLoadState('domcontentloaded');
@@ -69,7 +70,8 @@ test.describe('admin notes', () => {
         test.setTimeout(20000);
         const text = `Delete test ${TS}`;
         // Add the note
-        await page.goto(BASE + '/admin/general_notes.php');
+        await page.goto(BASE + '/admin/student_notes.php');
+        await page.click('button:has-text("Add Entry")');
         await page.fill('textarea[name="content"]', text);
         await page.click('button:has-text("Save Entry")');
         await page.waitForLoadState('domcontentloaded');

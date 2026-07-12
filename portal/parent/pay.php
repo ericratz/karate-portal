@@ -108,17 +108,42 @@ $rp_stmt = db()->prepare(
 $rp_stmt->execute($family_ids);
 $reg_paid_ids = array_map('intval', $rp_stmt->fetchAll(PDO::FETCH_COLUMN));
 
+// Which family members have an active auto-pay subscription?
+$sub_stmt = db()->prepare(
+    "SELECT student_id FROM subscriptions
+     WHERE student_id IN ($placeholders) AND status = 'active'"
+);
+$sub_stmt->execute($family_ids);
+$autopay_active_ids = array_map('intval', $sub_stmt->fetchAll(PDO::FETCH_COLUMN));
+
+// Children with active auto-pay — for the parent-attends-free notice
+$child_autopay_names = [];
+foreach ($family as $f) {
+    if ($f['id'] !== $own_id && in_array($f['id'], $autopay_active_ids, true)) {
+        $child_autopay_names[] = $f['label'];
+    }
+}
+
+// Auto-pay result messages (redirect targets from the subscription endpoints)
+switch ($_GET['autopay'] ?? '') {
+    case 'already':    $autopay_msg = ['type' => 'info',    'text' => 'That family member already has an active monthly auto-pay set up.']; break;
+    case 'error':      $autopay_msg = ['type' => 'danger',  'text' => 'Something went wrong setting up auto-pay. Please try again or contact Noji.']; break;
+    case 'no_profile': $autopay_msg = ['type' => 'danger',  'text' => 'No student profile found.']; break;
+    case 'cancelled':  $autopay_msg = ['type' => 'success', 'text' => 'Auto-pay cancelled.']; break;
+    default:           $autopay_msg = null;
+}
+
 // ── Month picker options (previous month + current + next 3 months) ──────
 $month_options = [];
 for ($i = -1; $i <= 3; $i++) {
-    $ts = mktime(0, 0, 0, date('n') + $i, 1);
+    $ts = mktime(0, 0, 0, (int)date('n') + $i, 1);
     $month_options[] = [
         'value' => date('Y-m-01', $ts),
         'label' => date('F Y', $ts),
     ];
 }
 $current_month_value = date('Y-m-01');
-$next_month_value    = date('Y-m-01', mktime(0, 0, 0, date('n') + 1, 1));
+$next_month_value    = date('Y-m-01', mktime(0, 0, 0, (int)date('n') + 1, 1));
 
 $fees = [
     'monthly_tuition' => ['label' => 'Monthly Tuition',  'amount' => MONTHLY_FEE],
@@ -169,6 +194,7 @@ include __DIR__ . '/../includes/header.php';
                 <?php endif; ?>
 
                 <!-- Checkbox fee list -->
+                <div class="table-responsive">
                 <table class="table table-hover mb-3">
                     <tbody>
                     <?php foreach ($fees as $key => $fee): ?>
@@ -230,10 +256,17 @@ include __DIR__ . '/../includes/header.php';
                                 <input type="number" id="donationAmountInput" class="form-control"
                                        placeholder="0.00" step="0.01" min="1">
                             </div>
+                            <div class="form-check mt-1">
+                                <input type="checkbox" class="form-check-input" id="donationAnonymous">
+                                <label class="form-check-label small text-muted" for="donationAnonymous">
+                                    Donate anonymously (won't appear in your payment history)
+                                </label>
+                            </div>
                         </td>
                     </tr>
                     </tbody>
                 </table>
+                </div>
 
                 <!-- Custom amount -->
                 <div class="border rounded p-3 mb-3">
@@ -299,6 +332,53 @@ include __DIR__ . '/../includes/header.php';
             </div>
         </div>
 
+        <!-- Auto-Pay (per family member) -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white fw-semibold">Monthly Auto-Pay</div>
+            <div class="card-body">
+                <?php if ($autopay_msg): ?>
+                    <div class="alert alert-<?= $autopay_msg['type'] ?> mb-3"><?= $autopay_msg['text'] ?></div>
+                <?php endif; ?>
+                <p class="text-muted small mb-3">
+                    Set up a recurring monthly payment of $<?= number_format(MONTHLY_FEE, 2) ?>
+                    through PayPal for any family member.
+                </p>
+                <?php foreach ($family as $f): ?>
+                <?php if ($f['id'] === $own_id && !in_array($own_id, $autopay_active_ids, true) && !empty($child_autopay_names)): ?>
+                <div class="alert alert-info small mb-2">
+                    <?php
+                    $n = count($child_autopay_names);
+                    if ($n === 1) echo htmlspecialchars($child_autopay_names[0]) . ' has';
+                    elseif ($n === 2) echo htmlspecialchars($child_autopay_names[0]) . ' and ' . htmlspecialchars($child_autopay_names[1]) . ' have';
+                    else echo htmlspecialchars(implode(', ', array_slice($child_autopay_names, 0, -1))) . ', and ' . htmlspecialchars(end($child_autopay_names)) . ' have';
+                    ?> auto-pay set up. As a parent of a paying child, you can attend for free —
+                    you do not need your own auto-pay.
+                </div>
+                <?php endif; ?>
+                <div class="d-flex justify-content-between align-items-center border-top py-2">
+                    <span class="fw-semibold"><?= $f['label'] ?></span>
+                    <?php if (in_array($f['id'], $autopay_active_ids, true)): ?>
+                    <span class="d-flex align-items-center gap-2">
+                        <span class="text-success small fw-semibold">✓ Active</span>
+                        <form method="post" action="<?= SITE_URL ?>/student/subscription_cancel.php"
+                              class="d-inline autopay-cancel-form">
+                            <?= csrf_input() ?>
+                            <input type="hidden" name="student_id" value="<?= $f['id'] ?>">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">Cancel</button>
+                        </form>
+                    </span>
+                    <?php else: ?>
+                    <form method="post" action="<?= SITE_URL ?>/api/paypal_subscription_create.php" class="d-inline">
+                        <?= csrf_input() ?>
+                        <input type="hidden" name="student_id" value="<?= $f['id'] ?>">
+                        <button type="submit" class="btn btn-sm btn-success">Set up Auto-Pay</button>
+                    </form>
+                    <?php endif; ?>
+                </div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+
         <!-- Other options -->
         <div class="card border-0 shadow-sm">
             <div class="card-header bg-white fw-semibold">Other Payment Options</div>
@@ -314,9 +394,18 @@ include __DIR__ . '/../includes/header.php';
     </div>
 </div>
 
+<?php if (PAYPAL_CLIENT_ID !== ''): // unconfigured dev environment — page JS falls back to a warning ?>
 <script src="https://www.paypal.com/sdk/js?client-id=<?= htmlspecialchars(PAYPAL_CLIENT_ID) ?>&currency=USD"></script>
+<?php endif; ?>
 
 <script nonce="<?= csp_nonce() ?>">
+// Confirm before cancelling a family member's auto-pay
+document.querySelectorAll('.autopay-cancel-form').forEach(function(f) {
+    f.addEventListener('submit', function(e) {
+        if (!confirm('Cancel this monthly auto-pay? PayPal will stop charging automatically.')) e.preventDefault();
+    });
+});
+
 const FEES                    = <?= json_encode($fees) ?>;
 const CSRF                    = document.querySelector('meta[name="csrf-token"]').content;
 const TUITION_PAID_IDS        = <?= json_encode($tuition_paid_ids) ?>;
@@ -374,7 +463,11 @@ function buildItems() {
         if (!chk.checked) return;
         if (chk.dataset.key === 'donation') {
             var dAmt = parseFloat(document.getElementById('donationAmountInput').value) || 0;
-            if (dAmt > 0) items.push({ type: 'donation', amount: dAmt });
+            if (dAmt > 0) items.push({
+                type: 'donation',
+                amount: dAmt,
+                anonymous: document.getElementById('donationAnonymous').checked,
+            });
             return;
         }
         var item = { type: chk.dataset.key, amount: parseFloat(chk.dataset.amount) };
@@ -396,6 +489,14 @@ function renderButtons() {
     container.innerHTML = '';
     if (total <= 0) { hide('paypalSection'); show('noSelectionMsg'); return; }
     show('paypalSection'); hide('noSelectionMsg');
+
+    // SDK failed to load (blocked, offline, or unconfigured dev environment)
+    if (typeof paypal === 'undefined') {
+        container.innerHTML = '<div class="alert alert-warning mb-0">' +
+            'PayPal checkout could not be loaded. Please disable content blockers ' +
+            'and refresh, or contact the instructor to pay another way.</div>';
+        return;
+    }
 
     var capturedItems = [];
     var capturedStudentId = 0;
@@ -479,6 +580,7 @@ function onStudentChange() {
     document.getElementById('customCheck').checked = false;
     hide('customSection');
     document.getElementById('donationAmountInput').value = '';
+    document.getElementById('donationAnonymous').checked = false;
     document.getElementById('chk-donation').dataset.amount = '0';
     document.getElementById('donation-amount-display').textContent = '—';
 
@@ -545,6 +647,7 @@ function updateRow(chk) {
         document.getElementById('row-donation-amount').style.display = chk.checked ? '' : 'none';
         if (!chk.checked) {
             document.getElementById('donationAmountInput').value = '';
+            document.getElementById('donationAnonymous').checked = false;
             chk.dataset.amount = '0';
             document.getElementById('donation-amount-display').textContent = '—';
         }

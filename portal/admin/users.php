@@ -172,6 +172,7 @@ include __DIR__ . '/../includes/header.php';
         <span class="badge bg-primary"><?= count($linked_users) ?></span>
     </div>
     <div class="card-body p-0">
+        <div class="table-responsive">
         <table class="table table-hover mb-0 align-middle" id="linkedTable">
             <thead class="table-light">
                 <tr>
@@ -187,6 +188,7 @@ include __DIR__ . '/../includes/header.php';
             <?php foreach ($linked_users as $u): user_row($u, true); endforeach; ?>
             </tbody>
         </table>
+        </div>
     </div>
 </div>
 
@@ -197,6 +199,7 @@ include __DIR__ . '/../includes/header.php';
         <span class="badge bg-primary"><?= count($unlinked_users) ?></span>
     </div>
     <div class="card-body p-0">
+        <div class="table-responsive">
         <table class="table table-hover mb-0 align-middle" id="unlinkedTable">
             <thead class="table-light">
                 <tr>
@@ -211,6 +214,7 @@ include __DIR__ . '/../includes/header.php';
             <?php foreach ($unlinked_users as $u): user_row($u, false); endforeach; ?>
             </tbody>
         </table>
+        </div>
     </div>
 </div>
 
@@ -229,12 +233,6 @@ function filterUsers() {
 document.getElementById('userSearch').addEventListener('input', filterUsers);
 document.getElementById('filterRole').addEventListener('change', filterUsers);
 document.getElementById('filterStatus').addEventListener('change', filterUsers);
-</script>
-
-<script nonce="<?= csp_nonce() ?>">
-document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
-    new bootstrap.Tooltip(el);
-});
 </script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>

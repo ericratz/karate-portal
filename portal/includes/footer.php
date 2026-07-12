@@ -2,7 +2,7 @@
 </div><!-- /container -->
 
 <footer id="site-footer">
-    <button id="footerCollapseBtn" title="Contact Noji"
+    <button id="footerCollapseBtn" title="Contact Noji" aria-label="Show footer and contact form"
             style="position:absolute;top:0;right:16px;transform:translateY(-100%);
                    background:#6f42c1;border:1px solid rgba(255,255,255,.35);border-bottom:none;
                    border-radius:6px 6px 0 0;padding:3px 11px;cursor:pointer;
@@ -12,9 +12,9 @@
             <path fill-rule="evenodd" d="M7.646 4.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1-.708.708L8 5.707l-5.646 5.647a.5.5 0 0 1-.708-.708z"/>
         </svg>
     </button>
-    <div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;padding:0 12px">
+    <div class="footer-grid" style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;padding:0 12px">
         <!-- Trademark -->
-        <div class="d-none d-md-block"
+        <div class="footer-side-text"
              style="color:#fff;font-size:.86rem;line-height:1.5;min-width:0;overflow-wrap:break-word">
             All trademarks and registered trademarks cited herein are the property of their respective owners.
         </div>
@@ -45,7 +45,7 @@
             </div>
         </div>
         <!-- Copyright -->
-        <div class="d-none d-md-block text-end"
+        <div class="footer-side-text text-end"
              style="color:#fff;font-size:.86rem;line-height:1.5;min-width:0;overflow-wrap:break-word">
             © 2026 Ratzlaff Family
         </div>
@@ -90,6 +90,24 @@
         applyTheme(dark);
     });
 })();
+
+// Accessibility: bare ✓/✗ status indicators get spoken labels for screen
+// readers (table column headers provide the context)
+(function() {
+    document.querySelectorAll('span, a, div, td').forEach(function(el) {
+        var t = el.textContent.trim();
+        if ((t === '✓' || t === '✗') && !el.hasAttribute('aria-label') && el.children.length === 0) {
+            el.setAttribute('role', 'img');
+            el.setAttribute('aria-label', t === '✓' ? 'yes' : 'no');
+        }
+    });
+})();
+
+// Initialise Bootstrap tooltips sitewide. This runs after the bundle loads —
+// per-page init scripts ran before it and crashed with "bootstrap is not defined".
+document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
+    new bootstrap.Tooltip(el);
+});
 
 // Re-init Bootstrap tooltips after HTMX partial swaps
 document.addEventListener('htmx:afterSettle', function(e) {
@@ -136,9 +154,11 @@ window.addEventListener('pageshow', function(e) {
 
     collapseEl.addEventListener('show.bs.collapse', function() {
         chevron.style.transform = 'rotate(180deg)';
+        footer.classList.add('footer-open'); // mobile: reveals the footer bar
     });
     collapseEl.addEventListener('hide.bs.collapse', function() {
         chevron.style.transform = 'rotate(0deg)';
+        footer.classList.remove('footer-open');
     });
 
     tabBtn.addEventListener('click', function() { bsCol.toggle(); });

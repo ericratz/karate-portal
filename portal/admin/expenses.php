@@ -205,6 +205,7 @@ include __DIR__ . '/../includes/header.php';
         <?php if (empty($expenses)): ?>
             <p class="p-3 text-muted">No expenses match the filter.</p>
         <?php else: ?>
+        <div class="table-responsive">
         <table id="expensesTable" class="table table-hover mb-0">
             <thead class="table-light">
                 <tr>
@@ -239,6 +240,7 @@ include __DIR__ . '/../includes/header.php';
             <?php endforeach; ?>
             </tbody>
         </table>
+        </div>
         <?php endif; ?>
     </div>
 </div>

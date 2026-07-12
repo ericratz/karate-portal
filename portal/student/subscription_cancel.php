@@ -8,11 +8,27 @@ verify_csrf();
 
 $student = db()->prepare('SELECT id FROM students WHERE user_id = ?');
 $student->execute([current_user_id()]);
-$student_id = $student->fetchColumn();
+$own_id = (int)$student->fetchColumn();
 
-if (!$student_id) {
+if (!$own_id) {
     header('Location: index.php');
     exit;
+}
+
+// Target defaults to the caller's own record; parents may cancel a linked child's
+$student_id = (int)($_POST['student_id'] ?? 0) ?: $own_id;
+if ($student_id !== $own_id) {
+    $ch = db()->prepare(
+        'SELECT 1 FROM student_guardians WHERE parent_student_id = ? AND child_student_id = ?'
+    );
+    $ch->execute([$own_id, $student_id]);
+    if (!$ch->fetchColumn()) {
+        log_event('warning', 'security', 'Subscription cancel attempted for non-family student', [
+            'user_id' => current_user_id(), 'target_student_id' => $student_id,
+        ]);
+        header('Location: index.php');
+        exit;
+    }
 }
 
 $sub = db()->prepare(
@@ -34,6 +50,8 @@ if ($row) {
     }
 }
 
-header('Location: profile_edit.php?autopay=cancelled');
+header('Location: ' . (has_role('parent')
+    ? SITE_URL . '/parent/pay.php?autopay=cancelled'
+    : 'profile_edit.php?autopay=cancelled'));
 exit;
 

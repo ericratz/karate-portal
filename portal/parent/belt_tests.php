@@ -92,6 +92,7 @@ function badge_result(string $r, ?int $score): string {
         <?php if (empty($tests)): ?>
             <p class="p-3 text-muted">No belt tests on record yet.</p>
         <?php else: ?>
+        <div class="table-responsive">
         <table class="table table-sm table-hover mb-0">
             <thead class="table-light">
                 <tr>
@@ -120,6 +121,7 @@ function badge_result(string $r, ?int $score): string {
             <?php endforeach; ?>
             </tbody>
         </table>
+        </div>
         <?php endif; ?>
     </div>
 </div>

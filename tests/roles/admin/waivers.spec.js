@@ -47,10 +47,14 @@ test('waiver_type select contains all expected exemption types', async ({ page }
 
 test('submitting grant form without student shows validation error', async ({ page }) => {
     await page.goto(BASE + '/admin/waivers.php');
-    // Hidden input #grantStudentId is empty by default — just submit without selecting a student
+    // Hidden input #grantStudentId is empty by default — submitting without selecting a
+    // student is blocked client-side via setCustomValidity() on the visible filter box
+    // (see waivers.php's grantForm submit handler), so no request is ever sent.
     await page.click('button[name="grant"]');
-    await page.waitForLoadState('domcontentloaded');
-    await expect(page.locator('.alert-danger').first()).toBeVisible();
+    const filter = page.locator('#grantStudentFilter');
+    await expect(filter).toHaveJSProperty('validity.valid', false);
+    const message = await filter.evaluate((el) => el.validationMessage);
+    expect(message.length).toBeGreaterThan(0);
 });
 
 // ── ALL EXEMPTIONS LIST ───────────────────────────────────────────────────────

@@ -74,6 +74,7 @@ include __DIR__ . '/../includes/header.php';
         <?php if (empty($attended)): ?>
             <p class="p-3 text-muted">No attendance on record yet.</p>
         <?php else: ?>
+        <div class="table-responsive">
         <table class="table table-sm table-hover mb-0">
             <thead class="table-light">
                 <tr><th>#</th><th>Date</th></tr>
@@ -87,6 +88,7 @@ include __DIR__ . '/../includes/header.php';
             <?php endforeach; ?>
             </tbody>
         </table>
+        </div>
         <?php endif; ?>
     </div>
 </div>

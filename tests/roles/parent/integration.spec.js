@@ -22,10 +22,11 @@ test.describe('Parent portal — integration', () => {
     test('parent dashboard shows family tabs for children', async ({ page }) => {
         await page.goto(BASE + '/parent/');
         await assertNoPhpErrors(page, 'parent dashboard');
-        const body = await page.textContent('body');
-        // Both linked children should appear as nav tabs
-        expect(body).toContain('Emily Wilson');
-        expect(body).toContain('Carlos Rivera');
+        // Both linked children should appear as nav tabs. Assert by student_id
+        // rather than display name — inline_edit.spec.js renames a child
+        // mid-run in a parallel worker, so name-based checks are racy.
+        await expect(page.locator(`.nav-tabs a[href*="student_id=${CHILD_EMILY}"]`)).toBeVisible();
+        await expect(page.locator(`.nav-tabs a[href*="student_id=${CHILD_CARLOS}"]`)).toBeVisible();
     });
 
     test('parent dashboard default tab shows welcome heading', async ({ page }) => {

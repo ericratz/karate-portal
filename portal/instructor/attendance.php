@@ -129,6 +129,7 @@ function row(array $s): void {
             <input type="checkbox" class="form-check-input presence-cb"
                    name="present[]" value="<?= $s['id'] ?>"
                    id="cb-<?= $s['id'] ?>"
+                   aria-label="Present — <?= htmlspecialchars($s['first_name'] . ' ' . $s['last_name']) ?>"
                    <?= $s['present'] ? 'checked' : '' ?>>
         </td>
         <td class="row-name">
@@ -161,15 +162,15 @@ function row(array $s): void {
 <!-- Sort toggle -->
 <div class="d-flex gap-2 mb-3 align-items-center">
     <span class="text-muted small">Sort by:</span>
-    <a href="?date=<?= $date ?>&sort=first_name"
+    <a href="?date=<?= htmlspecialchars($date) ?>&sort=first_name"
        class="btn btn-sm btn-filter <?= $sort === 'first_name' ? 'active' : '' ?>">
         First Name
     </a>
-    <a href="?date=<?= $date ?>&sort=last_name"
+    <a href="?date=<?= htmlspecialchars($date) ?>&sort=last_name"
        class="btn btn-sm btn-filter <?= $sort === 'last_name' ? 'active' : '' ?>">
         Last Name
     </a>
-    <a href="?date=<?= $date ?>&sort=last_attended"
+    <a href="?date=<?= htmlspecialchars($date) ?>&sort=last_attended"
        class="btn btn-sm btn-filter <?= $sort === 'last_attended' ? 'active' : '' ?>">
         Last Attended
     </a>
@@ -212,10 +213,11 @@ function row(array $s): void {
             <?php if (empty($instructors)): ?>
                 <p class="p-3 text-muted">No instructors.</p>
             <?php else: ?>
+            <div class="table-responsive">
             <table class="table table-sm table-hover mb-0">
                 <thead class="table-light">
                     <tr>
-                        <th style="width:44px" class="text-center">✓</th>
+                        <th style="width:44px" class="text-center" aria-label="Present">✓</th>
                         <th>Name</th>
                         <th>Last Attended</th>
                         <th>Waiver</th>
@@ -225,6 +227,7 @@ function row(array $s): void {
                     <?php foreach ($instructors as $s) row($s); ?>
                 </tbody>
             </table>
+            </div>
             <?php endif; ?>
         </div>
     </div>
@@ -238,10 +241,11 @@ function row(array $s): void {
             <?php if (empty($parents)): ?>
                 <p class="p-3 text-muted">No parents.</p>
             <?php else: ?>
+            <div class="table-responsive">
             <table class="table table-sm table-hover mb-0">
                 <thead class="table-light">
                     <tr>
-                        <th style="width:44px" class="text-center">✓</th>
+                        <th style="width:44px" class="text-center" aria-label="Present">✓</th>
                         <th>Name</th>
                         <th>Last Attended</th>
                         <th>Waiver</th>
@@ -251,6 +255,7 @@ function row(array $s): void {
                     <?php foreach ($parents as $s) row($s); ?>
                 </tbody>
             </table>
+            </div>
             <?php endif; ?>
         </div>
     </div>
@@ -264,10 +269,11 @@ function row(array $s): void {
             <?php if (empty($students)): ?>
                 <p class="p-3 text-muted">No registered students.</p>
             <?php else: ?>
+            <div class="table-responsive">
             <table class="table table-sm table-hover mb-0">
                 <thead class="table-light">
                     <tr>
-                        <th style="width:44px" class="text-center">✓</th>
+                        <th style="width:44px" class="text-center" aria-label="Present">✓</th>
                         <th>Name</th>
                         <th>Last Attended</th>
                         <th>Waiver</th>
@@ -277,6 +283,7 @@ function row(array $s): void {
                     <?php foreach ($students as $s) row($s); ?>
                 </tbody>
             </table>
+            </div>
             <?php endif; ?>
         </div>
     </div>
@@ -291,10 +298,11 @@ function row(array $s): void {
             <?php if (empty($guests)): ?>
                 <p class="p-3 text-muted">No guests.</p>
             <?php else: ?>
+            <div class="table-responsive">
             <table class="table table-sm table-hover mb-0">
                 <thead class="table-light">
                     <tr>
-                        <th style="width:44px" class="text-center">✓</th>
+                        <th style="width:44px" class="text-center" aria-label="Present">✓</th>
                         <th>Name</th>
                         <th>Last Attended</th>
                         <th>Waiver</th>
@@ -304,6 +312,7 @@ function row(array $s): void {
                     <?php foreach ($guests as $s) row($s); ?>
                 </tbody>
             </table>
+            </div>
             <?php endif; ?>
         </div>
     </div>

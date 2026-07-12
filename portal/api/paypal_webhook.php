@@ -25,6 +25,27 @@ if (!paypal_verify_webhook(PAYPAL_WEBHOOK_ID, $headers, $body)) {
 $event      = json_decode($body, true);
 $event_type = $event['event_type'] ?? '';
 $resource   = $event['resource']   ?? [];
+$event_id   = $event['id']         ?? '';
+
+// Idempotency guard — PayPal retries a delivery with the same event id, so
+// the UNIQUE key on webhook_events.event_id lets the first delivery win and
+// drops replays here, before any payment rows are touched. This is race-safe:
+// two simultaneous deliveries both try the INSERT and only one succeeds.
+if ($event_id !== '') {
+    try {
+        db()->prepare('INSERT INTO webhook_events (event_id, event_type) VALUES (?,?)')
+           ->execute([$event_id, $event_type]);
+    } catch (PDOException $e) {
+        if ($e->getCode() == 23000) { // duplicate key — already processed
+            log_event('info', 'payment', 'PayPal webhook replay dropped', [
+                'event_id' => $event_id, 'event_type' => $event_type,
+            ]);
+            http_response_code(200);
+            exit('Already processed');
+        }
+        throw $e;
+    }
+}
 
 switch ($event_type) {
 

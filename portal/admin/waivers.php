@@ -80,12 +80,12 @@ $stmt = db()->prepare(
 $stmt->execute($params);
 $waivers = $stmt->fetchAll();
 
-$page_title = 'Exempt';
+$page_title = 'Exemptions';
 include __DIR__ . '/../includes/header.php';
 ?>
 
 <div class="d-flex align-items-center justify-content-between mb-4">
-    <h3 class="mb-0">Exempt</h3>
+    <h3 class="mb-0">Exemptions</h3>
 </div>
 
 <?php if ($msg):   ?><div class="alert alert-success"><?= htmlspecialchars($msg) ?></div><?php endif; ?>
@@ -98,7 +98,7 @@ include __DIR__ . '/../includes/header.php';
         <div class="card border-0 shadow-sm">
             <div class="card-header bg-white fw-semibold">Grant Exemption</div>
             <div class="card-body">
-                <form method="post">
+                <form method="post" id="grantForm">
                     <?= csrf_input() ?>
                     <div class="mb-3">
                         <label class="form-label">Student *</label>
@@ -109,7 +109,7 @@ include __DIR__ . '/../includes/header.php';
                         </div>
                         <div class="stu-filter-wrap">
                         <input type="text" id="grantStudentFilter" class="form-control" placeholder="Type student name…"
-                               autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                               autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" required>
                         <div id="grantStudentList" class="list-group mt-1 stu-dropdown" style="display:none">
                             <?php foreach ($students as $s):
                                 $fn = (string)($s['first_name'] ?? '');
@@ -315,7 +315,10 @@ function selectGrantStudent(id, label) {
     document.getElementById('grantStudentName').textContent = label;
     var sel = document.getElementById('grantStudentSelected');
     sel.classList.remove('d-none'); sel.classList.add('d-flex');
-    document.getElementById('grantStudentFilter').style.display = 'none';
+    var filt = document.getElementById('grantStudentFilter');
+    filt.style.display = 'none';
+    filt.required = false;
+    filt.setCustomValidity('');
     document.getElementById('grantStudentList').style.display = 'none';
 }
 function clearGrantStudent() {
@@ -324,10 +327,23 @@ function clearGrantStudent() {
     sel.classList.add('d-none'); sel.classList.remove('d-flex');
     var f = document.getElementById('grantStudentFilter');
     f.style.display = ''; f.value = '';
+    f.required = true;
     document.getElementById('grantStudentList').style.display = 'none';
     document.querySelectorAll('.grant-stu-btn').forEach(function(b) { b.style.display = 'none'; });
 }
+// Block submit when no student is selected — the student_id input is hidden,
+// so native `required` validation can't cover it. Show the browser's own
+// validation bubble on the visible filter box instead.
+document.getElementById('grantForm').addEventListener('submit', function(e) {
+    if (!document.getElementById('grantStudentId').value) {
+        e.preventDefault();
+        var f = document.getElementById('grantStudentFilter');
+        f.setCustomValidity('Please select a student.');
+        f.reportValidity();
+    }
+});
 document.getElementById('grantStudentFilter').addEventListener('input', function() {
+    this.setCustomValidity('');
     var q = this.value.toLowerCase().trim();
     var any = false;
     document.querySelectorAll('.grant-stu-btn').forEach(function(b) {
