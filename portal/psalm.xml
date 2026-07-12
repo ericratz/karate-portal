@@ -14,7 +14,7 @@
         <directory name="." />
         <ignoreFiles>
             <directory name="vendor" />
-            <file name="composer-setup.php" />
+            <file name="composer-setup.php" ignoreExistence="true" />
         </ignoreFiles>
     </projectFiles>
 
