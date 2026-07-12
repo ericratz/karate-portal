@@ -60,15 +60,15 @@ jobs:
 
       # Psalm + taint analysis — vendor/ is a junction into the live htdocs
       # checkout, so psalm is already installed; no composer install needed.
-      - name: Run Psalm static analysis
+      # --taint-analysis runs the full level-4 check plus taint tracking in
+      # one pass (it's a superset of the plain run, not a separate mode), so
+      # a second bare invocation would just redo the same analysis. Caching
+      # is left on (no --no-cache) since this is a persistent self-hosted
+      # runner — only changed files get re-analyzed between pushes.
+      - name: Run Psalm static + taint analysis
         shell: powershell
         run: |
-          & "C:\Users\ericratz\XAMPP\php\php.exe" "$env:GITHUB_WORKSPACE\portal\vendor\vimeo\psalm\psalm" --config "$env:GITHUB_WORKSPACE\portal\psalm.xml" --no-cache
-
-      - name: Run Psalm taint analysis
-        shell: powershell
-        run: |
-          & "C:\Users\ericratz\XAMPP\php\php.exe" "$env:GITHUB_WORKSPACE\portal\vendor\vimeo\psalm\psalm" --config "$env:GITHUB_WORKSPACE\portal\psalm.xml" --taint-analysis --no-cache
+          & "C:\Users\ericratz\XAMPP\php\php.exe" "$env:GITHUB_WORKSPACE\portal\vendor\vimeo\psalm\psalm" --config "$env:GITHUB_WORKSPACE\portal\psalm.xml" --taint-analysis
 
       - name: Run PHPUnit tests
         shell: powershell

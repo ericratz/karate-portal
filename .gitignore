@@ -13,6 +13,7 @@ tests/cleanup.config.js
 portal/admin/assets/
 portal/vendor/
 portal/.phpunit.result.cache
+portal/.psalm-cache/
 portal/composer.phar
 portal/composer-setup.php
 migrations/
