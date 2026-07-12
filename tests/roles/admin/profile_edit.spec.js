@@ -39,6 +39,12 @@ test('admin: active_override Force Active saves and can be reset', async ({ page
     await page.click('#profileEditBtn');
     await page.waitForLoadState('domcontentloaded');
     await assertNoPhpErrors(page, 'active override saved');
+    // The save above is an htmx AJAX swap, not a real navigation, so
+    // domcontentloaded resolves before the swap lands. Wait for the button
+    // to actually show "Edit" (proof the fresh post-swap DOM is in) before
+    // clicking it again — otherwise this can land on the stale pre-swap
+    // button, which re-submits instead of opening edit mode.
+    await expect(page.locator('#profileEditBtn')).toHaveText('Edit');
     await page.click('#profileEditBtn');
     await page.selectOption('select[name="active_override"]', 'auto');
     await page.click('#profileEditBtn');
