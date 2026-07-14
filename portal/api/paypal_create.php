@@ -7,7 +7,7 @@ require_login();
 
 header('Content-Type: application/json');
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
     http_response_code(405);
     echo json_encode(['error' => 'Method not allowed']);
     exit;
@@ -94,7 +94,7 @@ if (abs($server_total - $total) > 0.01) {
 $labels = array_map(function($i) {
     if ($i['type'] === 'other')    return $i['reason'] ?? 'Other';
     if ($i['type'] === 'donation') return 'Donation';
-    return ucwords(str_replace('_', ' ', $i['type']));
+    return ucwords(str_replace('_', ' ', (string)$i['type']));
 }, $items);
 $description = 'Shotokan Karate — ' . implode(', ', $labels);
 

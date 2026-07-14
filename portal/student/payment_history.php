@@ -19,8 +19,8 @@ $years_stmt = db()->prepare(
 $years_stmt->execute([$student['id'], $student['id']]);
 $years = $years_stmt->fetchAll(PDO::FETCH_COLUMN);
 
-$selected_year = isset($_GET['year']) && in_array((int)$_GET['year'], array_map('intval', $years))
-    ? (int)$_GET['year']
+$selected_year = isset($_GET['year']) && in_array(get_int('year'), array_map('intval', $years))
+    ? get_int('year')
     : null;
 
 // Payments — filtered or all. Attributed donations are merged in as type 'donation'.

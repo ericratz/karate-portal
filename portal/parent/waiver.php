@@ -19,7 +19,7 @@ if ($own_row = $own_stmt->fetch()) {
     foreach ($ch_stmt->fetchAll() as $r) $allowed_ids[] = (int)$r['child_student_id'];
 }
 
-$student_id = (int)($_GET['student_id'] ?? $_POST['student_id'] ?? 0);
+$student_id = get_int('student_id') ?: post_int('student_id');
 if (!$student_id || !in_array($student_id, $allowed_ids, true)) {
     header('Location: index.php');
     exit;
@@ -41,22 +41,29 @@ if ($signed) {
     $submission = $stmt->fetch();
 }
 
+// Determine minor status — computed before the POST handler below, which
+// falls back to this when the submitted date_of_birth is empty.
+$is_minor = false;
+if (!empty($student['date_of_birth'])) {
+    $is_minor = (new DateTime($student['date_of_birth']))->diff(new DateTime())->y < 18;
+}
+
 // Handle form submission
-if (!$signed && $_SERVER['REQUEST_METHOD'] === 'POST') {
+if (!$signed && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     verify_csrf();
-    $print_name    = trim($_POST['print_name']    ?? '');
-    $signature     = trim($_POST['signature']     ?? '');
-    $signed_date   = trim($_POST['signed_date']   ?? date('Y-m-d'));
-    $guardian_sig  = trim($_POST['guardian_signature']    ?? '');
-    $guardian_date = trim($_POST['guardian_signed_date']  ?? '') ?: null;
-    $dob           = trim($_POST['date_of_birth'] ?? '');
-    $cell          = trim($_POST['cell_phone']    ?? '');
-    $home          = trim($_POST['home_phone']    ?? '');
-    $email         = trim($_POST['email']         ?? '');
-    $street        = trim($_POST['street_address']     ?? '');
-    $csz           = trim($_POST['city_state_zip']     ?? '');
-    $mail_addr     = trim($_POST['mailing_address']    ?? '');
-    $mail_csz      = trim($_POST['mailing_city_state_zip'] ?? '');
+    $print_name    = trim(post_str('print_name'));
+    $signature     = trim(post_str('signature'));
+    $signed_date   = trim(post_str('signed_date', date('Y-m-d')));
+    $guardian_sig  = trim(post_str('guardian_signature'));
+    $guardian_date = trim(post_str('guardian_signed_date')) ?: null;
+    $dob           = trim(post_str('date_of_birth'));
+    $cell          = trim(post_str('cell_phone'));
+    $home          = trim(post_str('home_phone'));
+    $email         = trim(post_str('email'));
+    $street        = trim(post_str('street_address'));
+    $csz           = trim(post_str('city_state_zip'));
+    $mail_addr     = trim(post_str('mailing_address'));
+    $mail_csz      = trim(post_str('mailing_city_state_zip'));
     $agreed        = isset($_POST['i_agree']);
 
     $dob_check = !empty($dob) ? (new DateTime($dob))->diff(new DateTime())->y < 18 : $is_minor;
@@ -95,12 +102,6 @@ if (!$signed && $_SERVER['REQUEST_METHOD'] === 'POST') {
         header('Location: index.php?student_id=' . $student_id . '&waiver=signed');
         exit;
     }
-}
-
-// Determine minor status
-$is_minor = false;
-if (!empty($student['date_of_birth'])) {
-    $is_minor = (new DateTime($student['date_of_birth']))->diff(new DateTime())->y < 18;
 }
 
 // Data source for pre-filling

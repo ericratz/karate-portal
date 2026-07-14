@@ -17,7 +17,7 @@ if ($r = $own->fetch()) {
     foreach ($ch->fetchAll() as $r) $allowed_ids[] = (int)$r['child_student_id'];
 }
 
-$student_id = (int)($_GET['student_id'] ?? 0);
+$student_id = get_int('student_id');
 if (!$student_id || !in_array($student_id, $allowed_ids, true)) {
     header('Location: index.php'); exit;
 }
@@ -38,8 +38,8 @@ $years_stmt = db()->prepare(
 $years_stmt->execute([$student_id, $student_id]);
 $years = $years_stmt->fetchAll(PDO::FETCH_COLUMN);
 
-$selected_year = isset($_GET['year']) && in_array((int)$_GET['year'], array_map('intval', $years))
-    ? (int)$_GET['year'] : null;
+$selected_year = isset($_GET['year']) && in_array(get_int('year'), array_map('intval', $years))
+    ? get_int('year') : null;
 
 // Payments — filtered or all. Attributed donations are merged in as type 'donation'.
 $history_sql =

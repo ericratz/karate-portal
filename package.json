@@ -15,13 +15,16 @@
     "test:email": "npx playwright test tests/email_and_promote.spec.js",
     "test:belt": "npx playwright test tests/belt_tests.spec.js",
     "test:security": "npx playwright test tests/security.spec.js",
-    "test:ui": "npx playwright test --headed"
+    "test:ui": "npx playwright test --headed",
+    "typecheck": "tsc --noEmit"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "devDependencies": {
-    "@playwright/test": "^1.60.0"
+    "@playwright/test": "^1.60.0",
+    "@types/node": "^26.1.1",
+    "typescript": "^7.0.2"
   }
 }

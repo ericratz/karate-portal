@@ -59,7 +59,7 @@ foreach ($children as $ch) {
 }
 
 // Determine which student to display — from ?student_id= tab param
-$tab_id = (int)($_GET['student_id'] ?? 0);
+$tab_id = get_int('student_id');
 if (!$tab_id) {
     $tab_id = $own_student ? (int)$own_student['id'] : ($children[0]['id'] ?? 0);
 }
@@ -90,25 +90,25 @@ $chart_ranks       = [];
 
 $profile_error = '';
 $profile_saved = false;
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'update_profile') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'update_profile') {
     verify_csrf();
-    $edit_sid = (int)($_POST['student_id'] ?? $tab_id);
+    $edit_sid = post_int('student_id', $tab_id);
     if (!in_array($edit_sid, $allowed_ids, true)) {
         header('Location: index.php?student_id=' . $tab_id); exit;
     }
     $tab_id = $edit_sid;
-    $first    = trim($_POST['first_name']     ?? '');
-    $last     = trim($_POST['last_name']      ?? '');
-    $dob      = $_POST['date_of_birth']       ?? '';
-    $phone    = trim($_POST['phone']          ?? '');
-    $email    = trim($_POST['email']          ?? '');
-    $ec_name  = trim($_POST['ec_name']        ?? '');
-    $ec_phone = trim($_POST['ec_phone']       ?? '');
-    $street   = trim($_POST['street_address'] ?? '');
-    $csz      = trim($_POST['city_state_zip'] ?? '');
-    $uniform  = trim($_POST['uniform_size']   ?? '');
-    $belt     = trim($_POST['belt_size']      ?? '');
-    $medical  = trim($_POST['medical_note']   ?? '');
+    $first    = trim(post_str('first_name'));
+    $last     = trim(post_str('last_name'));
+    $dob      = post_str('date_of_birth');
+    $phone    = trim(post_str('phone'));
+    $email    = trim(post_str('email'));
+    $ec_name  = trim(post_str('ec_name'));
+    $ec_phone = trim(post_str('ec_phone'));
+    $street   = trim(post_str('street_address'));
+    $csz      = trim(post_str('city_state_zip'));
+    $uniform  = trim(post_str('uniform_size'));
+    $belt     = trim(post_str('belt_size'));
+    $medical  = trim(post_str('medical_note'));
     if (!$first || !$last) {
         $profile_error = 'First and last name are required.';
     } else {
@@ -267,7 +267,7 @@ function score_badge(string $result, ?int $score): string {
         <?php
         $inline_ext = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16" style="vertical-align:middle;margin-left:2px"><path fill-rule="evenodd" d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5"/><path fill-rule="evenodd" d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 1.707V5.5a.5.5 0 0 0 1 0z"/></svg>';
         ?>
-        <a href="<?= hw_index_url($student['date_of_birth'] ?? null) ?>" target="_blank" class="btn" style="background-color:#0052cc;border-color:#0052cc;color:#fff;">All Homework <?= $inline_ext ?></a>
+        <a href="<?= hw_index_url($student ? ($student['date_of_birth'] ?? null) : null) ?>" target="_blank" class="btn" style="background-color:#0052cc;border-color:#0052cc;color:#fff;">All Homework <?= $inline_ext ?></a>
         <a href="https://noji.com/karate/testing/testing.php" target="_blank" class="btn" style="background-color:#0052cc;border-color:#0052cc;color:#fff;">Test Info <?= $inline_ext ?></a>
         <?php if ($tab_id): ?>
         <a href="../admin/member_card.php?student_id=<?= $tab_id ?>" target="_blank" class="btn" style="background-color:#0052cc;border-color:#0052cc;color:#fff;">Member Card <?= $inline_ext ?></a>

@@ -384,6 +384,21 @@ CREATE TABLE IF NOT EXISTS error_log (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ------------------------------------------------------------
+-- EMAIL LOG  (every mail send attempt — see config.php log_email())
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS email_log (
+    id       INT AUTO_INCREMENT PRIMARY KEY,
+    sent_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    to_email VARCHAR(255) NOT NULL,
+    subject  VARCHAR(255) NOT NULL,
+    type     VARCHAR(50)  NOT NULL DEFAULT 'other',
+    status   ENUM('sent','failed') NOT NULL DEFAULT 'sent',
+    INDEX idx_sent_at (sent_at),
+    INDEX idx_type    (type),
+    INDEX idx_status  (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ------------------------------------------------------------
 -- SEED: default admin account
 -- Username: admin   Password: ChangeMe123!
 -- CHANGE THIS PASSWORD immediately after first login

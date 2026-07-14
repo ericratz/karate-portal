@@ -4,10 +4,10 @@ require_once __DIR__ . '/../includes/db.php';
 require_role('admin');
 
 // Filters
-$f_action = $_GET['action'] ?? '';
-$f_from   = $_GET['from']   ?? '';
-$f_to     = $_GET['to']     ?? '';
-$f_user   = trim($_GET['user'] ?? '');
+$f_action = get_str('action');
+$f_from   = get_str('from');
+$f_to     = get_str('to');
+$f_user   = trim(get_str('user'));
 
 $where  = ["al.action != 'logout'"];
 $params = [];

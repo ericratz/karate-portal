@@ -11,22 +11,19 @@ jobs:
     runs-on: self-hosted
     timeout-minutes: 30
     env:
-      # The runner service runs as SYSTEM, which has no ms-playwright cache
-      # of its own — point it at the browsers already installed for the
-      # interactive user instead of running `npx playwright install` here.
-      PLAYWRIGHT_BROWSERS_PATH: C:\Users\ericratz\AppData\Local\ms-playwright
+      # The runner box also runs XAMPP on port 80, so don't bind it. "0" tells
+      # Docker to publish the app on a random free host port; the tests reach
+      # the app over the Compose network (http://app), not via the host port.
+      APP_PORT: "0"
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          # Default clean (git clean -ffdx) would remove the portal/vendor
-          # junction below on every run — keep it off so vendor/ persists.
-          clean: false
 
-      # credentials.js is gitignored — recreate it from GitHub secrets
+      # credentials.js is gitignored — recreate it from GitHub secrets. It is
+      # bind-mounted into the ci container via ./tests, so global-setup finds it.
       - name: Write credentials file
-        shell: powershell
+        shell: bash
         env:
           ADMIN_USER:  ${{ secrets.ADMIN_USER }}
           ADMIN_PASS:  ${{ secrets.ADMIN_PASS }}
@@ -37,46 +34,56 @@ jobs:
           PARENT_USER: ${{ secrets.PARENT_USER }}
           PARENT_PASS: ${{ secrets.PARENT_PASS }}
         run: |
-          $content = @"
+          cat > tests/credentials.js <<EOF
           module.exports = {
-              ADMIN_USER:  '$env:ADMIN_USER',
-              ADMIN_PASS:  '$env:ADMIN_PASS',
-              INST_USER:   '$env:INST_USER',
-              INST_PASS:   '$env:INST_PASS',
-              STU_USER:    '$env:STU_USER',
-              STU_PASS:    '$env:STU_PASS',
-              PARENT_USER: '$env:PARENT_USER',
-              PARENT_PASS: '$env:PARENT_PASS',
+              ADMIN_USER:  '${ADMIN_USER}',
+              ADMIN_PASS:  '${ADMIN_PASS}',
+              INST_USER:   '${INST_USER}',
+              INST_PASS:   '${INST_PASS}',
+              STU_USER:    '${STU_USER}',
+              STU_PASS:    '${STU_PASS}',
+              PARENT_USER: '${PARENT_USER}',
+              PARENT_PASS: '${PARENT_PASS}',
           };
-          "@
-          [System.IO.File]::WriteAllText("$PWD\tests\credentials.js", $content, [System.Text.UTF8Encoding]::new($false))
+          EOF
 
-      # .env is gitignored — copy from the live htdocs directory (same machine)
-      - name: Copy .env for database access
-        shell: powershell
+      # .env and the DB seed are gitignored, so they aren't in the checkout —
+      # copy them from the live htdocs directory (same machine as the runner).
+      # .env sets DB_INIT_FILE to a file under backups/, so both are needed.
+      - name: Copy .env and DB seed for database access
+        shell: bash
         run: |
-          $src = "C:\Users\ericratz\XAMPP\htdocs\karate\.env"
-          if (Test-Path $src) { Copy-Item $src .env }
+          src="/c/Users/ericratz/XAMPP/htdocs/karate"
+          [ -f "$src/.env" ] && cp "$src/.env" .env || { echo "missing $src/.env"; exit 1; }
+          if [ -d "$src/backups" ]; then
+            mkdir -p backups && cp "$src"/backups/*.sql backups/ 2>/dev/null || true
+          fi
 
-      # Psalm + taint analysis — vendor/ is a junction into the live htdocs
-      # checkout, so psalm is already installed; no composer install needed.
-      # --taint-analysis runs the full level-4 check plus taint tracking in
-      # one pass (it's a superset of the plain run, not a separate mode), so
-      # a second bare invocation would just redo the same analysis. Caching
-      # is left on (no --no-cache) since this is a persistent self-hosted
-      # runner — only changed files get re-analyzed between pushes.
+      # Clear any leftover volume from a crashed prior run — the DB only imports
+      # its seed into an empty volume, so a stale one would skip re-seeding.
+      - name: Clean prior state
+        run: docker compose down -v --remove-orphans || true
+
+      - name: Build images
+        run: docker compose build
+
+      # --wait blocks until db + app report healthy (app's healthcheck curls
+      # login.php, proving app+db are wired up) — no host port needed.
+      - name: Start db + app and wait for health
+        run: docker compose up -d --wait db app
+
+      - name: Dump logs if startup failed
+        if: failure()
+        run: docker compose logs app db
+
       - name: Run Psalm static + taint analysis
-        shell: powershell
-        run: |
-          & "C:\Users\ericratz\XAMPP\php\php.exe" "$env:GITHUB_WORKSPACE\portal\vendor\vimeo\psalm\psalm" --config "$env:GITHUB_WORKSPACE\portal\psalm.xml" --taint-analysis
+        run: docker compose run --rm ci sh -c "cd portal && vendor/bin/psalm --taint-analysis"
 
       - name: Run PHPUnit tests
-        shell: powershell
-        run: |
-          & "C:\Users\ericratz\XAMPP\php\php.exe" "$env:GITHUB_WORKSPACE\portal\vendor\bin\phpunit" --configuration "$env:GITHUB_WORKSPACE\portal\phpunit.xml"
+        run: docker compose run --rm ci sh -c "cd portal && vendor/bin/phpunit"
 
       - name: Run Playwright tests
-        run: npm test
+        run: docker compose run --rm ci npx playwright test
 
       - name: Upload HTML report
         if: always()
@@ -85,3 +92,7 @@ jobs:
           name: playwright-report
           path: tests/report/
           retention-days: 14
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v

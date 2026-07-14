@@ -3,20 +3,20 @@ require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/db.php';
 require_role('admin');
 
-$user_id         = (int)($_GET['user_id']         ?? 0);
-$student_id      = (int)($_GET['student_id']      ?? 0);
-$link_request_id = (int)($_GET['link_request_id'] ?? 0);
+$user_id         = get_int('user_id');
+$student_id      = get_int('student_id');
+$link_request_id = get_int('link_request_id');
 
 if (!$user_id) { header('Location: index.php'); exit; }
 
 $msg = $error = '';
 
 // ── Link accounts ─────────────────────────────────────────────
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'link') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'link') {
     verify_csrf();
-    $uid  = (int)$_POST['user_id'];
-    $sid  = (int)$_POST['student_id'];
-    $lrid = (int)$_POST['link_request_id'];
+    $uid  = post_int('user_id');
+    $sid  = post_int('student_id');
+    $lrid = post_int('link_request_id');
 
     if ($uid && $sid) {
         db()->prepare('UPDATE students SET user_id = NULL WHERE user_id = ?')->execute([$uid]);
@@ -39,9 +39,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'link'
 }
 
 // ── Dismiss link request without linking ──────────────────────
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'dismiss') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'dismiss') {
     verify_csrf();
-    $lrid = (int)$_POST['link_request_id'];
+    $lrid = post_int('link_request_id');
     if ($lrid) {
         try {
             db()->prepare(

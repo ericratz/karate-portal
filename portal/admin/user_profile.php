@@ -3,20 +3,20 @@ require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/db.php';
 require_role('admin');
 
-$id    = (int)($_GET['id'] ?? 0);
+$id    = get_int('id');
 $msg   = '';
 $error = '';
 
 if (!$id) { header('Location: users.php'); exit; }
 
 // ── Update account details ────────────────────────────────────
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'update_account') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'update_account') {
     verify_csrf();
-    $username   = trim($_POST['username']   ?? '');
-    $email      = trim($_POST['email']      ?? '');
-    $first_name = trim($_POST['first_name'] ?? '');
-    $last_name  = trim($_POST['last_name']  ?? '');
-    $dob        = trim($_POST['date_of_birth'] ?? '');
+    $username   = trim(post_str('username'));
+    $email      = trim(post_str('email'));
+    $first_name = trim(post_str('first_name'));
+    $last_name  = trim(post_str('last_name'));
+    $dob        = trim(post_str('date_of_birth'));
     $is_admin   = ($id !== current_user_id()) ? (isset($_POST['is_admin']) ? 1 : 0) : (int)($user['is_admin'] ?? 0);
     if (!$username) {
         $error = 'Username is required.';
@@ -38,9 +38,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'updat
 }
 
 // ── Reset password ────────────────────────────────────────────
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'reset_password') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'reset_password') {
     verify_csrf();
-    $pass = trim($_POST['new_password'] ?? '');
+    $pass = trim(post_str('new_password'));
     if (strlen($pass) < 8) {
         $error = 'Password must be at least 8 characters.';
     } else {
@@ -53,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'reset
 }
 
 // ── Toggle active ─────────────────────────────────────────────
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'toggle_active') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'toggle_active') {
     verify_csrf();
     if ($id !== current_user_id()) {
         db()->prepare('UPDATE users SET active = IF(active=1,0,1) WHERE id=?')->execute([$id]);
@@ -64,7 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'toggl
 }
 
 // ── Unlink from roster ────────────────────────────────────────
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'unlink') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'unlink') {
     verify_csrf();
     db()->prepare('UPDATE students SET user_id = NULL WHERE user_id = ?')->execute([$id]);
     audit('unlink_user', 'user', $id);
@@ -73,9 +73,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'unlin
 }
 
 // ── Link to roster entry ──────────────────────────────────────
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'link_student') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'link_student') {
     verify_csrf();
-    $sid = (int)($_POST['student_id'] ?? 0);
+    $sid = post_int('student_id');
     if ($sid) {
         db()->prepare('UPDATE students SET user_id = NULL WHERE user_id = ?')->execute([$id]);
         db()->prepare('UPDATE students SET user_id = ? WHERE id = ?')->execute([$id, $sid]);
@@ -86,7 +86,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'link_
 }
 
 // ── Delete user account (preserves student record) ───────────
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delete_user') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'delete_user') {
     verify_csrf();
     if ($id === current_user_id()) {
         $error = 'You cannot delete your own account.';

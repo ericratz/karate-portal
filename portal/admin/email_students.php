@@ -19,11 +19,12 @@ $all_students = db()->query(
      ORDER BY s.first_name, s.last_name'
 )->fetchAll();
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     verify_csrf();
-    $subject = trim($_POST['subject'] ?? '');
-    $body    = trim($_POST['body']    ?? '');
-    $send_to = array_map('intval', $_POST['send_to'] ?? []);
+    $subject = trim(post_str('subject'));
+    $body    = trim(post_str('body'));
+    $post_send_to = $_POST['send_to'] ?? [];
+    $send_to = array_map('intval', is_array($post_send_to) ? $post_send_to : []);
     $send_to = array_filter($send_to); // remove 0s
 
     if (!$subject || !$body) {

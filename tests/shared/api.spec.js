@@ -148,7 +148,8 @@ test('student edit handler rejects invalid student ID', async ({ page }) => {
 // ── .env NOT ACCESSIBLE VIA HTTP ─────────────────────────────────────────────
 
 test('.env is blocked (not 200) and contains no credentials', async ({ request }) => {
-    const res = await request.get('http://localhost/karate/.env');
+    // Derive the site root from BASE so this works natively and in-container.
+    const res = await request.get(BASE.replace(/\/portal\/?$/, '') + '/.env');
     expect(res.status()).not.toBe(200);
     expect(await res.text()).not.toContain('DB_PASS=');
 });

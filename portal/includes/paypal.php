@@ -52,7 +52,8 @@ function paypal_request(string $path, string $post_body, array $headers, array $
         throw new RuntimeException('PayPal returned an unexpected response');
     }
 
-    return ['status' => $status, 'data' => $data, 'raw' => $resp];
+    /** @var array<string, mixed> $data */
+    return ['status' => $status, 'data' => $data, 'raw' => (string)$resp];
 }
 
 // Fetch a short-lived access token using client credentials — throws on failure

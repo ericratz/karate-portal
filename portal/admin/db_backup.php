@@ -37,7 +37,7 @@ echo "SET FOREIGN_KEY_CHECKS = 0;\n\n";
 $tables = $pdo->query('SHOW TABLES')->fetchAll(PDO::FETCH_COLUMN);
 
 foreach ($tables as $table) {
-    $safe = '`' . str_replace('`', '``', $table) . '`';
+    $safe = '`' . str_replace('`', '``', (string)$table) . '`';
 
     // CREATE TABLE
     $row = $pdo->query("SHOW CREATE TABLE {$safe}")->fetch(PDO::FETCH_NUM);
@@ -54,7 +54,7 @@ foreach ($tables as $table) {
 
     while ($data = $stmt->fetch(PDO::FETCH_ASSOC)) {
         if ($first) {
-            $cols  = implode(', ', array_map(fn($c) => '`' . str_replace('`', '``', $c) . '`', array_keys($data)));
+            $cols  = implode(', ', array_map(fn($c) => '`' . str_replace('`', '``', strval($c)) . '`', array_keys($data)));
             $first = false;
         }
         $vals = array_map(function ($v) use ($pdo) {

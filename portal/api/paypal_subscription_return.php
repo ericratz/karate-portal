@@ -12,7 +12,7 @@ $is_parent = has_role('parent');
 $pay_url   = SITE_URL . ($is_parent ? '/parent/pay.php' : '/student/pay.php');
 $home_url  = SITE_URL . ($is_parent ? '/parent/index.php' : '/student/index.php');
 
-$sub_id = $_GET['subscription_id'] ?? '';
+$sub_id = get_str('subscription_id');
 
 if (!$sub_id) {
     header("Location: $pay_url?autopay=error");

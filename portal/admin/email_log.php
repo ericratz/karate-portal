@@ -3,10 +3,10 @@ require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/db.php';
 require_role('admin');
 
-$f_status = $_GET['status'] ?? '';
-$f_type   = $_GET['type']   ?? '';
-$f_from   = $_GET['from']   ?? '';
-$f_to     = $_GET['to']     ?? '';
+$f_status = get_str('status');
+$f_type   = get_str('type');
+$f_from   = get_str('from');
+$f_to     = get_str('to');
 
 $where  = [];
 $params = [];
@@ -101,7 +101,7 @@ include __DIR__ . '/../includes/header.php';
                 <td class="text-nowrap small text-muted"><?= date('d M Y g:i a', strtotime($row['sent_at'])) ?></td>
                 <td class="small"><?= htmlspecialchars($row['to_email']) ?></td>
                 <td class="small"><?= htmlspecialchars($row['subject']) ?></td>
-                <td><span class="badge bg-secondary"><?= htmlspecialchars(ucwords(str_replace('_', ' ', $row['type']))) ?></span></td>
+                <td><span class="badge bg-secondary"><?= htmlspecialchars(ucwords(str_replace('_', ' ', (string)$row['type']))) ?></span></td>
                 <td>
                     <?php if ($row['status'] === 'sent'): ?>
                         <span class="text-success fw-semibold small">✓ sent</span>

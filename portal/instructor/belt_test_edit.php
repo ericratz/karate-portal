@@ -3,8 +3,8 @@ require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/db.php';
 require_role('instructor', 'admin');
 
-$test_id = (int)($_GET['id'] ?? 0);
-$ref_pid = (int)($_GET['ref_pid'] ?? 0);
+$test_id = get_int('id');
+$ref_pid = get_int('ref_pid');
 $msg = $error = '';
 
 // Instructors cannot view or edit existing belt tests (full grading chart is admin-only)
@@ -14,7 +14,7 @@ if ($test_id && !has_role('admin')) {
 }
 
 // ── Delete ───────────────────────────────────────────────────
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delete' && $test_id) {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'delete' && $test_id) {
     verify_csrf();
     db()->prepare('DELETE FROM belt_tests WHERE id=?')->execute([$test_id]);
     audit('delete_belt_test', 'belt_test', $test_id);
@@ -24,37 +24,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
 }
 
 // ── Save ─────────────────────────────────────────────────────
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== 'delete') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') !== 'delete') {
     verify_csrf();
-    $sid        = (int)($_POST['student_id']   ?? 0);
-    $date       = $_POST['test_date']          ?? '';
-    $rank_id    = (int)($_POST['rank_id']      ?? 0);
+    $sid        = post_int('student_id');
+    $date       = post_str('test_date');
+    $rank_id    = post_int('rank_id');
     $fee        = isset($_POST['fee_paid'])    ? 1 : 0;
-    $notes      = trim($_POST['notes']         ?? '');
-    $rpid       = (int)($_POST['ref_pid']      ?? 0);
-    $chart_type = $_POST['chart_type']         ?? '';
+    $notes      = trim(post_str('notes'));
+    $rpid       = post_int('ref_pid');
+    $chart_type = post_str('chart_type');
 
     // Compute score from sub-scores based on which chart was used
     $score = null;
     if ($chart_type === 'lower') {
-        $bf = max(0, min(50, (int)($_POST['l_basics_form'] ?? 0)));
-        $be = max(0, min(30, (int)($_POST['l_basics_eff']  ?? 0)));
-        $kf = max(0, min(5,  (int)($_POST['l_kumite_form'] ?? 0)));
-        $ke = max(0, min(15, (int)($_POST['l_kumite_eff']  ?? 0)));
+        $bf = max(0, min(50, post_int('l_basics_form')));
+        $be = max(0, min(30, post_int('l_basics_eff')));
+        $kf = max(0, min(5,  post_int('l_kumite_form')));
+        $ke = max(0, min(15, post_int('l_kumite_eff')));
         if ($bf || $be || $kf || $ke) $score = $bf + $be + $kf + $ke;
     } elseif ($chart_type === 'regular') {
-        $kataf = max(0, min(15, (int)($_POST['r_kata_form']   ?? 0)));
-        $katae = max(0, min(20, (int)($_POST['r_kata_eff']    ?? 0)));
-        $basf  = max(0, min(15, (int)($_POST['r_basics_form'] ?? 0)));
-        $base  = max(0, min(20, (int)($_POST['r_basics_eff']  ?? 0)));
-        $kumf  = max(0, min(10, (int)($_POST['r_kumite_form'] ?? 0)));
-        $kume  = max(0, min(20, (int)($_POST['r_kumite_eff']  ?? 0)));
+        $kataf = max(0, min(15, post_int('r_kata_form')));
+        $katae = max(0, min(20, post_int('r_kata_eff')));
+        $basf  = max(0, min(15, post_int('r_basics_form')));
+        $base  = max(0, min(20, post_int('r_basics_eff')));
+        $kumf  = max(0, min(10, post_int('r_kumite_form')));
+        $kume  = max(0, min(20, post_int('r_kumite_eff')));
         if ($kataf || $katae || $basf || $base || $kumf || $kume)
             $score = $kataf + $katae + $basf + $base + $kumf + $kume;
     }
     // Fallback: manual score (for edits where chart wasn't re-filled)
-    if ($score === null && isset($_POST['score_manual']) && $_POST['score_manual'] !== '') {
-        $m = (int)$_POST['score_manual'];
+    if ($score === null && post_str('score_manual') !== '') {
+        $m = post_int('score_manual');
         if ($m >= 0 && $m <= 100) $score = $m;
     }
 
@@ -117,7 +117,7 @@ if ($test_id) {
     if (!$test) { header('Location: belt_tests_all.php'); exit; }
 }
 
-$prefill_student = $test ? (int)$test['student_id'] : (int)($_GET['student_id'] ?? 0);
+$prefill_student = $test ? (int)$test['student_id'] : get_int('student_id');
 
 $all_students = db()->query(
     'SELECT id, first_name, last_name, date_of_birth, phone
@@ -395,7 +395,7 @@ include __DIR__ . '/../includes/header.php';
                         <label class="form-label small fw-semibold mb-1">Test Date *</label>
                         <input type="date" name="test_date" id="chartTestDate"
                                class="form-control form-control-sm" required
-                               value="<?= htmlspecialchars($test['test_date'] ?? date('Y-m-d')) ?>">
+                               value="<?= htmlspecialchars((string)($test ? ($test['test_date'] ?? date('Y-m-d')) : date('Y-m-d'))) ?>">
                     </div>
                 </div>
                 <div class="row g-2 mb-3">
@@ -677,7 +677,7 @@ include __DIR__ . '/../includes/header.php';
                 </div>
                 <div class="text-muted small mt-2 fst-italic" id="resultText"></div>
 
-                <?php if ($test_id && $test['score'] !== null): ?>
+                <?php if ($test && $test['score'] !== null): ?>
                 <div class="mt-2 small text-muted border rounded p-2">
                     <strong>Recorded score:</strong> <?= (int)$test['score'] ?>%
                     — re-fill the chart above to update, or enter directly:
@@ -696,7 +696,7 @@ include __DIR__ . '/../includes/header.php';
             <div class="px-3 pb-3" style="border-top:1px solid #e0e0e0;padding-top:14px !important">
                 <label class="form-label small fw-semibold mb-1">Comments</label>
                 <textarea name="notes" class="form-control form-control-sm" rows="3"
-                          id="chartNotes"><?= htmlspecialchars($test['notes'] ?? '') ?></textarea>
+                          id="chartNotes"><?= htmlspecialchars((string)($test ? ($test['notes'] ?? '') : '')) ?></textarea>
             </div>
 
             <!-- ─── Fee + Save ─── -->

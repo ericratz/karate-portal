@@ -47,7 +47,7 @@ if (empty($family)) {
 $family_ids = array_column($family, 'id');
 
 // Pre-selected student from query param
-$pre_id = (int)($_GET['student_id'] ?? 0);
+$pre_id = get_int('student_id');
 if (!in_array($pre_id, $family_ids, true)) {
     $pre_id = $family_ids[0];
 }

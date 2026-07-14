@@ -5,17 +5,17 @@ require_role('admin');
 
 $msg = $error = '';
 
-$f_type = $_GET['type'] ?? '';
-$f_year = (int)($_GET['year'] ?? 0);
+$f_type = get_str('type');
+$f_year = get_int('year');
 $filtering = $f_type !== '' || $f_year !== 0;
 $filter_qs = http_build_query(array_filter(['type'=>$f_type,'year'=>$f_year ?: ''], fn($v) => $v !== ''));
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && !in_array($_POST['action'] ?? '', ['delete','toggle_paid'])) {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && !in_array($_POST['action'] ?? '', ['delete','toggle_paid'])) {
     verify_csrf();
-    $type   = $_POST['expense_type'] ?? '';
-    $amount = (float)($_POST['amount'] ?? 0);
-    $date   = $_POST['expense_date'] ?? '';
-    $desc   = trim($_POST['description'] ?? '');
+    $type   = post_str('expense_type');
+    $amount = (float)post_str('amount', '0');
+    $date   = post_str('expense_date');
+    $desc   = trim(post_str('description'));
     $valid_types = ['rent','equipment','utilities','supplies','other'];
     if (!in_array($type, $valid_types) || $amount <= 0 || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
         $error = 'Please fill in all required fields.';
@@ -32,9 +32,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !in_array($_POST['action'] ?? '', [
 if (isset($_GET['recorded'])) $msg = 'Expense recorded.';
 
 // Delete expense
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delete') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'delete') {
     verify_csrf();
-    $del_id = (int)$_POST['id'];
+    $del_id = post_int('id');
     db()->prepare('DELETE FROM expenses WHERE id=?')->execute([$del_id]);
     audit('delete_expense', 'expense', $del_id);
     if (empty($_SERVER['HTTP_HX_REQUEST'])) {
@@ -45,9 +45,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
 }
 
 // Toggle paid status
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'toggle_paid') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'toggle_paid') {
     verify_csrf();
-    $tog_id = (int)$_POST['id'];
+    $tog_id = post_int('id');
     db()->prepare('UPDATE expenses SET paid = IF(paid=1,0,1) WHERE id=?')->execute([$tog_id]);
     audit('toggle_expense_paid', 'expense', $tog_id);
     if (!empty($_SERVER['HTTP_HX_REQUEST'])) {

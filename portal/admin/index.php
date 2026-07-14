@@ -8,9 +8,9 @@ apply_auto_inactive();
 apply_log_retention();
 
 // ── Dismiss / resolve alert (POST) ───────────────────────────────
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'dismiss_alert') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'dismiss_alert') {
     verify_csrf();
-    $lr_id = (int)($_POST['lr_id'] ?? 0);
+    $lr_id = post_int('lr_id');
     if ($lr_id) {
         db()->prepare(
             'UPDATE link_requests SET resolved = 1, resolved_at = NOW(), resolved_by = ? WHERE id = ?'
@@ -374,9 +374,16 @@ include __DIR__ . '/../includes/header.php';
                                 <div class="text-muted small"><?= htmlspecialchars(trim($a['u_first'].' '.$a['u_last'])) ?></div>
                             </td>
                             <td class="small text-muted text-nowrap"><?= date('d M Y', strtotime($a['created_at'])) ?></td>
-                            <td>
+                            <td class="text-nowrap">
                                 <a href="resolve_link.php?lr_id=<?= $a['id'] ?>"
                                    class="btn btn-sm btn-warning py-0">Resolve</a>
+                                <form method="post" class="d-inline confirm-submit-form"
+                                      data-confirm="Dismiss this alert? Use this only if the account is already correctly linked (e.g. a parent-only account with no separate roster record).">
+                                    <?= csrf_input() ?>
+                                    <input type="hidden" name="action" value="dismiss_alert">
+                                    <input type="hidden" name="lr_id"  value="<?= $a['id'] ?>">
+                                    <button class="btn btn-sm btn-outline-secondary py-0">Dismiss</button>
+                                </form>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -589,7 +596,7 @@ include __DIR__ . '/../includes/header.php';
                         <tr>
                             <td><?= date('d M Y', strtotime($p['payment_date'])) ?></td>
                             <td><?= hn($p['first_name'].' '.$p['last_name']) ?></td>
-                            <td><?= ucwords(str_replace('_',' ',$p['payment_type'])) ?></td>
+                            <td><?= ucwords(str_replace('_',' ',(string)$p['payment_type'])) ?></td>
                             <td class="text-end">$<?= number_format($p['amount'],2) ?></td>
                         </tr>
                     <?php endforeach; ?>
@@ -704,6 +711,14 @@ include __DIR__ . '/../includes/header.php';
         chart.update();
     }).observe(htmlRoot, { attributes: true, attributeFilter: ['data-bs-theme'] });
 })();
+
+// Shared confirm-before-submit for forms with class="confirm-submit-form"
+// and a data-confirm message.
+document.addEventListener('submit', function(e) {
+    var form = e.target.closest('.confirm-submit-form');
+    if (!form) return;
+    if (!confirm(form.dataset.confirm)) e.preventDefault();
+});
 </script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>

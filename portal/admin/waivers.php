@@ -6,9 +6,9 @@ require_role('admin');
 $msg = $error = '';
 
 // Delete waiver
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delete') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'delete') {
     verify_csrf();
-    $del_id = (int)$_POST['id'];
+    $del_id = post_int('id');
     db()->prepare('DELETE FROM payment_waivers WHERE id=?')->execute([$del_id]);
     audit('delete_waiver', 'waiver', $del_id);
     if (empty($_SERVER['HTTP_HX_REQUEST'])) {
@@ -22,12 +22,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
 }
 
 // Grant waiver
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['grant'])) {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['grant'])) {
     verify_csrf();
-    $sid    = (int)$_POST['student_id'];
-    $type   = $_POST['waiver_type'] ?? '';
-    $reason = trim($_POST['reason'] ?? '');
-    $date   = $_POST['granted_date'] ?? date('Y-m-d');
+    $sid    = post_int('student_id');
+    $type   = post_str('waiver_type');
+    $reason = trim(post_str('reason'));
+    $date   = post_str('granted_date', date('Y-m-d'));
 
     $valid = ['monthly_tuition','registration','belt_test','slc_training','seminar','all'];
     if (!$sid || !in_array($type, $valid)) {
@@ -52,9 +52,9 @@ $students = db()->query(
 )->fetchAll();
 
 // Filters
-$f_student = (int)($_GET['student_id'] ?? 0);
-$f_type    = $_GET['type'] ?? '';
-$f_year    = (int)($_GET['year'] ?? 0);
+$f_student = get_int('student_id');
+$f_type    = get_str('type');
+$f_year    = get_int('year');
 
 $where  = ['1=1'];
 $params = [];
@@ -256,7 +256,7 @@ include __DIR__ . '/../includes/header.php';
                                     <?= hn($w['first_name'].' '.$w['last_name']) ?>
                                 </a>
                             </td>
-                            <td><?= ucwords(str_replace('_',' ',$w['waiver_type'])) ?></td>
+                            <td><?= ucwords(str_replace('_',' ',(string)$w['waiver_type'])) ?></td>
                             <td><?= htmlspecialchars($w['reason'] ?? '—') ?></td>
                             <td><?= date('d M Y', strtotime($w['granted_date'])) ?></td>
                             <td class="delete-col">

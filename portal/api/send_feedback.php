@@ -6,7 +6,7 @@ require_login();
 
 header('Content-Type: application/json');
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
     http_response_code(405);
     echo json_encode(['ok' => false, 'error' => 'Method not allowed']);
     exit;
@@ -14,7 +14,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 verify_csrf();
 
-$message = trim($_POST['feedback_message'] ?? '');
+$message = trim(post_str('feedback_message'));
 if ($message === '') {
     http_response_code(422);
     echo json_encode(['ok' => false, 'error' => 'Please enter a message before sending.']);

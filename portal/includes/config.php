@@ -1,12 +1,24 @@
 <?php
+// Real environment variables (set by docker-compose) win over the .env file.
+// Lets the container point SITE_URL at http://app/... so server-side redirects
+// (logout, post-login, auth guards) stay on the Compose network, while native
+// XAMPP keeps localhost. Mirrors the same precedence in db.php.
+foreach (['SITE_URL', 'DOJO_EMAIL', 'ADMIN_EMAIL',
+          'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET',
+          'PAYPAL_MODE', 'PAYPAL_CLIENT_ID', 'PAYPAL_SECRET',
+          'PAYPAL_PLAN_ID', 'PAYPAL_WEBHOOK_ID'] as $_k) {
+    $_v = getenv($_k);
+    if ($_v !== false && $_v !== '') define($_k, $_v);
+}
+
 // ── Load .env (two levels up from portal/includes/) ───────────────────────
 $_env_file = dirname(__DIR__, 2) . '/.env';
 if (file_exists($_env_file)) {
     foreach (file($_env_file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $_line) {
         if (strncmp(trim($_line), '#', 1) === 0) continue;
         if (strpos($_line, '=') === false) continue;
-        [$_k, $_v] = explode('=', $_line, 2);
-        $_k = trim($_k); $_v = trim($_v);
+        $_parts = explode('=', $_line, 2);
+        $_k = trim($_parts[0]); $_v = trim($_parts[1] ?? '');
         if (!defined($_k)) define($_k, $_v);
     }
 }
@@ -18,6 +30,18 @@ if (!defined('SITE_URL')) define('SITE_URL', 'http://localhost/karate/portal');
 // ── Email ─────────────────────────────────────────────────────────────────
 if (!defined('DOJO_EMAIL'))  define('DOJO_EMAIL',  'noreply@noji.com');
 if (!defined('ADMIN_EMAIL')) define('ADMIN_EMAIL', 'admin@example.com');
+
+// ── Rate-limit exemption ──────────────────────────────────────────────────
+// Localhost is always exempt so the native test suite runs freely. The Docker
+// dev/CI container reaches the app from a non-localhost Compose IP, so it also
+// honors RATELIMIT_DISABLED=1 — set only on that container (docker-compose.yml),
+// never in production, which runs natively and leaves rate limiting fully on.
+// Defined here (not auth.php) so checkin.php can use it without loading auth.
+function rate_limit_exempt(string $ip): bool {
+    if ($ip === '127.0.0.1' || $ip === '::1') return true;
+    $flag = getenv('RATELIMIT_DISABLED');
+    return $flag === '1' || $flag === 'true';
+}
 
 // ── Fees (business constants — same everywhere) ───────────────────────────
 define('MONTHLY_FEE', 30.00);
@@ -45,7 +69,7 @@ function send_payment_receipt(string $to_email, string $to_name, array $items, f
 
     $lines = '';
     foreach ($items as $item) {
-        $label  = ucwords(str_replace('_', ' ', $item['type']));
+        $label  = ucwords(str_replace('_', ' ', (string)$item['type']));
         $lines .= "  {$label}: $" . number_format((float)$item['amount'], 2) . "\n";
     }
 

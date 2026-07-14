@@ -7,9 +7,9 @@ require_role('admin');
 $msg = $error = '';
 
 // ── Delete ───────────────────────────────────────────────────
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delete') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'delete') {
     verify_csrf();
-    $del_id = (int)$_POST['id'];
+    $del_id = post_int('id');
     db()->prepare('DELETE FROM donations WHERE id=?')->execute([$del_id]);
     audit('delete_donation', 'donation', $del_id);
     if (empty($_SERVER['HTTP_HX_REQUEST'])) {
@@ -22,14 +22,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
 }
 
 // ── Record donation ──────────────────────────────────────────
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== 'delete') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') !== 'delete') {
     verify_csrf();
-    $amount     = (float)($_POST['amount']         ?? 0);
-    $method     = $_POST['payment_method']          ?? '';
-    $donor      = trim($_POST['donor_name']         ?? '');
-    $notes      = trim($_POST['notes']              ?? '');
-    $date       = $_POST['payment_date']            ?? date('Y-m-d');
-    $don_sid    = (int)($_POST['student_id']        ?? 0);
+    $amount     = (float)post_str('amount', '0');
+    $method     = post_str('payment_method');
+    $donor      = trim(post_str('donor_name'));
+    $notes      = trim(post_str('notes'));
+    $date       = post_str('payment_date', date('Y-m-d'));
+    $don_sid    = post_int('student_id');
 
     $valid_methods = ['paypal','cash','check','mail'];
 
@@ -65,10 +65,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== 'delet
 if (isset($_GET['recorded'])) $msg = 'Donation recorded.';
 
 // ── Filters ───────────────────────────────────────────────────
-$f_from   = $_GET['from']   ?? '';
-$f_to     = $_GET['to']     ?? '';
-$f_method = $_GET['method'] ?? '';
-$f_year   = (int)($_GET['year'] ?? 0);
+$f_from   = get_str('from');
+$f_to     = get_str('to');
+$f_method = get_str('method');
+$f_year   = get_int('year');
 
 $where  = ['1=1'];
 $params = [];

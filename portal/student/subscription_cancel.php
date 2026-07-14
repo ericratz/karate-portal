@@ -16,7 +16,7 @@ if (!$own_id) {
 }
 
 // Target defaults to the caller's own record; parents may cancel a linked child's
-$student_id = (int)($_POST['student_id'] ?? 0) ?: $own_id;
+$student_id = post_int('student_id') ?: $own_id;
 if ($student_id !== $own_id) {
     $ch = db()->prepare(
         'SELECT 1 FROM student_guardians WHERE parent_student_id = ? AND child_student_id = ?'

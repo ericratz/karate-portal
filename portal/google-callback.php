@@ -15,7 +15,7 @@ $client->setClientId(GOOGLE_CLIENT_ID);
 $client->setClientSecret(GOOGLE_CLIENT_SECRET);
 $client->setRedirectUri(GOOGLE_REDIRECT_URI);
 
-$token = $client->fetchAccessTokenWithAuthCode($_GET['code']);
+$token = $client->fetchAccessTokenWithAuthCode(get_str('code'));
 
 if (isset($token['error'])) {
     log_event('warning', 'auth', 'Google OAuth: token exchange failed', ['error' => $token['error']]);

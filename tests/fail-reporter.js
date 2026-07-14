@@ -1,3 +1,4 @@
+// @ts-check
 // Minimal Playwright reporter that records whether the suite passed or failed.
 // global-teardown.js reads this to decide whether to restore the DB snapshot.
 const path = require('path');

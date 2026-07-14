@@ -4,6 +4,23 @@ Full version history for the Shotokan Karate Portal. See `README.md` for the cur
 
 ---
 
+## V3.7
+
+- **Full Docker migration** — the entire stack now runs in containers orchestrated by `docker-compose.yml`, one container per responsibility: `app` (`php:8.4-apache`), `db` (`mysql:8.0`, schema auto-imported on first start), and `ci` (the official Playwright image plus PHP 8.4 CLI, Composer, and the MySQL client — one image that runs Psalm, PHPUnit, and Playwright). A real `composer install` at image-build time finally replaces the old `portal/vendor` filesystem junction into the live htdocs install, so dependencies are reproducible instead of machine-coupled
+- **CI/CD rebuilt on Docker** — the self-hosted GitHub Actions workflow was rewritten from native PowerShell steps (hardcoded `C:\Users\...` PHP/MySQL paths) to `docker compose build` / `up --wait` / `run --rm ci …` / `down -v`. Readiness is gated on a real container healthcheck (curls `login.php`, proving app + db are wired up) instead of a fixed sleep; the app publishes on a random host port so it never clashes with the box's native XAMPP on port 80
+- **Config decoupled from the machine via environment variables** — `db.php` and `config.php` now prefer real environment variables over the `.env` file, so a single `.env` serves both native XAMPP (`DB_HOST=localhost`, `SITE_URL=http://localhost/...`) and the containers (which override `DB_HOST=db`, `SITE_URL=http://app/...` on the Compose network). This fixed a real cross-environment bug: server-side redirects (logout, post-login, auth guards) build absolute URLs from `SITE_URL`, so a hardcoded localhost would bounce a containerized browser to the wrong host
+- **Security scanners containerized** — nmap, Nikto, and OWASP ZAP are defined as opt-in `docker compose run` services under a `security` profile (never started by a plain `up`), each targeting the app by its Compose DNS name; ZAP baseline runs against a committed rules file. No more host-level tooling installs to probe the dev app
+- **Rate-limit exemption generalized** — the "never rate-limit localhost" carve-out (login, registration, check-in PIN) is now a single `rate_limit_exempt()` helper that also honors a `RATELIMIT_DISABLED` env flag, set only on the dev/CI container (whose client IP isn't localhost). Production, running natively, leaves rate limiting fully on
+- **Apache hardening** — the container blocks web access to dotfiles, so the mounted `.env` (which lives under the document root) can never be served as plaintext; verified by the existing `.env`-not-accessible security tests
+- **Schema completeness fix** — `karate_schema.sql` was missing the `email_log` table that `config.php`'s mail logging and the log-retention job both write to; a fresh database is now complete, caught by importing the schema into a clean container
+- **PHP 8.4 forward-compat fix** — guarded a `strtotime(null)` deprecation in `admin/waiver_view.php` that surfaced once the app ran on 8.4 (matching the live server) instead of the dev box's 8.2
+- **Psalm tightened to level 3** — from level 4, with the baseline updated for the newly-in-scope issues; still run as standard + taint-analysis passes
+- **Type-checking on the test suite** — the Playwright/Node test files carry `// @ts-check` with JSDoc type annotations, checked via a `tsconfig.json` (`checkJs`) covering `tests/**/*.js` and `playwright.config.js`
+- **Test suite made environment-agnostic** — the base URL and database host are now env-driven (default to localhost, overridden to the Compose service names inside `ci`); worker count and retries are env-tunable so the containerized run stays stable under shared host resources
+- **Test coverage** — 514 Playwright tests (39 spec files), 94 PHPUnit tests, all passing — now against the containerized app + database
+
+---
+
 ## V3.6
 
 - **Static analysis with Psalm** — codebase brought up to Psalm level 4, with a baseline file for pre-existing issues below that bar; integrated into CI as two dedicated steps (standard + taint analysis) on every push

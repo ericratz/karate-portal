@@ -8,7 +8,7 @@ if (!empty($_SESSION['user_id'])) {
     exit;
 }
 
-$token = trim($_GET['token'] ?? '');
+$token = trim(get_str('token'));
 $error = '';
 $done  = false;
 
@@ -25,10 +25,10 @@ $valid = $tok
       && !$tok['used']
       && strtotime($tok['expires_at']) > time();
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && $valid) {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && $valid) {
     verify_csrf();
-    $new     = $_POST['new_password']     ?? '';
-    $confirm = $_POST['confirm_password'] ?? '';
+    $new     = post_str('new_password');
+    $confirm = post_str('confirm_password');
 
     if (strlen($new) < 8) {
         $error = 'Password must be at least 8 characters.';

@@ -5,7 +5,7 @@ require_role('instructor', 'admin');
 
 $valid_types = ['class', 'seminar', 'private'];
 $type_filter = isset($_GET['type']) && in_array($_GET['type'], $valid_types, true) ? $_GET['type'] : null;
-$year_filter = (int)($_GET['year'] ?? 0);
+$year_filter = get_int('year');
 $filtering   = $type_filter !== null || $year_filter !== 0;
 
 // Build query dynamically based on active filters

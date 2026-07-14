@@ -19,3 +19,7 @@ portal/composer-setup.php
 migrations/
 portal/cron/
 backups/
+# ZAP scan artifacts (keep zap-baseline.conf tracked)
+docker/zap/zap.yaml
+docker/zap/*.html
+docker/zap/*.json

@@ -305,15 +305,18 @@ test('audit log requires admin role - instructor is denied', async ({ page }) =>
 
 // ── 8. .env NOT ACCESSIBLE VIA HTTP ──────────────────────────────────────────
 
+// .env sits one level above /portal (the site root) — derive from BASE so this
+// works both natively (localhost) and in the ci container (app service).
+const ENV_URL = BASE.replace(/\/portal\/?$/, '') + '/.env';
+
 test('.env file is blocked by the server (not 200)', async ({ page }) => {
-    // Requires Apache AllowOverride All so .htaccess is processed.
-    // On properly configured XAMPP this returns 403.
-    const res = await page.request.get('http://localhost/karate/.env');
+    // On properly configured XAMPP / the app container this returns 403.
+    const res = await page.request.get(ENV_URL);
     expect(res.status()).not.toBe(200);
 });
 
 test('.env URL does not return database credentials', async ({ page }) => {
-    const res = await page.request.get('http://localhost/karate/.env');
+    const res = await page.request.get(ENV_URL);
     const body = await res.text();
     // Even if somehow accessible, DB password should not appear as plain HTML
     expect(body).not.toContain('DB_PASS=');

@@ -18,9 +18,9 @@ $msg   = '';
 $error = '';
 
 // ── Delete a payment ─────────────────────────────────────────
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delete') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'delete') {
     verify_csrf();
-    $del_id = (int)$_POST['id'];
+    $del_id = post_int('id');
     // Fetch student_id before deleting so we can sync status after
     $del_row = db()->prepare('SELECT student_id FROM payments WHERE id=?');
     $del_row->execute([$del_id]);
@@ -36,16 +36,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
 }
 
 // ── Edit a payment ────────────────────────────────────────────
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'edit_payment') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'edit_payment') {
     verify_csrf();
-    $pid    = (int)$_POST['id'];
-    $amount = (float)($_POST['amount']        ?? 0);
-    $type   = $_POST['payment_type']          ?? '';
-    $method = $_POST['payment_method']        ?? '';
-    $date   = $_POST['payment_date']          ?? date('Y-m-d');
-    $month  = $_POST['month_covered']         ?? '';
-    $txn    = trim($_POST['transaction_id']   ?? '');
-    $notes  = trim($_POST['notes']            ?? '');
+    $pid    = post_int('id');
+    $amount = (float)post_str('amount', '0');
+    $type   = post_str('payment_type');
+    $method = post_str('payment_method');
+    $date   = post_str('payment_date', date('Y-m-d'));
+    $month  = post_str('month_covered');
+    $txn    = trim(post_str('transaction_id'));
+    $notes  = trim(post_str('notes'));
     $valid_types   = ['monthly_tuition','registration','belt_test','slc_training','seminar','other'];
     $valid_methods = ['paypal','cash','check','mail'];
     if ($pid && $amount > 0 && in_array($type, $valid_types) && in_array($method, $valid_methods)) {
@@ -76,22 +76,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'edit_
 }
 
 // ── Record a manual payment ───────────────────────────────────
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== 'delete') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') !== 'delete') {
     verify_csrf();
-    $sid    = (int)($_POST['student_id']     ?? 0);
-    $amount = (float)($_POST['amount']       ?? 0);
-    $type   = $_POST['payment_type']         ?? '';
-    $method = $_POST['payment_method']       ?? 'paypal';
-    $date   = $_POST['payment_date']         ?? date('Y-m-d H:i:s');
-    $month  = $_POST['month_covered']        ?? null;
-    $txn    = trim($_POST['transaction_id']  ?? '');
-    $notes  = trim($_POST['notes']           ?? '');
+    $sid    = post_int('student_id');
+    $amount = (float)post_str('amount', '0');
+    $type   = post_str('payment_type');
+    $method = post_str('payment_method', 'paypal');
+    $date   = post_str('payment_date', date('Y-m-d H:i:s'));
+    $month  = post_str('month_covered') ?: null;
+    $txn    = trim(post_str('transaction_id'));
+    $notes  = trim(post_str('notes'));
 
     $valid_types   = ['monthly_tuition','registration','belt_test','slc_training','seminar','other'];
     $valid_methods = ['paypal','cash','check','mail'];
 
-    $payer_name = trim($_POST['payer_name'] ?? '');
-    $payer_note = trim($_POST['payer_note'] ?? '');
+    $payer_name = trim(post_str('payer_name'));
+    $payer_note = trim(post_str('payer_note'));
 
     if (!$sid || $amount <= 0 || !in_array($type, $valid_types) || !in_array($method, $valid_methods)) {
         $error = 'Please fill in all required fields with valid values.';
@@ -154,14 +154,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== 'delet
 
 if (isset($_GET['recorded'])) $msg = 'Payment recorded.';
 $dup_warning = isset($_GET['dup'])
-    ? 'Heads up: this student now has ' . (int)$_GET['dup'] . ' tuition payments recorded for that month. If this was accidental, delete the extra one below.'
+    ? 'Heads up: this student now has ' . get_int('dup') . ' tuition payments recorded for that month. If this was accidental, delete the extra one below.'
     : '';
 
 // ── Filters ───────────────────────────────────────────────────
-$f_student = (int)($_GET['student_id'] ?? 0);
-$f_type    = $_GET['type']   ?? '';
-$f_method  = $_GET['method'] ?? '';
-$f_year    = (int)($_GET['year'] ?? 0);
+$f_student = get_int('student_id');
+$f_type    = get_str('type');
+$f_method  = get_str('method');
+$f_year    = get_int('year');
 
 $where  = ['1=1'];
 $params = [];
@@ -196,9 +196,9 @@ $all_students = db()->query(
 )->fetchAll();
 
 // Pre-fill student_id from admin dashboard link
-$prefill_student = (int)($_GET['student_id'] ?? 0);
-$prefill_type    = $_GET['type'] ?? '';
-$action          = $_GET['action'] ?? '';
+$prefill_student = get_int('student_id');
+$prefill_type    = get_str('type');
+$action          = get_str('action');
 
 $page_title = 'Payments';
 include __DIR__ . '/../includes/header.php';
@@ -456,7 +456,7 @@ include __DIR__ . '/../includes/header.php';
                             <div class="text-muted small">paid by <?= htmlspecialchars($p['payer_name']) ?></div>
                         <?php endif; ?>
                     </td>
-                    <td><?= ucwords(str_replace('_',' ',$p['payment_type'])) ?></td>
+                    <td><?= ucwords(str_replace('_',' ',(string)$p['payment_type'])) ?></td>
                     <td><?= ['paypal'=>'PayPal','cash'=>'Cash','check'=>'Check','mail'=>'Mail'][$p['payment_method']] ?? ucfirst($p['payment_method']) ?></td>
                     <td><?= htmlspecialchars($p['transaction_id'] ?? '—') ?></td>
                     <td>

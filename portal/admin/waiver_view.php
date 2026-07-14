@@ -4,7 +4,7 @@ require_once __DIR__ . '/../includes/db.php';
 require_role('instructor', 'admin');
 function fmt_phone(string $p): string { $d = preg_replace('/\D/', '', $p); return strlen($d) === 10 ? substr($d,0,3).'-'.substr($d,3,3).'-'.substr($d,6) : $p; }
 
-$student_id = (int)($_GET['student_id'] ?? $_POST['student_id'] ?? 0);
+$student_id = get_int('student_id') ?: post_int('student_id');
 if (!$student_id) { header('Location: students.php'); exit; }
 
 $student = db()->prepare('SELECT * FROM students WHERE id = ?');
@@ -22,21 +22,21 @@ $stmt->execute([$student_id]);
 $submission = $stmt->fetch();
 
 // Handle admin submission/edit (admin only)
-if (has_role('admin') && $_SERVER['REQUEST_METHOD'] === 'POST') {
+if (has_role('admin') && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     verify_csrf();
-    $print_name    = trim($_POST['print_name']    ?? '');
-    $signature     = trim($_POST['signature']     ?? '');
-    $signed_date   = trim($_POST['signed_date']   ?? date('Y-m-d'));
-    $guardian_sig  = trim($_POST['guardian_signature']   ?? '');
-    $guardian_date = trim($_POST['guardian_signed_date'] ?? '') ?: null;
-    $dob           = trim($_POST['date_of_birth'] ?? '');
-    $cell          = trim($_POST['cell_phone']    ?? '');
-    $home          = trim($_POST['home_phone']    ?? '');
-    $email         = trim($_POST['email']         ?? '');
-    $street        = trim($_POST['street_address'] ?? '');
-    $csz           = trim($_POST['city_state_zip'] ?? '');
-    $mail_addr     = trim($_POST['mailing_address']     ?? '');
-    $mail_csz      = trim($_POST['mailing_city_state_zip'] ?? '');
+    $print_name    = trim(post_str('print_name'));
+    $signature     = trim(post_str('signature'));
+    $signed_date   = trim(post_str('signed_date', date('Y-m-d')));
+    $guardian_sig  = trim(post_str('guardian_signature'));
+    $guardian_date = trim(post_str('guardian_signed_date')) ?: null;
+    $dob           = trim(post_str('date_of_birth'));
+    $cell          = trim(post_str('cell_phone'));
+    $home          = trim(post_str('home_phone'));
+    $email         = trim(post_str('email'));
+    $street        = trim(post_str('street_address'));
+    $csz           = trim(post_str('city_state_zip'));
+    $mail_addr     = trim(post_str('mailing_address'));
+    $mail_csz      = trim(post_str('mailing_city_state_zip'));
 
     if (!$print_name || !$signed_date) {
         $error = 'Printed name and date are required.';
@@ -134,7 +134,7 @@ include __DIR__ . '/../includes/header.php';
 <div class="d-flex align-items-center gap-3 mb-4">
     <h4 class="mb-0">Waiver — <?= hn($student['first_name'] . ' ' . $student['last_name']) ?></h4>
     <?php if ($student['injury_waiver']): ?>
-        <span class="badge bg-success">Signed <?= date('d M Y', strtotime($student['injury_waiver_date'])) ?></span>
+        <span class="badge bg-success">Signed <?= $student['injury_waiver_date'] ? date('d M Y', strtotime($student['injury_waiver_date'])) : '' ?></span>
     <?php endif; ?>
     <?php if ($has_submission && $submission['ip_address'] === 'admin-entry'): ?>
         <span class="badge bg-secondary">Admin entry</span>

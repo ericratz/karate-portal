@@ -23,9 +23,9 @@ $step     = 1;        // 1 = enter username, 2 = confirm masked email
 $masked   = '';
 $username = '';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     verify_csrf();
-    $username = trim($_POST['username'] ?? '');
+    $username = trim(post_str('username'));
 
     if ($username === '') {
         $error = 'Please enter your username.';

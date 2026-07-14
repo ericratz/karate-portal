@@ -1,3 +1,4 @@
+// @ts-check
 // Copy this file to credentials.js and fill in your local test account passwords.
 // credentials.js is gitignored — this example file is safe to commit.
 

@@ -15,15 +15,15 @@ if (!empty($_SESSION['user_id'])) {
     exit;
 }
 
-$g_email = $_SESSION['google_pending']['email'];
-$g_first = $_SESSION['google_pending']['first'];
-$g_last  = $_SESSION['google_pending']['last'];
+$g_email = (string)$_SESSION['google_pending']['email'];
+$g_first = (string)$_SESSION['google_pending']['first'];
+$g_last  = (string)$_SESSION['google_pending']['last'];
 
 $error = '';
 
 // ─── POST Handlers ────────────────────────────────────────────────────────────
 
-$action = ($_SERVER['REQUEST_METHOD'] === 'POST') ? ($_POST['action'] ?? '') : '';
+$action = (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') ? post_str('action') : '';
 
 if ($action === 'back1') {
     // Back to form — clear pending google-reg data (keep google_pending)
@@ -36,10 +36,10 @@ if ($action === 'back1') {
 } elseif ($action === 'step1') {
     verify_csrf();
 
-    $first    = trim($_POST['first_name']    ?? '');
-    $last     = trim($_POST['last_name']     ?? '');
-    $dob      = trim($_POST['date_of_birth'] ?? '');
-    $username = trim($_POST['username']      ?? '');
+    $first    = trim(post_str('first_name'));
+    $last     = trim(post_str('last_name'));
+    $dob      = trim(post_str('date_of_birth'));
+    $username = trim(post_str('username'));
 
     if (!$first || !$last || !$dob || !$username) {
         $error = 'All fields are required.';
@@ -69,8 +69,8 @@ if ($action === 'back1') {
 
 } elseif ($action === 'select') {
     verify_csrf();
-    $sel_type   = $_POST['selection_type'] ?? '';
-    $student_id = (int)($_POST['student_id'] ?? 0);
+    $sel_type   = post_str('selection_type');
+    $student_id = post_int('student_id');
 
     if (!in_array($sel_type, ['claim', 'new', 'not_listed'], true)) {
         $error = 'Please make a selection to continue.';
@@ -303,17 +303,17 @@ if ($step === 'confirm' && ($sel['type'] ?? '') === 'claim') {
                 <div class="col-6">
                     <label class="form-label">First Name <span class="text-danger">*</span></label>
                     <input type="text" name="first_name" class="form-control" required
-                           value="<?= htmlspecialchars($reg_data['first_name'] ?? $g_first) ?>">
+                           value="<?= htmlspecialchars((string)($reg_data['first_name'] ?? $g_first)) ?>">
                 </div>
                 <div class="col-6">
                     <label class="form-label">Last Name <span class="text-danger">*</span></label>
                     <input type="text" name="last_name" class="form-control" required
-                           value="<?= htmlspecialchars($reg_data['last_name'] ?? $g_last) ?>">
+                           value="<?= htmlspecialchars((string)($reg_data['last_name'] ?? $g_last)) ?>">
                 </div>
                 <div class="col-12">
                     <label class="form-label">Date of Birth <span class="text-danger">*</span></label>
                     <input type="date" name="date_of_birth" class="form-control" required
-                           value="<?= htmlspecialchars($reg_data['date_of_birth'] ?? '') ?>">
+                           value="<?= htmlspecialchars((string)($reg_data['date_of_birth'] ?? '')) ?>">
                 </div>
                 <div class="col-12">
                     <label class="form-label">Email</label>
@@ -324,7 +324,7 @@ if ($step === 'confirm' && ($sel['type'] ?? '') === 'claim') {
                 <div class="col-12">
                     <label class="form-label">Choose a Username <span class="text-danger">*</span></label>
                     <input type="text" name="username" class="form-control" required autocomplete="off"
-                           value="<?= htmlspecialchars($reg_data['username'] ?? '') ?>">
+                           value="<?= htmlspecialchars((string)($reg_data['username'] ?? '')) ?>">
                     <div class="form-text">Used for display within the portal.</div>
                 </div>
                 <div class="col-12">
@@ -469,19 +469,19 @@ if ($step === 'confirm' && ($sel['type'] ?? '') === 'claim') {
                 <div class="row g-2">
                     <div class="col-12">
                         <div class="c-label">Name</div>
-                        <div class="c-value fw-semibold"><?= hn($reg_data['first_name'].' '.$reg_data['last_name']) ?></div>
+                        <div class="c-value fw-semibold"><?= hn((string)$reg_data['first_name'].' '.(string)$reg_data['last_name']) ?></div>
                     </div>
                     <div class="col-6">
                         <div class="c-label">Username</div>
-                        <div class="c-value"><?= htmlspecialchars($reg_data['username']) ?></div>
+                        <div class="c-value"><?= htmlspecialchars((string)$reg_data['username']) ?></div>
                     </div>
                     <div class="col-6">
                         <div class="c-label">Date of Birth</div>
-                        <div class="c-value"><?= $reg_data['date_of_birth'] ? date('d M', strtotime($reg_data['date_of_birth'])) : '—' ?></div>
+                        <div class="c-value"><?= $reg_data['date_of_birth'] ? date('d M', strtotime((string)$reg_data['date_of_birth'])) : '—' ?></div>
                     </div>
                     <div class="col-12">
                         <div class="c-label">Email</div>
-                        <div class="c-value"><?= htmlspecialchars($reg_data['email']) ?></div>
+                        <div class="c-value"><?= htmlspecialchars((string)$reg_data['email']) ?></div>
                     </div>
                 </div>
             </div>
@@ -514,19 +514,19 @@ if ($step === 'confirm' && ($sel['type'] ?? '') === 'claim') {
                 <div class="row g-2">
                     <div class="col-12">
                         <div class="c-label">Name</div>
-                        <div class="c-value fw-semibold"><?= hn($reg_data['first_name'].' '.$reg_data['last_name']) ?></div>
+                        <div class="c-value fw-semibold"><?= hn((string)$reg_data['first_name'].' '.(string)$reg_data['last_name']) ?></div>
                     </div>
                     <div class="col-6">
                         <div class="c-label">Username</div>
-                        <div class="c-value"><?= htmlspecialchars($reg_data['username']) ?></div>
+                        <div class="c-value"><?= htmlspecialchars((string)$reg_data['username']) ?></div>
                     </div>
                     <div class="col-6">
                         <div class="c-label">Date of Birth</div>
-                        <div class="c-value"><?= $reg_data['date_of_birth'] ? date('d M', strtotime($reg_data['date_of_birth'])) : '—' ?></div>
+                        <div class="c-value"><?= $reg_data['date_of_birth'] ? date('d M', strtotime((string)$reg_data['date_of_birth'])) : '—' ?></div>
                     </div>
                     <div class="col-12">
                         <div class="c-label">Email</div>
-                        <div class="c-value"><?= htmlspecialchars($reg_data['email']) ?></div>
+                        <div class="c-value"><?= htmlspecialchars((string)$reg_data['email']) ?></div>
                     </div>
                 </div>
             </div>

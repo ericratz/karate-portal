@@ -1,3 +1,4 @@
+// @ts-check
 // Playwright globalSetup: snapshot the database before any tests run.
 // The snapshot is restored by global-teardown.js if tests fail.
 const { chromium } = require('@playwright/test');
@@ -11,10 +12,15 @@ const { ADMIN_USER, ADMIN_PASS, INST_USER, INST_PASS, STU_USER, STU_PASS, PARENT
 const SNAPSHOT    = path.join(__dirname, '.db-snapshot.sql');
 const STATUS_FILE = path.join(__dirname, '.test-status.json');
 
-/** Clear rate-limit table so localhost tests can always log in. */
+// Same env fork as helpers.js: native default vs. the app service inside ci.
+const BASE = process.env.TEST_BASE_URL || 'http://localhost/karate/portal';
+// clear_rate_limit.php sits at /karate/tests/, a sibling of /karate/portal/.
+const SITE_ROOT = BASE.replace(/\/portal\/?$/, '');
+
+/** Clear rate-limit table so tests can always log in. */
 function clearRateLimits() {
     return new Promise((resolve) => {
-        const req = http.get('http://localhost/karate/tests/clear_rate_limit.php', (res) => {
+        const req = http.get(`${SITE_ROOT}/tests/clear_rate_limit.php`, (res) => {
             res.resume();
             res.on('end', () => resolve());
         });
@@ -25,7 +31,6 @@ function clearRateLimits() {
 
 async function createAuthStates(authDir) {
     const browser = await chromium.launch({ headless: true });
-    const BASE = 'http://localhost/karate/portal';
     const roles = [
         ['admin',      ADMIN_USER,   ADMIN_PASS],
         ['instructor', INST_USER,    INST_PASS],

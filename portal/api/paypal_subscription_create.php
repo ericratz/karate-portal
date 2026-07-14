@@ -24,7 +24,7 @@ if (!$own) {
 }
 
 // Target defaults to the caller's own record; parents may pass a linked child
-$target_id = (int)($_POST['student_id'] ?? 0) ?: (int)$own['id'];
+$target_id = post_int('student_id') ?: (int)$own['id'];
 
 $allowed_ids = [(int)$own['id']];
 $ch = db()->prepare('SELECT child_student_id FROM student_guardians WHERE parent_student_id = ?');

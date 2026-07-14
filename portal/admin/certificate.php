@@ -3,8 +3,8 @@ require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/db.php';
 require_login();
 
-$student_id = (int)($_GET['student_id'] ?? 0);
-$rank_id    = (int)($_GET['rank_id']    ?? 0);
+$student_id = get_int('student_id');
+$rank_id    = get_int('rank_id');
 if (!$student_id || !$rank_id) { header('Location: ../student/index.php'); exit; }
 
 // Non-instructors may only view their own or their children's certificates
@@ -38,7 +38,7 @@ $rank = $rq->fetch();
 if (!$rank) { header('Location: ../instructor/student_profile.php'); exit; }
 
 $student_name = ucwords(strtolower($student['first_name'] . ' ' . $student['last_name']));
-$kyu_dan      = $rank['kyu_dan'];
+$kyu_dan      = (string)$rank['kyu_dan'];
 $achieved     = date('j M Y', strtotime($rank['achieved_date']));
 $cert_number  = $rank['cert_number'] ?? '';
 $pdf_filename = 'Certificate_' . preg_replace('/[^A-Za-z0-9_]/', '_', $student_name) . '_' . preg_replace('/[^A-Za-z0-9_]/', '_', $kyu_dan) . '.pdf';

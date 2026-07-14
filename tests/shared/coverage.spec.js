@@ -5,7 +5,7 @@ const { login, logout, visit, assertNoPhpErrors, BASE } = require('../helpers');
 
 test.describe.configure({ mode: 'serial' });
 
-const { ADMIN_USER, ADMIN_PASS, INST_USER, INST_PASS, STU_USER, STU_PASS, GUEST_USER, GUEST_PASS } = require('../credentials');
+const { ADMIN_USER, ADMIN_PASS, INST_USER, INST_PASS, STU_USER, STU_PASS } = require('../credentials');
 const NOTE_TEXT  = 'Playwright test note ' + Date.now();
 
 // ── LOGIN / LOGOUT ────────────────────────────────────────────────────────────

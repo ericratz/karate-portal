@@ -4,9 +4,9 @@ require_once __DIR__ . '/../includes/db.php';
 require_role('instructor', 'admin');
 
 // ── Delete session ───────────────────────────────────────────
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delete_session') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'delete_session') {
     verify_csrf();
-    $del_date = $_POST['session_date'] ?? '';
+    $del_date = post_str('session_date');
     if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $del_date)) {
         $sid_q = db()->prepare('SELECT id FROM class_sessions WHERE session_date = ?');
         $sid_q->execute([$del_date]);
@@ -21,21 +21,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
     exit;
 }
 
-$date      = $_GET['date'] ?? date('Y-m-d');
+$date      = get_str('date', date('Y-m-d'));
 if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
     $date = date('Y-m-d');
 }
-$highlight = (int)($_GET['highlight'] ?? 0);
+$highlight = get_int('highlight');
 
-$sort = in_array($_GET['sort'] ?? '', ['last_name','last_attended']) ? $_GET['sort'] : 'first_name';
+$sort = in_array(get_str('sort'), ['last_name','last_attended']) ? get_str('sort') : 'first_name';
 $msg  = '';
 
 // ── Save attendance ──────────────────────────────────────────
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     verify_csrf();
-    $post_date       = $_POST['session_date'] ?? '';
-    $post_class_type = in_array($_POST['class_type'] ?? '', ['class','seminar','private'])
-                       ? $_POST['class_type'] : 'class';
+    $post_date       = post_str('session_date');
+    $post_class_type = in_array(post_str('class_type'), ['class','seminar','private'])
+                       ? post_str('class_type') : 'class';
 
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $post_date)) {
         $msg = 'Invalid date.';
@@ -54,7 +54,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $session_id = $session_id->fetchColumn();
 
         // Save only present students — delete previous records then re-insert
-        $present_ids = array_map('intval', $_POST['present'] ?? []);
+        $post_present = $_POST['present'] ?? [];
+        $present_ids = array_map('intval', is_array($post_present) ? $post_present : []);
         $db->prepare('DELETE FROM attendance WHERE session_id = ?')->execute([$session_id]);
         $ins = $db->prepare(
             'INSERT INTO attendance (student_id, session_id, present, recorded_by) VALUES (?,?,1,?)'
@@ -76,7 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 if (isset($_GET['saved'])) {
-    $msg = 'Attendance saved for ' . date('d M Y', strtotime($date)) . ' — ' . (int)$_GET['saved'] . ' present.';
+    $msg = 'Attendance saved for ' . date('d M Y', strtotime($date)) . ' — ' . get_int('saved') . ' present.';
 } elseif (isset($_GET['removed'])) {
     $msg = 'No students were marked present, so the class for ' . date('d M Y', strtotime($date)) . ' was removed.';
 }

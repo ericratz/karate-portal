@@ -35,7 +35,7 @@ function csp_nonce(): string {
 }
 
 $__csp_nonce = csp_nonce();
-$__csp_report_url = (!empty($_SERVER['HTTPS']) ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . '/karate/portal/api/csp_report.php';
+$__csp_report_url = (!empty($_SERVER['HTTPS']) ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? '') . '/karate/portal/api/csp_report.php';
 header("Reporting-Endpoints: csp-endpoint=\"$__csp_report_url\"");
 header("Content-Security-Policy: default-src 'self'; script-src 'self' 'nonce-$__csp_nonce' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://www.paypal.com https://www.paypalobjects.com https://accounts.google.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; img-src 'self' data: https://www.paypalobjects.com; frame-src https://www.paypal.com https://accounts.google.com; connect-src 'self' https://www.paypal.com https://api.paypal.com https://api.sandbox.paypal.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; report-uri /karate/portal/api/csp_report.php; report-to csp-endpoint");
 
@@ -53,8 +53,9 @@ function csrf_input(): string {
 }
 
 function verify_csrf(): void {
-    if ($_SERVER['REQUEST_METHOD'] !== 'POST') return;
-    $token = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+    if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') return;
+    $token_raw = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+    $token = is_string($token_raw) ? $token_raw : '';
     if (!hash_equals(csrf_token(), $token)) {
         log_event('warning', 'security', 'CSRF token mismatch', ['uri' => $_SERVER['REQUEST_URI'] ?? '']);
         http_response_code(403);
@@ -86,10 +87,36 @@ function current_user_id(): ?int {
     return isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : null;
 }
 
+// ── Safe $_POST/$_GET scalar access ───────────────────────────
+// A malicious request can send field[]=x to make $_POST['field'] an array
+// instead of a string, which throws a TypeError in strict-typed functions
+// like trim()/strlen()/password_verify(). These helpers collapse anything
+// non-scalar to the default instead of passing it through.
+function post_str(string $key, string $default = ''): string {
+    $val = $_POST[$key] ?? $default;
+    return is_string($val) ? $val : $default;
+}
+
+function post_int(string $key, int $default = 0): int {
+    $val = $_POST[$key] ?? $default;
+    return is_scalar($val) ? (int)$val : $default;
+}
+
+function get_str(string $key, string $default = ''): string {
+    $val = $_GET[$key] ?? $default;
+    return is_string($val) ? $val : $default;
+}
+
+function get_int(string $key, int $default = 0): int {
+    $val = $_GET[$key] ?? $default;
+    return is_scalar($val) ? (int)$val : $default;
+}
+
 // ── Rate limiting ─────────────────────────────────────────────
+// rate_limit_exempt() lives in config.php so checkin.php (which doesn't load
+// auth.php) can use it too.
 function is_rate_limited(string $username, string $ip): bool {
-    // Never rate-limit localhost — allows test suite to run freely
-    if ($ip === '127.0.0.1' || $ip === '::1') return false;
+    if (rate_limit_exempt($ip)) return false;
     try {
         $stmt = db()->prepare(
             'SELECT COUNT(*) FROM login_attempts
@@ -150,6 +177,7 @@ function attempt_login(string $username, string $password): string {
     if (!$user || !password_verify($password, $user['password_hash'])) {
         record_failed_login($username, $ip);
         log_event('warning', 'auth', 'Login failed', ['username' => $username, 'ip' => $ip]);
+        audit('login_fail', 'user', null, "username=$username");
         return 'invalid';
     }
 
@@ -205,7 +233,7 @@ function logout(): void {
     if (ini_get('session.use_cookies')) {
         $p = session_get_cookie_params();
         setcookie(session_name(), '', time() - 3600,
-            $p['path'], $p['domain'], $p['secure'], $p['httponly']);
+            (string)$p['path'], (string)$p['domain'], (bool)$p['secure'], (bool)$p['httponly']);
     }
     session_destroy();
     header('Location: ' . SITE_URL . '/login.php');

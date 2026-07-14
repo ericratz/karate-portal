@@ -8,9 +8,9 @@ $msg   = '';
 $error = '';
 
 // ── Toggle active status ──────────────────────────────────────
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'toggle' ) {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'toggle' ) {
     verify_csrf();
-    $tog_id = (int)$_POST['id'];
+    $tog_id = post_int('id');
     if ($tog_id !== current_user_id()) {
         db()->prepare('UPDATE users SET active = IF(active=1,0,1) WHERE id=?')->execute([$tog_id]);
         audit('toggle_user_active', 'user', $tog_id);
@@ -20,18 +20,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'toggl
 }
 
 // ── Unlink a user from a student record ──────────────────────
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'unlink') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'unlink') {
     verify_csrf();
-    $unlink_id = (int)$_POST['id'];
+    $unlink_id = post_int('id');
     db()->prepare('UPDATE students SET user_id = NULL WHERE user_id = ?')->execute([$unlink_id]);
     header('Location: users.php?msg=unlinked');
     exit;
 }
 
 // ── Reset password ────────────────────────────────────────────
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reset_password'])) {
-    $uid  = (int)$_POST['user_id'];
-    $pass = trim($_POST['new_password'] ?? '');
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['reset_password'])) {
+    $uid  = post_int('user_id');
+    $pass = trim(post_str('new_password'));
     verify_csrf();
     if (!$uid || strlen($pass) < 8) {
         $error = 'Password must be at least 8 characters.';
@@ -44,10 +44,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reset_password'])) {
 }
 
 // ── Link a user to a student record ──────────────────────────
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['link_student'])) {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['link_student'])) {
     verify_csrf();
-    $uid = (int)$_POST['user_id'];
-    $sid = (int)$_POST['student_id'];
+    $uid = post_int('user_id');
+    $sid = post_int('student_id');
     if ($uid && $sid) {
         // Clear any existing link for this student or user
         db()->prepare('UPDATE students SET user_id = NULL WHERE user_id = ?')->execute([$uid]);

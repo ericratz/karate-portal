@@ -1,0 +1,22 @@
+# Keep build contexts lean and never bake secrets or host-specific installs
+# into images. vendor/ and node_modules/ are recreated by composer/npm at
+# build time; .env and credentials.js are mounted in at run time instead.
+.git
+.github
+node_modules
+portal/vendor
+portal/.psalm-cache
+portal/.phpunit.result.cache
+portal/composer.phar
+portal/composer-setup.php
+tests/report
+tests/results
+tests/.auth
+tests/.db-snapshot.sql
+tests/.test-status.json
+tests/node_modules
+.env
+tests/credentials.js
+backups
+migrations
+*.log

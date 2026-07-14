@@ -17,7 +17,7 @@ if ($r = $own->fetch()) {
     foreach ($ch->fetchAll() as $r) $allowed_ids[] = (int)$r['child_student_id'];
 }
 
-$student_id = (int)($_GET['student_id'] ?? 0);
+$student_id = get_int('student_id');
 if (!$student_id || !in_array($student_id, $allowed_ids, true)) {
     header('Location: index.php'); exit;
 }

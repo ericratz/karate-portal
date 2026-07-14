@@ -3,7 +3,7 @@ require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/db.php';
 require_role('admin');
 
-$student_id = (int)($_GET['student_id'] ?? 0);
+$student_id = get_int('student_id');
 
 // No student selected — combined Class Notes page:
 // roster of students with notes + the general class-notes log
@@ -11,9 +11,9 @@ if (!$student_id) {
     $msg = '';
 
     // Class notes — delete entry
-    if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delete') {
+    if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'delete') {
         verify_csrf();
-        db()->prepare('DELETE FROM general_notes WHERE id = ?')->execute([(int)$_POST['id']]);
+        db()->prepare('DELETE FROM general_notes WHERE id = ?')->execute([post_int('id')]);
         if (empty($_SERVER['HTTP_HX_REQUEST'])) {
             header('Location: student_notes.php');
             exit;
@@ -22,10 +22,10 @@ if (!$student_id) {
     }
 
     // Class notes — edit entry
-    if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'edit') {
+    if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'edit') {
         verify_csrf();
-        $note_id = (int)$_POST['id'];
-        $content = trim($_POST['content'] ?? '');
+        $note_id = post_int('id');
+        $content = trim(post_str('content'));
         if ($note_id && $content !== '') {
             db()->prepare('UPDATE general_notes SET content=?, updated_at=NOW() WHERE id=?')
                  ->execute([$content, $note_id]);
@@ -80,9 +80,9 @@ if (!$student_id) {
     }
 
     // Class notes — add entry
-    if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add') {
+    if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'add') {
         verify_csrf();
-        $content = trim($_POST['content'] ?? '');
+        $content = trim(post_str('content'));
         if ($content !== '') {
             db()->prepare(
                 'INSERT INTO general_notes (content, created_by) VALUES (?,?)'
@@ -417,10 +417,10 @@ if (!$student) { header('Location: student_notes.php'); exit; }
 $msg = '';
 
 // Delete note
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delete') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'delete') {
     verify_csrf();
     db()->prepare('DELETE FROM student_notes WHERE id = ? AND student_id = ?')
-         ->execute([(int)$_POST['id'], $student_id]);
+         ->execute([post_int('id'), $student_id]);
     if (empty($_SERVER['HTTP_HX_REQUEST'])) {
         header("Location: student_notes.php?student_id=$student_id");
         exit;
@@ -429,9 +429,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
 }
 
 // Add note
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['content'])) {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['content'])) {
     verify_csrf();
-    $content = trim($_POST['content'] ?? '');
+    $content = trim(post_str('content'));
     if ($content !== '') {
         db()->prepare(
             'INSERT INTO student_notes (student_id, content, created_by) VALUES (?,?,?)'

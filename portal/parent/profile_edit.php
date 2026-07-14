@@ -22,7 +22,7 @@ if ($own_row = $own_stmt->fetch()) {
 }
 
 // Accept student_id from GET or POST
-$student_id = (int)($_POST['student_id'] ?? $_GET['student_id'] ?? 0);
+$student_id = post_int('student_id') ?: get_int('student_id');
 if (!$student_id || !in_array($student_id, $allowed_ids, true)) {
     header('Location: index.php');
     exit;
@@ -31,15 +31,15 @@ if (!$student_id || !in_array($student_id, $allowed_ids, true)) {
 $msg = $error = '';
 $pw_msg = $pw_error = '';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     verify_csrf();
 }
 
 // ── Change password (for the parent's own login account) ─────────
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_password'])) {
-    $current = $_POST['current_password'] ?? '';
-    $new     = $_POST['new_password']     ?? '';
-    $confirm = $_POST['confirm_password'] ?? '';
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['change_password'])) {
+    $current = post_str('current_password');
+    $new     = post_str('new_password');
+    $confirm = post_str('confirm_password');
 
     $urow = db()->prepare('SELECT password_hash FROM users WHERE id = ?');
     $urow->execute([$user_id]);
@@ -61,20 +61,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_password'])) {
 
 if (isset($_GET['pw_changed'])) $pw_msg = 'Password updated successfully.';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_password'])) {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['change_password'])) {
     // Already handled above — skip profile save block below
-} elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
+} elseif (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
 
-    $first        = trim($_POST['first_name']    ?? '');
-    $last         = trim($_POST['last_name']     ?? '');
-    $dob          = $_POST['date_of_birth']      ?? '';
-    $phone        = trim($_POST['phone']         ?? '');
-    $email        = trim($_POST['email']         ?? '');
-    $ec_name      = trim($_POST['ec_name']       ?? '');
-    $ec_phone     = trim($_POST['ec_phone']      ?? '');
-    $street       = trim($_POST['street_address'] ?? '');
-    $csz          = trim($_POST['city_state_zip'] ?? '');
-    $medical_note = trim($_POST['medical_note']  ?? '');
+    $first        = trim(post_str('first_name'));
+    $last         = trim(post_str('last_name'));
+    $dob          = post_str('date_of_birth');
+    $phone        = trim(post_str('phone'));
+    $email        = trim(post_str('email'));
+    $ec_name      = trim(post_str('ec_name'));
+    $ec_phone     = trim(post_str('ec_phone'));
+    $street       = trim(post_str('street_address'));
+    $csz          = trim(post_str('city_state_zip'));
+    $medical_note = trim(post_str('medical_note'));
 
     if (!$first || !$last || !$dob) {
         $error = 'First name, last name, and date of birth are required.';

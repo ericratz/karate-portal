@@ -3,7 +3,7 @@ require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/db.php';
 require_role('admin');
 
-$lr_id = (int)($_GET['lr_id'] ?? $_POST['lr_id'] ?? 0);
+$lr_id = get_int('lr_id') ?: post_int('lr_id');
 if (!$lr_id) {
     header('Location: ./');
     exit;
@@ -34,9 +34,9 @@ if (!$lr) {
 $error = '';
 
 // ── POST: link user to selected real student ──────────────────────────────────
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     verify_csrf();
-    $real_student_id = (int)($_POST['real_student_id'] ?? 0);
+    $real_student_id = post_int('real_student_id');
 
     if (!$real_student_id) {
         $error = 'Please select a student record to link to.';

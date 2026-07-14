@@ -3,7 +3,7 @@ require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/db.php';
 require_role('student', 'parent', 'instructor', 'admin');
 
-$student_id = (int)($_GET['student_id'] ?? 0);
+$student_id = get_int('student_id');
 if (!$student_id) { header('Location: ../instructor/students.php'); exit; }
 
 // Students/parents may only view their own card or a linked child's — instructors/admins may view any.

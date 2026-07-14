@@ -1,7 +1,10 @@
+// @ts-check
 // Shared helpers for all test files
 const path = require('path');
 
-const BASE = 'http://localhost/karate/portal';
+// Env-driven so Playwright can run either natively (default localhost) or
+// inside the ci container against the app service (TEST_BASE_URL=http://app/...).
+const BASE = process.env.TEST_BASE_URL || 'http://localhost/karate/portal';
 
 const AUTH = {
     admin:      path.join(__dirname, '.auth', 'admin.json'),
@@ -13,17 +16,29 @@ const AUTH = {
 /**
  * Log in as a given role. Returns the page after landing on the dashboard.
  * Credentials must exist in your local DB.
+ * @param {import('@playwright/test').Page} page
+ * @param {string} username
+ * @param {string} password
+ * @returns {Promise<void>}
  */
 async function login(page, username, password) {
     await page.goto(BASE + '/login.php', { waitUntil: 'domcontentloaded' });
     await page.fill('input[name="username"]', username);
     await page.fill('input[name="password"]', password);
-    await page.click('button[type="submit"]');
-    await page.waitForLoadState('domcontentloaded');
+    // Race the click against the navigation it triggers — awaiting them
+    // sequentially can occasionally miss a fast navigation that completes
+    // before the second await starts listening, hanging until timeout.
+    await Promise.all([
+        page.waitForLoadState('domcontentloaded'),
+        page.click('button[type="submit"]'),
+    ]);
 }
 
 /**
  * Assert the page contains no PHP error/warning strings.
+ * @param {import('@playwright/test').Page} page
+ * @param {string} context
+ * @returns {Promise<void>}
  */
 async function assertNoPhpErrors(page, context) {
     const body = await page.textContent('body');
@@ -47,6 +62,10 @@ async function assertNoPhpErrors(page, context) {
 
 /**
  * Visit a URL, assert HTTP 200 and no PHP errors.
+ * @param {import('@playwright/test').Page} page
+ * @param {string} urlPath
+ * @param {string} [label]
+ * @returns {Promise<void>}
  */
 async function visit(page, urlPath, label) {
     const res = await page.goto(BASE + urlPath, { waitUntil: 'domcontentloaded' });
@@ -56,6 +75,11 @@ async function visit(page, urlPath, label) {
     await assertNoPhpErrors(page, label || urlPath);
 }
 
+/**
+ * Log out and land back on the login page.
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<void>}
+ */
 async function logout(page) {
     await page.goto(BASE + '/logout.php');
     await page.waitForLoadState('domcontentloaded');
@@ -65,6 +89,11 @@ async function logout(page) {
  * Delete a test student by finding their name in the admin student list,
  * navigating to their edit page, and clicking Delete Profile.
  * nameFragment should be unique enough to identify one row (e.g. a timestamp suffix).
+ * @param {import('@playwright/test').Page} page
+ * @param {string} nameFragment
+ * @param {string} adminUser
+ * @param {string} adminPass
+ * @returns {Promise<void>}
  */
 async function deleteTestStudent(page, nameFragment, adminUser, adminPass) {
     await login(page, adminUser, adminPass);
@@ -86,15 +115,23 @@ async function deleteTestStudent(page, nameFragment, adminUser, adminPass) {
     await page.waitForLoadState('domcontentloaded');
 }
 
-/** Get the CSRF token from the current page's first hidden csrf_token input. */
+/**
+ * Get the CSRF token from the current page's first hidden csrf_token input.
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<string>}
+ */
 async function getCsrfToken(page) {
-    return page.$eval('input[name="csrf_token"]', el => el.value).catch(() => '');
+    return page.$eval('input[name="csrf_token"]', el => /** @type {HTMLInputElement} */ (el).value).catch(() => '');
 }
 
 /**
  * POST to a portal URL using the page's session cookie (includes CSRF token).
  * page must already be logged in and on a page that has a csrf_token input.
  * Returns { status, body }.
+ * @param {import('@playwright/test').Page} page
+ * @param {string} path
+ * @param {Record<string, string>} params
+ * @returns {Promise<{status: number, body: string}>}
  */
 async function apiPost(page, path, params) {
     const token = await getCsrfToken(page);

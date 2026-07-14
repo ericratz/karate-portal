@@ -22,7 +22,7 @@ if (($_GET['download_backup'] ?? '') === '1') {
 
     $tables = $pdo->query('SHOW TABLES')->fetchAll(PDO::FETCH_COLUMN);
     foreach ($tables as $table) {
-        $safe = '`' . str_replace('`', '``', $table) . '`';
+        $safe = '`' . str_replace('`', '``', (string)$table) . '`';
 
         $row = $pdo->query("SHOW CREATE TABLE {$safe}")->fetch(PDO::FETCH_NUM);
         echo "-- Table: {$table}\n";
@@ -34,7 +34,7 @@ if (($_GET['download_backup'] ?? '') === '1') {
         $cols  = null;
         while ($data = $stmt->fetch(PDO::FETCH_ASSOC)) {
             if ($first) {
-                $cols  = implode(', ', array_map(fn($c) => '`' . str_replace('`', '``', $c) . '`', array_keys($data)));
+                $cols  = implode(', ', array_map(fn($c) => '`' . str_replace('`', '``', strval($c)) . '`', array_keys($data)));
                 $first = false;
             }
             $vals = array_map(fn($v) => $v === null ? 'NULL' : $pdo->quote($v), array_values($data));
@@ -49,11 +49,11 @@ if (($_GET['download_backup'] ?? '') === '1') {
     exit;
 }
 
-$tab = $_GET['tab'] ?? 'activity';
+$tab = get_str('tab', 'activity');
 if (!in_array($tab, ['activity', 'error', 'mail'], true)) $tab = 'activity';
 
 // ── Timeframe (shared across tabs) ──────────────────────────────
-$timeframe = $_GET['timeframe'] ?? 'day';
+$timeframe = get_str('timeframe', 'day');
 if (!in_array($timeframe, ['day', 'week', 'month', 'year', 'all'], true)) $timeframe = 'day';
 $timeframe_labels = ['day' => 'This Day', 'week' => 'This Week', 'month' => 'This Month', 'year' => 'This Year', 'all' => 'All Time'];
 $timeframe_since = [
@@ -65,19 +65,20 @@ $timeframe_since = [
 ][$timeframe];
 
 // ── Activity ──────────────────────────────────────────────────
-$a_action = $_GET['action'] ?? '';
-$a_user   = trim($_GET['user'] ?? '');
+$a_action = get_str('action');
+$a_user   = trim(get_str('user'));
 
 // ── Error ─────────────────────────────────────────────────────
-$e_level   = $_GET['level']   ?? '';
-$e_channel = $_GET['channel'] ?? '';
+$e_level   = get_str('level');
+$e_channel = get_str('channel');
 
 // ── Mail ──────────────────────────────────────────────────────
-$m_status = $_GET['status'] ?? '';
-$m_type   = $_GET['type']   ?? '';
+$m_status = get_str('status');
+$m_type   = get_str('type');
 
 // ── Fetch only the active tab ─────────────────────────────────
 $entries = $logs = $mails = [];
+$a_actions = $a_users = $e_levels = $e_channels = $m_types = [];
 $LIMIT = 500;
 
 if ($tab === 'activity') {
@@ -176,7 +177,7 @@ include __DIR__ . '/../includes/header.php';
                 <label class="form-label small mb-1">Action</label>
                 <select name="action" class="form-select form-select-sm js-live-filter">
                     <option value="">All Actions</option>
-                    <?php foreach ($a_actions as $a): ?>
+                    <?php foreach ($a_actions as $a): $a = (string)$a; ?>
                     <option value="<?= htmlspecialchars($a) ?>" <?= $a_action === $a ? 'selected' : '' ?>>
                         <?= htmlspecialchars($a) ?>
                     </option>
@@ -276,7 +277,7 @@ include __DIR__ . '/../includes/header.php';
                 <label class="form-label small mb-1">Level</label>
                 <select name="level" class="form-select form-select-sm js-live-filter">
                     <option value="">All Levels</option>
-                    <?php foreach ($e_levels as $l): ?>
+                    <?php foreach ($e_levels as $l): $l = (string)$l; ?>
                     <option value="<?= htmlspecialchars($l) ?>" <?= $e_level === $l ? 'selected' : '' ?>>
                         <?= ucfirst($l) ?>
                     </option>
@@ -287,7 +288,7 @@ include __DIR__ . '/../includes/header.php';
                 <label class="form-label small mb-1">Channel</label>
                 <select name="channel" class="form-select form-select-sm js-live-filter">
                     <option value="">All Channels</option>
-                    <?php foreach ($e_channels as $ch): ?>
+                    <?php foreach ($e_channels as $ch): $ch = (string)$ch; ?>
                     <option value="<?= htmlspecialchars($ch) ?>" <?= $e_channel === $ch ? 'selected' : '' ?>>
                         <?= ucfirst($ch) ?>
                     </option>
@@ -377,7 +378,7 @@ include __DIR__ . '/../includes/header.php';
                 <label class="form-label small mb-1">Type</label>
                 <select name="type" class="form-select form-select-sm js-live-filter">
                     <option value="">All Types</option>
-                    <?php foreach ($m_types as $t): ?>
+                    <?php foreach ($m_types as $t): $t = (string)$t; ?>
                     <option value="<?= htmlspecialchars($t) ?>" <?= $m_type === $t ? 'selected' : '' ?>>
                         <?= ucwords(str_replace('_', ' ', $t)) ?>
                     </option>
@@ -416,7 +417,7 @@ include __DIR__ . '/../includes/header.php';
                 <td class="text-nowrap small text-muted"><?= date('d M Y g:i a', strtotime($row['sent_at'])) ?></td>
                 <td class="small"><?= htmlspecialchars($row['to_email']) ?></td>
                 <td class="small"><?= htmlspecialchars($row['subject']) ?></td>
-                <td><span class="badge bg-secondary"><?= htmlspecialchars(ucwords(str_replace('_', ' ', $row['type']))) ?></span></td>
+                <td><span class="badge bg-secondary"><?= htmlspecialchars(ucwords(str_replace('_', ' ', (string)$row['type']))) ?></span></td>
                 <td>
                     <?php if ($row['status'] === 'sent'): ?>
                         <span class="text-success fw-semibold small">✓ sent</span>

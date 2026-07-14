@@ -5,7 +5,7 @@ function mask_email(string $email): string {
     if (strpos($email, '@') === false) return '***';
     $parts  = explode('@', $email, 2);
     $local  = $parts[0];
-    $domain = $parts[1];
+    $domain = $parts[1] ?? '';
     return substr($local, 0, 1) . '***@' . $domain;
 }
 

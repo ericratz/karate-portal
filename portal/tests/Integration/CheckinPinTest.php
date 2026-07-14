@@ -60,8 +60,8 @@ class CheckinPinTest extends TestCase
         $this->assertNotFalse($row, 'Row should be retrievable via LIKE query');
         $parts = explode(':', $row['identifier'], 3);
         $this->assertSame('pin',   $parts[0]);
-        $this->assertSame($ip,     $parts[1]);
-        $this->assertSame($guess,  $parts[2]);
+        $this->assertSame($ip,     $parts[1] ?? null);
+        $this->assertSame($guess,  $parts[2] ?? null);
     }
 
     public function test_guess_with_colons_is_stored_intact(): void
@@ -81,7 +81,7 @@ class CheckinPinTest extends TestCase
 
         $this->assertNotFalse($row);
         $parts = explode(':', $row['identifier'], 3); // limit=3 keeps guess intact
-        $this->assertSame($guess, $parts[2]);
+        $this->assertSame($guess, $parts[2] ?? null);
     }
 
     // ── LIKE query counts correctly ───────────────────────────────────────────
@@ -200,7 +200,7 @@ class CheckinPinTest extends TestCase
         $parts = explode(':', $identifier, 3);
 
         $this->assertSame('pin',        $parts[0]);
-        $this->assertSame(self::TEST_IP, $parts[1]);
+        $this->assertSame(self::TEST_IP, $parts[1] ?? null);
         // $parts[2] is missing — PHP returns '—' as the fallback display value
         $this->assertArrayNotHasKey(2, $parts);
     }

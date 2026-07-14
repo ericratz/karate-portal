@@ -3,10 +3,10 @@ require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/db.php';
 require_role('admin');
 
-$f_level   = $_GET['level']   ?? '';
-$f_channel = $_GET['channel'] ?? '';
-$f_from    = $_GET['from']    ?? '';
-$f_to      = $_GET['to']      ?? '';
+$f_level   = get_str('level');
+$f_channel = get_str('channel');
+$f_from    = get_str('from');
+$f_to      = get_str('to');
 
 $where  = [];
 $params = [];

@@ -5,9 +5,9 @@ require_role('admin');
 
 $msg = $error = '';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     verify_csrf();
-    $new_pin = trim($_POST['pin'] ?? '');
+    $new_pin = trim(post_str('pin'));
     if ($new_pin === '') {
         $error = 'PIN cannot be empty.';
     } else {

@@ -1,3 +1,4 @@
+// @ts-check
 // Playwright globalTeardown: always restore the DB snapshot after every run.
 // This ensures tests never leave behind junk (fake accounts, stale records, etc.).
 const { spawnSync } = require('child_process');

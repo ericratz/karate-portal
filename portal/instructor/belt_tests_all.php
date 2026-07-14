@@ -4,9 +4,9 @@ require_once __DIR__ . '/../includes/db.php';
 require_role('instructor', 'admin');
 
 // Delete
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delete') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'delete') {
     verify_csrf();
-    $del_id = (int)$_POST['id'];
+    $del_id = post_int('id');
     db()->prepare('DELETE FROM belt_tests WHERE id=?')->execute([$del_id]);
     audit('delete_belt_test', 'belt_test', $del_id);
     if (empty($_SERVER['HTTP_HX_REQUEST'])) {
@@ -17,9 +17,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
 }
 
 // Filters
-$f_student = (int)($_GET['student_id'] ?? 0);
-$f_result  = $_GET['result'] ?? '';
-$f_year    = (int)($_GET['year'] ?? 0);
+$f_student = get_int('student_id');
+$f_result  = get_str('result');
+$f_year    = get_int('year');
 $filtering = $f_student || $f_result !== '' || $f_year !== 0;
 
 $where  = ['1=1'];

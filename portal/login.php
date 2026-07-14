@@ -10,9 +10,9 @@ if (!empty($_SESSION['user_id'])) {
 
 $error = '';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $username = trim($_POST['username'] ?? '');
-    $password = $_POST['password'] ?? '';
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
+    $username = trim(post_str('username'));
+    $password = post_str('password');
 
     if ($username === '' || $password === '') {
         $error = 'Please enter your username and password.';
@@ -108,7 +108,7 @@ if (defined('GOOGLE_CLIENT_ID') && GOOGLE_CLIENT_ID !== '') {
                     <label for="username" class="form-label">Username</label>
                     <input type="text" id="username" name="username"
                            class="form-control" autocomplete="username"
-                           value="<?= htmlspecialchars($_POST['username'] ?? '') ?>"
+                           value="<?= htmlspecialchars(post_str('username')) ?>"
                            autofocus required>
                 </div>
                 <div class="mb-4">

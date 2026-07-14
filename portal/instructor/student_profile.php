@@ -4,7 +4,7 @@ require_once __DIR__ . '/../includes/db.php';
 require_role('student', 'instructor', 'admin');
 function fmt_phone(string $p): string { $d = preg_replace('/\D/', '', $p); return strlen($d) === 10 ? substr($d,0,3).'-'.substr($d,3,3).'-'.substr($d,6) : $p; }
 
-$id = (int)($_GET['id'] ?? 0);
+$id = get_int('id');
 if (!$id) { header('Location: index.php'); exit; }
 
 // Students may only view their own profile
@@ -20,9 +20,9 @@ if (has_role('student') && !has_role('instructor', 'admin')) {
 
 // Instructor/Admin: add a note (write-only for instructors)
 $note_error = '';
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add_note') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'add_note') {
     verify_csrf();
-    $content = trim($_POST['note_content'] ?? '');
+    $content = trim(post_str('note_content'));
     if ($content === '') {
         $note_error = 'Note cannot be empty.';
     } else {
@@ -38,10 +38,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add_n
 }
 
 // Instructor/Admin: bulk update attendance from checkboxes
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'update_attendance') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'update_attendance') {
     verify_csrf();
     if (!has_role('instructor', 'admin')) { header("Location: student_profile.php?id=$id"); exit; }
-    $present_ids = array_map('intval', $_POST['att_present'] ?? []);
+    $att_present = $_POST['att_present'] ?? [];
+    $present_ids = array_map('intval', is_array($att_present) ? $att_present : []);
     $all_sessions = db()->query('SELECT id FROM class_sessions')->fetchAll(PDO::FETCH_COLUMN);
     $upsert = db()->prepare(
         'INSERT INTO attendance (student_id, session_id, present, recorded_by)
@@ -71,21 +72,21 @@ $profile_saved  = false;
 $note_just_added = $note_just_added ?? false;
 
 // Own-profile edit (student or instructor viewing their own record)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'update_profile') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'update_profile') {
     verify_csrf();
     if ((int)($student['user_id'] ?? 0) !== current_user_id()) {
         header("Location: student_profile.php?id=$id"); exit;
     }
-    $first    = trim($_POST['first_name']     ?? '');
-    $last     = trim($_POST['last_name']      ?? '');
-    $dob      = $_POST['date_of_birth']       ?? '';
-    $phone    = trim($_POST['phone']          ?? '');
-    $email    = trim($_POST['email']          ?? '');
-    $ec_name  = trim($_POST['ec_name']        ?? '');
-    $ec_phone = trim($_POST['ec_phone']       ?? '');
-    $street   = trim($_POST['street_address'] ?? '');
-    $csz      = trim($_POST['city_state_zip'] ?? '');
-    $medical  = trim($_POST['medical_note']   ?? '');
+    $first    = trim(post_str('first_name'));
+    $last     = trim(post_str('last_name'));
+    $dob      = post_str('date_of_birth');
+    $phone    = trim(post_str('phone'));
+    $email    = trim(post_str('email'));
+    $ec_name  = trim(post_str('ec_name'));
+    $ec_phone = trim(post_str('ec_phone'));
+    $street   = trim(post_str('street_address'));
+    $csz      = trim(post_str('city_state_zip'));
+    $medical  = trim(post_str('medical_note'));
     if (!$first || !$last) {
         $profile_error = 'First and last name are required.';
     } else {
@@ -514,7 +515,7 @@ include __DIR__ . '/../includes/header.php';
                     <?php foreach ($payments as $p): ?>
                         <tr>
                             <td><?= date('d M Y', strtotime($p['payment_date'])) ?></td>
-                            <td><?= ucwords(str_replace('_', ' ', $p['payment_type'])) ?></td>
+                            <td><?= ucwords(str_replace('_', ' ', (string)$p['payment_type'])) ?></td>
                             <td><?= ucfirst($p['payment_method']) ?></td>
                             <td class="text-end">$<?= number_format($p['amount'], 2) ?></td>
                         </tr>

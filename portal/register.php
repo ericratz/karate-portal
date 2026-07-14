@@ -13,7 +13,7 @@ $error = '';
 
 // ─── POST Handlers ────────────────────────────────────────────────────────────
 
-$action = ($_SERVER['REQUEST_METHOD'] === 'POST') ? ($_POST['action'] ?? '') : '';
+$action = (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') ? post_str('action') : '';
 
 if ($action === 'back1') {
     // Back to form — clear all pending registration data
@@ -28,7 +28,7 @@ if ($action === 'back1') {
 
     // Rate limit: max 5 registration attempts per hour per IP
     $reg_ip = $_SERVER['REMOTE_ADDR'] ?? '';
-    if ($reg_ip !== '127.0.0.1' && $reg_ip !== '::1') {
+    if (!rate_limit_exempt($reg_ip)) {
         $rl = db()->prepare(
             "SELECT COUNT(*) FROM login_attempts WHERE identifier = ? AND attempted_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)"
         );
@@ -39,13 +39,13 @@ if ($action === 'back1') {
     }
 
     if (!$error) {
-    $first    = trim($_POST['first_name']    ?? '');
-    $last     = trim($_POST['last_name']     ?? '');
-    $dob      = trim($_POST['date_of_birth'] ?? '');
-    $email    = strtolower(trim($_POST['email'] ?? ''));
-    $username = trim($_POST['username']      ?? '');
-    $password = $_POST['password']           ?? '';
-    $confirm  = $_POST['confirm']            ?? '';
+    $first    = trim(post_str('first_name'));
+    $last     = trim(post_str('last_name'));
+    $dob      = trim(post_str('date_of_birth'));
+    $email    = strtolower(trim(post_str('email')));
+    $username = trim(post_str('username'));
+    $password = post_str('password');
+    $confirm  = post_str('confirm');
 
     if (!$first || !$last || !$dob || !$email || !$username || !$password) {
         $error = 'All fields are required.';
@@ -78,7 +78,7 @@ if ($action === 'back1') {
         }
     }
     // Record attempt regardless of validation outcome (prevents bot spam)
-    if ($reg_ip !== '127.0.0.1' && $reg_ip !== '::1') {
+    if (!rate_limit_exempt($reg_ip)) {
         try {
             db()->prepare("INSERT INTO login_attempts (identifier) VALUES (?)")->execute(['reg:' . $reg_ip]);
         } catch (Exception $e) {}
@@ -87,8 +87,8 @@ if ($action === 'back1') {
 
 } elseif ($action === 'select') {
     verify_csrf();
-    $sel_type   = $_POST['selection_type'] ?? '';
-    $student_id = (int)($_POST['student_id'] ?? 0);
+    $sel_type   = post_str('selection_type');
+    $student_id = post_int('student_id');
 
     if (!in_array($sel_type, ['claim', 'new', 'not_listed'], true)) {
         $error = 'Please make a selection to continue.';

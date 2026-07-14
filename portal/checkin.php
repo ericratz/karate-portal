@@ -17,7 +17,7 @@ function csp_nonce(): string {
 }
 
 $__csp_nonce = csp_nonce();
-$__csp_report_url = (!empty($_SERVER['HTTPS']) ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . '/karate/portal/api/csp_report.php';
+$__csp_report_url = (!empty($_SERVER['HTTPS']) ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? '') . '/karate/portal/api/csp_report.php';
 header("Reporting-Endpoints: csp-endpoint=\"$__csp_report_url\"");
 header("Content-Security-Policy: default-src 'self'; script-src 'self' 'nonce-$__csp_nonce' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://www.paypal.com https://www.paypalobjects.com https://accounts.google.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; img-src 'self' data: https://www.paypalobjects.com; frame-src https://www.paypal.com https://accounts.google.com; connect-src 'self' https://www.paypal.com https://api.paypal.com https://api.sandbox.paypal.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; report-uri /karate/portal/api/csp_report.php; report-to csp-endpoint");
 
@@ -30,7 +30,7 @@ function get_checkin_pin(): string {
 }
 
 function pin_rate_limited(string $ip): bool {
-    if ($ip === '127.0.0.1' || $ip === '::1') return false;
+    if (rate_limit_exempt($ip)) return false;
     try {
         $stmt = db()->prepare(
             "SELECT COUNT(*) FROM login_attempts
@@ -55,8 +55,9 @@ function record_failed_pin(string $ip, string $guess): void {
 $pin_ok    = ($_SESSION['checkin_pin_date'] ?? '') === $date;
 $pin_error = '';
 
-if (!$pin_ok && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'pin') {
-    $guess = trim($_POST['pin'] ?? '');
+if (!$pin_ok && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'pin') {
+    $pin_raw = $_POST['pin'] ?? '';
+    $guess   = trim(is_string($pin_raw) ? $pin_raw : '');
     if (pin_rate_limited($ip)) {
         $pin_error = 'Too many attempts. Try again in 15 minutes.';
     } elseif ($guess === get_checkin_pin()) {
@@ -91,17 +92,21 @@ if ($pin_ok) {
         "SELECT id, first_name, last_name FROM students ORDER BY last_name, first_name"
     )->fetchAll();
 
-    $flash          = $_SESSION['checkin_flash'] ?? null;
+    $flash_raw = $_SESSION['checkin_flash'] ?? null;
+    $flash     = is_array($flash_raw) ? $flash_raw : [];
     unset($_SESSION['checkin_flash']);
 
-    $checked_in      = ($flash['status'] ?? '') === 'ok';
-    $already_present = ($flash['status'] ?? '') === 'already';
-    $error           = $flash['error'] ?? '';
     $student         = $flash['student'] ?? null;
+    $student         = is_array($student) ? $student : null;
+    $checked_in      = ($flash['status'] ?? '') === 'ok' && $student !== null;
+    $already_present = ($flash['status'] ?? '') === 'already' && $student !== null;
+    $error           = $flash['error'] ?? '';
 
-    if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== 'pin') {
-        $student_id = (int)($_POST['student_id'] ?? 0);
-        $action     = $_POST['action'] ?? 'checkin';
+    if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') !== 'pin') {
+        $student_id_raw = $_POST['student_id'] ?? 0;
+        $student_id = is_scalar($student_id_raw) ? (int)$student_id_raw : 0;
+        $action_raw = $_POST['action'] ?? 'checkin';
+        $action     = is_string($action_raw) ? $action_raw : 'checkin';
 
         if (!$student_id) {
             $_SESSION['checkin_flash'] = ['error' => 'Please select your name.'];
@@ -216,14 +221,14 @@ body { background: #f5f5f5; }
     <?php else: ?>
     <!-- ── Check-in UI ── -->
 
-    <?php if ($checked_in): ?>
+    <?php if ($checked_in && $student): ?>
     <div class="card border-0 shadow text-center p-4 mb-4">
         <div class="big-check mb-2">✅</div>
         <h4 class="fw-bold"><?= fmt_name($student) ?></h4>
         <p class="text-success fw-semibold mb-3">Checked in successfully!</p>
         <a href="checkin.php" class="btn btn-outline-secondary btn-sm">Check in another student</a>
     </div>
-    <?php elseif ($already_present): ?>
+    <?php elseif ($already_present && $student): ?>
     <div class="card border-0 shadow text-center p-4 mb-4">
         <div class="big-check mb-2">✅</div>
         <h4 class="fw-bold"><?= fmt_name($student) ?></h4>

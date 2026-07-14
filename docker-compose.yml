@@ -1,0 +1,108 @@
+# Containerized stack for the Karate Portal: app + db + CI toolchain, plus
+# opt-in security scanners. Replaces the native XAMPP / Node / vendor-junction
+# setup so dev and CI run the same reproducible images.
+#
+# Compose auto-loads the repo-root .env, so ${DB_*} below come from the same
+# file the app itself reads. Set APP_PORT if host port 80 is taken.
+
+services:
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASS}
+      MYSQL_DATABASE: ${DB_NAME}
+    volumes:
+      # Auto-imported on first start of a fresh volume (replaces the manual
+      # "SOURCE ..." step from the README). Defaults to the bare fresh-install
+      # schema; set DB_INIT_FILE in .env to a real backup to seed real data
+      # (e.g. DB_INIT_FILE=./backups/karate_backup_YYYY-MM-DD.sql).
+      - ${DB_INIT_FILE:-./karate_schema.sql}:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - dbdata:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_PASS}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  app:
+    build:
+      context: .
+      dockerfile: docker/app.Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${APP_PORT:-80}:80"
+    environment:
+      # Override the .env's localhost — db.php/config.php prefer real env vars.
+      # This is what lets the same .env serve native XAMPP and the container.
+      DB_HOST: db
+      # Server-side redirects (logout, post-login, auth guards) must point back
+      # at the app on the Compose network, not localhost, so Playwright in the
+      # ci container isn't bounced to its own (empty) localhost.
+      SITE_URL: http://app/karate/portal
+      # The test client (ci container) isn't localhost, so it can't use the
+      # built-in localhost rate-limit exemption. Dev/CI container only.
+      RATELIMIT_DISABLED: "1"
+    volumes:
+      # DB creds mounted (not baked) so the image carries no secrets and the
+      # same image works against any DB.
+      - ./.env:/var/www/html/karate/.env:ro
+    healthcheck:
+      # login.php touches the DB, so a 200 proves app+db are both wired up.
+      # Lets `docker compose up --wait` gate readiness without a host port
+      # (CI publishes a random port to avoid the host's port-80 clash).
+      test: ["CMD", "curl", "-fsS", "http://localhost/karate/portal/login.php"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  ci:
+    build:
+      context: .
+      dockerfile: docker/ci.Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      TEST_BASE_URL: http://app/karate/portal
+      DB_HOST: db      # snapshot/restore + PHPUnit reach the db service
+      # Containerized runs share host resources — fewer workers + retries keeps
+      # the suite stable (native runs keep 6 workers / 0 retries by default).
+      PW_WORKERS: "4"
+      PW_RETRIES: "2"
+    volumes:
+      # Edited specs and DB creds flow in without a rebuild; reports flow out.
+      - ./tests:/app/tests
+      - ./.env:/app/.env:ro
+
+  # ── Security scanners (Phase 2) ────────────────────────────────────────────
+  # Never start on `docker compose up` — only via explicit
+  #   docker compose run --rm <service>
+  # All target the app service by its Compose DNS name.
+  nmap:
+    image: instrumentisto/nmap
+    profiles: ["security"]
+    depends_on: [app]
+    command: ["-sV", "-Pn", "app"]
+
+  nikto:
+    image: ghcr.io/sullo/nikto:latest
+    profiles: ["security"]
+    depends_on: [app]
+    command: ["-h", "http://app/karate/portal/login.php"]
+
+  zap:
+    image: ghcr.io/zaproxy/zaproxy:stable
+    profiles: ["security"]
+    depends_on: [app]
+    volumes:
+      - ./docker/zap:/zap/wrk:rw
+    command: >
+      zap-baseline.py -t http://app/karate/portal/login.php
+      -c zap-baseline.conf -I
+
+volumes:
+  dbdata:

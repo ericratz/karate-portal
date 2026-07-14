@@ -18,15 +18,16 @@ function sync_registration_status(int $student_id): void {
     }
 }
 
-$id    = (int)($_GET['id'] ?? 0);
-$ref   = $_GET['ref'] ?? '';
+$id    = get_int('id');
+$ref   = get_str('ref');
 $msg   = '';
 $error = '';
 
 // Bulk update attendance from checkboxes
-if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'update_attendance') {
+if ($id && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'update_attendance') {
     verify_csrf();
-    $present_ids = array_map('intval', $_POST['att_present'] ?? []);
+    $att_present = $_POST['att_present'] ?? [];
+    $present_ids = array_map('intval', is_array($att_present) ? $att_present : []);
     $all_sessions = db()->query('SELECT id FROM class_sessions')->fetchAll(PDO::FETCH_COLUMN);
     $upsert = db()->prepare(
         'INSERT INTO attendance (student_id, session_id, present, recorded_by)
@@ -46,73 +47,73 @@ if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ===
     }
     audit('update_attendance', 'student', $id);
     if (empty($_SERVER['HTTP_HX_REQUEST'])) {
-        header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
+        header("Location: student_edit.php?id=$id&ref=" . urlencode(get_str('ref', 'students')));
         exit;
     }
 }
 
 // Add a note
-if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add_note') {
+if ($id && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'add_note') {
     verify_csrf();
-    $content = trim($_POST['note_content'] ?? '');
+    $content = trim(post_str('note_content'));
     if ($content !== '') {
         db()->prepare('INSERT INTO student_notes (student_id, content, created_by) VALUES (?,?,?)')
              ->execute([$id, $content, current_user_id()]);
     }
     if (empty($_SERVER['HTTP_HX_REQUEST'])) {
-        header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
+        header("Location: student_edit.php?id=$id&ref=" . urlencode(get_str('ref', 'students')));
         exit;
     }
 }
 
 // Edit a note
-if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'edit_note') {
+if ($id && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'edit_note') {
     verify_csrf();
-    $note_id = (int)$_POST['note_id'];
-    $content = trim($_POST['note_content'] ?? '');
+    $note_id = post_int('note_id');
+    $content = trim(post_str('note_content'));
     if ($note_id && $content !== '') {
         db()->prepare('UPDATE student_notes SET content=? WHERE id=? AND student_id=?')
              ->execute([$content, $note_id, $id]);
     }
     if (empty($_SERVER['HTTP_HX_REQUEST'])) {
-        header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
+        header("Location: student_edit.php?id=$id&ref=" . urlencode(get_str('ref', 'students')));
         exit;
     }
 }
 
 // Delete a note
-if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delete_note') {
+if ($id && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'delete_note') {
     verify_csrf();
-    $note_id = (int)$_POST['note_id'];
+    $note_id = post_int('note_id');
     if ($note_id) {
         db()->prepare('DELETE FROM student_notes WHERE id=? AND student_id=?')
              ->execute([$note_id, $id]);
     }
     if (empty($_SERVER['HTTP_HX_REQUEST'])) {
-        header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
+        header("Location: student_edit.php?id=$id&ref=" . urlencode(get_str('ref', 'students')));
         exit;
     }
 }
 
 // Delete payment waiver
-if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delete_waiver') {
+if ($id && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'delete_waiver') {
     verify_csrf();
-    $wid = (int)$_POST['waiver_id'];
+    $wid = post_int('waiver_id');
     db()->prepare('DELETE FROM payment_waivers WHERE id=? AND student_id=?')->execute([$wid, $id]);
     audit('delete_waiver', 'waiver', $wid);
     if (empty($_SERVER['HTTP_HX_REQUEST'])) {
-        header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
+        header("Location: student_edit.php?id=$id&ref=" . urlencode(get_str('ref', 'students')));
         exit;
     }
 }
 
 // Edit payment waiver
-if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'edit_waiver') {
+if ($id && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'edit_waiver') {
     verify_csrf();
-    $wid    = (int)$_POST['waiver_id'];
-    $type   = $_POST['waiver_type']  ?? '';
-    $date   = $_POST['granted_date'] ?? date('Y-m-d');
-    $reason = trim($_POST['reason']  ?? '');
+    $wid    = post_int('waiver_id');
+    $type   = post_str('waiver_type');
+    $date   = post_str('granted_date', date('Y-m-d'));
+    $reason = trim(post_str('reason'));
     $valid_types = ['monthly_tuition','registration','belt_test','slc_training','seminar','all'];
     if ($wid && in_array($type, $valid_types)) {
         db()->prepare(
@@ -121,32 +122,32 @@ if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ===
         audit('edit_waiver', 'waiver', $wid, "type=$type");
     }
     if (empty($_SERVER['HTTP_HX_REQUEST'])) {
-        header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
+        header("Location: student_edit.php?id=$id&ref=" . urlencode(get_str('ref', 'students')));
         exit;
     }
 }
 
 // Delete payment
-if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delete_payment') {
+if ($id && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'delete_payment') {
     verify_csrf();
-    $pid = (int)$_POST['payment_id'];
+    $pid = post_int('payment_id');
     db()->prepare('DELETE FROM payments WHERE id=? AND student_id=?')->execute([$pid, $id]);
     audit('delete_payment', 'payment', $pid);
     sync_registration_status($id);
     if (empty($_SERVER['HTTP_HX_REQUEST'])) {
-        header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
+        header("Location: student_edit.php?id=$id&ref=" . urlencode(get_str('ref', 'students')));
         exit;
     }
 }
 
 // Edit payment
-if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'edit_payment') {
+if ($id && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'edit_payment') {
     verify_csrf();
-    $pid        = (int)$_POST['payment_id'];
-    $pay_date   = $_POST['payment_date']   ?? date('Y-m-d');
-    $pay_type   = $_POST['payment_type']   ?? 'monthly_tuition';
-    $pay_method = $_POST['payment_method'] ?? 'cash';
-    $amount     = (float)($_POST['amount'] ?? 0);
+    $pid        = post_int('payment_id');
+    $pay_date   = post_str('payment_date', date('Y-m-d'));
+    $pay_type   = post_str('payment_type', 'monthly_tuition');
+    $pay_method = post_str('payment_method', 'cash');
+    $amount     = (float)post_str('amount', '0');
     $valid_types   = ['monthly_tuition','registration','belt_test','slc_training','seminar','other','donation'];
     $valid_methods = ['paypal','cash','check','mail'];
     if ($amount > 0 && in_array($pay_type, $valid_types) && in_array($pay_method, $valid_methods)) {
@@ -161,18 +162,18 @@ if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ===
         sync_registration_status($id);
     }
     if (empty($_SERVER['HTTP_HX_REQUEST'])) {
-        header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
+        header("Location: student_edit.php?id=$id&ref=" . urlencode(get_str('ref', 'students')));
         exit;
     }
 }
 
 // Add payment
-if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add_payment') {
+if ($id && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'add_payment') {
     verify_csrf();
-    $pay_date   = $_POST['payment_date']   ?? date('Y-m-d');
-    $pay_type   = $_POST['payment_type']   ?? 'monthly_tuition';
-    $pay_method = $_POST['payment_method'] ?? 'cash';
-    $amount     = (float)($_POST['amount'] ?? 0);
+    $pay_date   = post_str('payment_date', date('Y-m-d'));
+    $pay_type   = post_str('payment_type', 'monthly_tuition');
+    $pay_method = post_str('payment_method', 'cash');
+    $amount     = (float)post_str('amount', '0');
     $dup_count  = 0;
     if ($amount > 0) {
         // Duplicate check (warning only, never blocks): tuition already
@@ -202,13 +203,13 @@ if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ===
     }
     if (empty($_SERVER['HTTP_HX_REQUEST'])) {
         $dup_param = $dup_count > 0 ? '&dup=' . ($dup_count + 1) : '';
-        header("Location: student_edit.php?id=$id$dup_param&ref=" . urlencode($_GET['ref'] ?? 'students'));
+        header("Location: student_edit.php?id=$id$dup_param&ref=" . urlencode(get_str('ref', 'students')));
         exit;
     }
 }
 
 // Delete student profile + linked user account
-if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delete_profile') {
+if ($id && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'delete_profile') {
     verify_csrf();
     $uid_stmt = db()->prepare('SELECT user_id, first_name, last_name FROM students WHERE id = ?');
     $uid_stmt->execute([$id]);
@@ -228,24 +229,24 @@ if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ===
 // ── Per-card save handlers ────────────────────────────────────────
 
 // Update student profile info
-if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'update_profile') {
+if ($id && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'update_profile') {
     verify_csrf();
-    $first    = trim($_POST['first_name'] ?? '');
-    $last     = trim($_POST['last_name']  ?? '');
-    $dob      = $_POST['date_of_birth']   ?? '';
-    $phone    = trim($_POST['phone']      ?? '');
-    $email    = trim($_POST['email']      ?? '');
-    $ec_name  = trim($_POST['ec_name']    ?? '');
-    $ec_phone = trim($_POST['ec_phone']   ?? '');
-    $street   = trim($_POST['street_address'] ?? '');
-    $csz      = trim($_POST['city_state_zip'] ?? '');
-    $reg_date = $_POST['registration_date'] ?? date('Y-m-d');
-    $s_type      = in_array($_POST['account_type'] ?? '', ['guest','student','parent','instructor'])
-                   ? $_POST['account_type'] : 'guest';
-    $medical_note  = trim($_POST['medical_note']  ?? '');
-    $uniform_size  = trim($_POST['uniform_size']  ?? '');
-    $belt_size     = trim($_POST['belt_size']     ?? '');
-    $ao_raw          = $_POST['active_override'] ?? 'auto';
+    $first    = trim(post_str('first_name'));
+    $last     = trim(post_str('last_name'));
+    $dob      = post_str('date_of_birth');
+    $phone    = trim(post_str('phone'));
+    $email    = trim(post_str('email'));
+    $ec_name  = trim(post_str('ec_name'));
+    $ec_phone = trim(post_str('ec_phone'));
+    $street   = trim(post_str('street_address'));
+    $csz      = trim(post_str('city_state_zip'));
+    $reg_date = post_str('registration_date', date('Y-m-d'));
+    $s_type      = in_array(post_str('account_type'), ['guest','student','parent','instructor'])
+                   ? post_str('account_type') : 'guest';
+    $medical_note  = trim(post_str('medical_note'));
+    $uniform_size  = trim(post_str('uniform_size'));
+    $belt_size     = trim(post_str('belt_size'));
+    $ao_raw          = post_str('active_override', 'auto');
     $active_override = $ao_raw === '1' ? 1 : ($ao_raw === '0' ? 0 : null);
     if ($active_override === 1) { $active = 1; }
     elseif ($active_override === 0) { $active = 0; }
@@ -278,63 +279,64 @@ if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ===
         }
         audit('update_student', 'student', $id);
         if (empty($_SERVER['HTTP_HX_REQUEST'])) {
-            header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
+            header("Location: student_edit.php?id=$id&ref=" . urlencode(get_str('ref', 'students')));
             exit;
         }
     }
 }
 
 // Update existing ranks (bulk)
-if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'update_ranks') {
+if ($id && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'update_ranks') {
     verify_csrf();
     if (!empty($_POST['rank_updates']) && is_array($_POST['rank_updates'])) {
         $upd = db()->prepare('UPDATE student_ranks SET rank_id=?, achieved_date=? WHERE id=? AND student_id=?');
         foreach ($_POST['rank_updates'] as $sr_id => $data) {
-            $upd->execute([(int)$data['rank_id'], $data['achieved_date'], (int)$sr_id, $id]);
+            if (!is_array($data)) continue;
+            $upd->execute([(int)($data['rank_id'] ?? 0), (string)($data['achieved_date'] ?? ''), (int)$sr_id, $id]);
         }
     }
     audit('update_student', 'student', $id);
     if (empty($_SERVER['HTTP_HX_REQUEST'])) {
-        header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
+        header("Location: student_edit.php?id=$id&ref=" . urlencode(get_str('ref', 'students')));
         exit;
     }
 }
 
 // Add rank
-if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add_rank') {
+if ($id && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'add_rank') {
     verify_csrf();
-    $new_rank_id   = (int)($_POST['new_rank_id'] ?? 0);
-    $new_rank_date = trim($_POST['new_rank_date'] ?? '') ?: date('Y-m-d');
+    $new_rank_id   = post_int('new_rank_id');
+    $new_rank_date = trim(post_str('new_rank_date')) ?: date('Y-m-d');
     if ($new_rank_id) {
         db()->prepare('INSERT INTO student_ranks (student_id, rank_id, achieved_date, cert_number) VALUES (?,?,?,?)')
              ->execute([$id, $new_rank_id, $new_rank_date, next_cert_number()]);
         audit('update_student', 'student', $id);
     }
     if (empty($_SERVER['HTTP_HX_REQUEST'])) {
-        header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
+        header("Location: student_edit.php?id=$id&ref=" . urlencode(get_str('ref', 'students')));
         exit;
     }
 }
 
 // Delete rank
-if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delete_rank') {
+if ($id && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'delete_rank') {
     verify_csrf();
-    $sr_id = (int)($_POST['sr_id'] ?? 0);
+    $sr_id = post_int('sr_id');
     if ($sr_id) {
         db()->prepare('DELETE FROM student_ranks WHERE id=? AND student_id=?')->execute([$sr_id, $id]);
         audit('update_student', 'student', $id);
     }
     if (empty($_SERVER['HTTP_HX_REQUEST'])) {
-        header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
+        header("Location: student_edit.php?id=$id&ref=" . urlencode(get_str('ref', 'students')));
         exit;
     }
 }
 
 // Update belt test
 // Delete belt test
-if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delete_belt_test') {
+if ($id && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'delete_belt_test') {
     verify_csrf();
-    $bt_id = (int)($_POST['bt_id'] ?? 0);
+    $bt_id = post_int('bt_id');
     if ($bt_id) {
         // Capture rank info before deleting so we can clean up student_ranks
         $bt_info_q = db()->prepare('SELECT rank_testing_for, belt_awarded FROM belt_tests WHERE id=? AND student_id=?');
@@ -356,17 +358,17 @@ if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ===
         audit('delete_belt_test', 'student', $id);
     }
     if (empty($_SERVER['HTTP_HX_REQUEST'])) {
-        header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
+        header("Location: student_edit.php?id=$id&ref=" . urlencode(get_str('ref', 'students')));
         exit;
     }
 }
 
 // Add payment waiver (inline)
-if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add_waiver') {
+if ($id && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'add_waiver') {
     verify_csrf();
-    $type   = $_POST['waiver_type'] ?? '';
-    $reason = trim($_POST['reason'] ?? '');
-    $date   = $_POST['granted_date'] ?? date('Y-m-d');
+    $type   = post_str('waiver_type');
+    $reason = trim(post_str('reason'));
+    $date   = post_str('granted_date', date('Y-m-d'));
     $valid  = ['monthly_tuition','registration','belt_test','slc_training','seminar','all'];
     if (in_array($type, $valid)) {
         db()->prepare(
@@ -376,15 +378,15 @@ if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ===
         audit('grant_waiver', 'waiver', null, "student_id=$id type=$type");
     }
     if (empty($_SERVER['HTTP_HX_REQUEST'])) {
-        header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
+        header("Location: student_edit.php?id=$id&ref=" . urlencode(get_str('ref', 'students')));
         exit;
     }
 }
 
 // Add guardian link (student_guardians — no user account needed)
-if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add_guardian') {
+if ($id && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'add_guardian') {
     verify_csrf();
-    $other_id = (int)($_POST['guardian_student_id'] ?? 0);
+    $other_id = post_int('guardian_student_id');
     if ($other_id && $other_id !== $id) {
         $ts = db()->prepare('SELECT student_type FROM students WHERE id=?');
         $ts->execute([$id]);
@@ -395,44 +397,44 @@ if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') ===
         audit('add_guardian', 'student', $id, "linked=$other_id");
     }
     if (empty($_SERVER['HTTP_HX_REQUEST'])) {
-        header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
+        header("Location: student_edit.php?id=$id&ref=" . urlencode(get_str('ref', 'students')));
         exit;
     }
 }
 
 // Remove guardian link
-if ($id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'remove_guardian') {
+if ($id && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'remove_guardian') {
     verify_csrf();
-    $link_id = (int)($_POST['guardian_link_id'] ?? 0);
+    $link_id = post_int('guardian_link_id');
     if ($link_id) {
         db()->prepare('DELETE FROM student_guardians WHERE id=? AND (parent_student_id=? OR child_student_id=?)')
              ->execute([$link_id, $id, $id]);
         audit('remove_guardian', 'student', $id, "link_id=$link_id");
     }
     if (empty($_SERVER['HTTP_HX_REQUEST'])) {
-        header("Location: student_edit.php?id=$id&ref=" . urlencode($_GET['ref'] ?? 'students'));
+        header("Location: student_edit.php?id=$id&ref=" . urlencode(get_str('ref', 'students')));
         exit;
     }
 }
 
 // Add new student (only when id=0)
-if (!$id && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add_student') {
+if (!$id && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'add_student') {
     verify_csrf();
-    $first    = trim($_POST['first_name'] ?? '');
-    $last     = trim($_POST['last_name']  ?? '');
-    $dob      = $_POST['date_of_birth']   ?? '';
-    $phone    = trim($_POST['phone']      ?? '');
-    $email    = trim($_POST['email']      ?? '');
-    $ec_name  = trim($_POST['ec_name']    ?? '');
-    $ec_phone = trim($_POST['ec_phone']   ?? '');
-    $street   = trim($_POST['street_address'] ?? '');
-    $csz      = trim($_POST['city_state_zip'] ?? '');
-    $reg_date = $_POST['registration_date'] ?? date('Y-m-d');
-    $s_type      = in_array($_POST['account_type'] ?? '', ['guest','student','parent','instructor'])
-                   ? $_POST['account_type'] : 'guest';
-    $medical_note  = trim($_POST['medical_note']  ?? '');
-    $uniform_size  = trim($_POST['uniform_size']  ?? '');
-    $belt_size     = trim($_POST['belt_size']     ?? '');
+    $first    = trim(post_str('first_name'));
+    $last     = trim(post_str('last_name'));
+    $dob      = post_str('date_of_birth');
+    $phone    = trim(post_str('phone'));
+    $email    = trim(post_str('email'));
+    $ec_name  = trim(post_str('ec_name'));
+    $ec_phone = trim(post_str('ec_phone'));
+    $street   = trim(post_str('street_address'));
+    $csz      = trim(post_str('city_state_zip'));
+    $reg_date = post_str('registration_date', date('Y-m-d'));
+    $s_type      = in_array(post_str('account_type'), ['guest','student','parent','instructor'])
+                   ? post_str('account_type') : 'guest';
+    $medical_note  = trim(post_str('medical_note'));
+    $uniform_size  = trim(post_str('uniform_size'));
+    $belt_size     = trim(post_str('belt_size'));
     if (!$first || !$last) {
         $error = 'First and last name are required.';
     } else {
@@ -580,13 +582,13 @@ include __DIR__ . '/../includes/header.php';
 ?>
 
 <div class="d-flex align-items-center gap-3 mb-4">
-    <h4 class="mb-0"><?= $id ? 'Edit: '.hn($student['first_name'].' '.$student['last_name']) : 'New Student' ?></h4>
+    <h4 class="mb-0"><?= $student ? 'Edit: '.hn($student['first_name'].' '.$student['last_name']) : 'New Student' ?></h4>
 </div>
 
 <?php if ($msg):   ?><div class="alert alert-success"><?= $msg ?></div><?php endif; ?>
 <?php if (isset($_GET['dup'])): ?>
     <div class="alert alert-warning">
-        Heads up: this student now has <?= (int)$_GET['dup'] ?> tuition payments recorded
+        Heads up: this student now has <?= get_int('dup') ?> tuition payments recorded
         for that month. If this was accidental, delete the extra one in the Payments section.
     </div>
 <?php endif; ?>
@@ -594,12 +596,20 @@ include __DIR__ . '/../includes/header.php';
 
 <?php
 // Precompute display values
-$acct_val    = $student['student_type'] ?? 'guest';
-$is_active   = (bool)($student['active'] ?? 0);
-$ov_raw      = $student['active_override'] ?? null;
-$ov_val      = $ov_raw === null ? 'auto' : (string)(int)$ov_raw;
-$injury_done = (bool)($student['injury_waiver'] ?? 0);
-$injury_date = $student['injury_waiver_date'] ?? null;
+$acct_val    = 'guest';
+$is_active   = false;
+$ov_raw      = null;
+$ov_val      = 'auto';
+$injury_done = false;
+$injury_date = null;
+if ($student) {
+    $acct_val    = $student['student_type'] ?? 'guest';
+    $is_active   = (bool)($student['active'] ?? 0);
+    $ov_raw      = $student['active_override'] ?? null;
+    $ov_val      = $ov_raw === null ? 'auto' : (string)(int)$ov_raw;
+    $injury_done = (bool)($student['injury_waiver'] ?? 0);
+    $injury_date = $student['injury_waiver_date'] ?? null;
+}
 ?>
 
 <div class="row g-4">
@@ -607,7 +617,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
     <!-- ── Left column: Profile Info + Attendance ── -->
     <div class="col-md-6 d-flex flex-column gap-4">
 
-        <?php if ($id): ?>
+        <?php if ($student): ?>
         <!-- Profile Info — view/edit card -->
         <form id="profile-form" method="post"
               hx-post="student_edit.php?id=<?= $id ?>"
@@ -1048,7 +1058,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                     <?php foreach ($payments as $p): ?>
                         <tr class="pay-data-row">
                             <td><?= date('d M Y', strtotime($p['payment_date'])) ?></td>
-                            <td><?= ucwords(str_replace('_', ' ', $p['payment_type'])) ?></td>
+                            <td><?= ucwords(str_replace('_', ' ', (string)$p['payment_type'])) ?></td>
                             <td><?= ['paypal'=>'PayPal','cash'=>'Cash','check'=>'Check','mail'=>'Mail'][$p['payment_method']] ?? ucfirst($p['payment_method']) ?></td>
                             <td class="text-end">$<?= number_format($p['amount'], 2) ?></td>
                             <?php if ($p['is_donation']): ?>
@@ -1352,7 +1362,7 @@ $injury_date = $student['injury_waiver_date'] ?? null;
                     <?php foreach ($payment_waivers as $pw): ?>
                         <tr class="pw-data-row">
                             <td>
-                                <?= htmlspecialchars(ucwords(str_replace('_',' ',$pw['waiver_type']))) ?>
+                                <?= htmlspecialchars(ucwords(str_replace('_',' ',(string)$pw['waiver_type']))) ?>
                                 <?php if (!empty($pw['reason'])): ?>
                                     <div class="text-muted small"><?= htmlspecialchars($pw['reason']) ?></div>
                                 <?php endif; ?>
@@ -1821,7 +1831,7 @@ function noteCancel(id) {
 </script>
 <?php endif; // $id — notes card ?>
 
-<?php if ($id): ?>
+<?php if ($student): ?>
 <div class="mt-4 text-end">
     <form method="post" class="d-inline confirm-submit-form"
           data-confirm="Permanently delete <?= htmlspecialchars($student['first_name'] . ' ' . $student['last_name']) ?>?&#10;&#10;This removes their profile, attendance, payments, and login account. This cannot be undone.">
