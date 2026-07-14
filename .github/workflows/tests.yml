@@ -52,10 +52,14 @@ jobs:
           "@
           [System.IO.File]::WriteAllText("$PWD\tests\credentials.js", $content, [System.Text.UTF8Encoding]::new($false))
 
-      # .env and the DB seed are gitignored, so they aren't in the checkout —
-      # copy them from the live htdocs directory (same machine as the runner).
-      # .env sets DB_INIT_FILE to a file under backups/, so both are needed.
-      - name: Copy .env and DB seed for database access
+      # Several runtime files are gitignored, so they aren't in the checkout —
+      # copy them from the live htdocs directory (same machine as the runner):
+      #   .env                 — DB creds + DB_INIT_FILE (points under backups/)
+      #   backups/*.sql        — the DB seed .env references
+      #   portal/admin/assets  — certificate template/signature/font (real
+      #                          signature image, kept out of git); certificate.php
+      #                          filemtime()s the template, warning if it's absent
+      - name: Copy gitignored runtime files (.env, DB seed, cert assets)
         run: |
           $src = "C:\Users\ericratz\XAMPP\htdocs\karate"
           if (Test-Path "$src\.env") { Copy-Item "$src\.env" .env -Force }
@@ -63,6 +67,9 @@ jobs:
           if (Test-Path "$src\backups") {
             New-Item -ItemType Directory -Force backups | Out-Null
             Copy-Item "$src\backups\*.sql" backups\ -Force -ErrorAction SilentlyContinue
+          }
+          if (Test-Path "$src\portal\admin\assets") {
+            Copy-Item "$src\portal\admin\assets" portal\admin\ -Recurse -Force
           }
 
       # Clear any leftover volume from a crashed prior run — the DB only imports

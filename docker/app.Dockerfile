@@ -32,9 +32,11 @@ RUN cd portal && composer install --no-dev --no-interaction --no-progress --opti
 
 # App source. tests/ is copied too so the suite's clear_rate_limit.php helper
 # is reachable at /karate/tests/clear_rate_limit.php (global-setup pings it).
+# No chown needed: Apache (www-data) only reads these, and COPY leaves them
+# world-readable. The app never writes into its own web root (verified), so a
+# recursive chown here would just add ~6 min per build on Docker Desktop for
+# nothing. If a writable dir is ever added, chown only that path.
 COPY portal/ ./portal/
 COPY tests/ ./tests/
-
-RUN chown -R www-data:www-data /var/www/html/karate
 
 EXPOSE 80
