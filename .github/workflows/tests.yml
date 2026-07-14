@@ -15,6 +15,11 @@ jobs:
       # Docker to publish the app on a random free host port; the tests reach
       # the app over the Compose network (http://app), not via the host port.
       APP_PORT: "0"
+    # The runner service runs as LocalSystem, where `shell: bash` resolves to
+    # WSL — which refuses to run as LocalSystem. Use PowerShell for all steps.
+    defaults:
+      run:
+        shell: powershell
 
     steps:
       - name: Checkout
@@ -23,7 +28,6 @@ jobs:
       # credentials.js is gitignored — recreate it from GitHub secrets. It is
       # bind-mounted into the ci container via ./tests, so global-setup finds it.
       - name: Write credentials file
-        shell: bash
         env:
           ADMIN_USER:  ${{ secrets.ADMIN_USER }}
           ADMIN_PASS:  ${{ secrets.ADMIN_PASS }}
@@ -34,35 +38,39 @@ jobs:
           PARENT_USER: ${{ secrets.PARENT_USER }}
           PARENT_PASS: ${{ secrets.PARENT_PASS }}
         run: |
-          cat > tests/credentials.js <<EOF
+          $content = @"
           module.exports = {
-              ADMIN_USER:  '${ADMIN_USER}',
-              ADMIN_PASS:  '${ADMIN_PASS}',
-              INST_USER:   '${INST_USER}',
-              INST_PASS:   '${INST_PASS}',
-              STU_USER:    '${STU_USER}',
-              STU_PASS:    '${STU_PASS}',
-              PARENT_USER: '${PARENT_USER}',
-              PARENT_PASS: '${PARENT_PASS}',
+              ADMIN_USER:  '$env:ADMIN_USER',
+              ADMIN_PASS:  '$env:ADMIN_PASS',
+              INST_USER:   '$env:INST_USER',
+              INST_PASS:   '$env:INST_PASS',
+              STU_USER:    '$env:STU_USER',
+              STU_PASS:    '$env:STU_PASS',
+              PARENT_USER: '$env:PARENT_USER',
+              PARENT_PASS: '$env:PARENT_PASS',
           };
-          EOF
+          "@
+          [System.IO.File]::WriteAllText("$PWD\tests\credentials.js", $content, [System.Text.UTF8Encoding]::new($false))
 
       # .env and the DB seed are gitignored, so they aren't in the checkout —
       # copy them from the live htdocs directory (same machine as the runner).
       # .env sets DB_INIT_FILE to a file under backups/, so both are needed.
       - name: Copy .env and DB seed for database access
-        shell: bash
         run: |
-          src="/c/Users/ericratz/XAMPP/htdocs/karate"
-          [ -f "$src/.env" ] && cp "$src/.env" .env || { echo "missing $src/.env"; exit 1; }
-          if [ -d "$src/backups" ]; then
-            mkdir -p backups && cp "$src"/backups/*.sql backups/ 2>/dev/null || true
-          fi
+          $src = "C:\Users\ericratz\XAMPP\htdocs\karate"
+          if (Test-Path "$src\.env") { Copy-Item "$src\.env" .env -Force }
+          else { Write-Error "missing $src\.env"; exit 1 }
+          if (Test-Path "$src\backups") {
+            New-Item -ItemType Directory -Force backups | Out-Null
+            Copy-Item "$src\backups\*.sql" backups\ -Force -ErrorAction SilentlyContinue
+          }
 
       # Clear any leftover volume from a crashed prior run — the DB only imports
       # its seed into an empty volume, so a stale one would skip re-seeding.
       - name: Clean prior state
-        run: docker compose down -v --remove-orphans || true
+        run: |
+          docker compose down -v --remove-orphans
+          exit 0
 
       - name: Build images
         run: docker compose build
