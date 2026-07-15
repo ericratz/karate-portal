@@ -1,5 +1,7 @@
 // @ts-check
-// Integration tests for the parent portal.
+// Integration tests for the parent portal (React SPA at parent/app.php; the
+// old page URLs are server-side redirect stubs that preserve role gates and
+// ownership checks, so both the stubs and the SPA are exercised here).
 // Parent account: username='test', student_type='parent', student_id=6.
 // Children in DB: Carlos Rivera (id=5), Emily Wilson (id=4).
 const { test, expect } = require('@playwright/test');
@@ -22,11 +24,12 @@ test.describe('Parent portal — integration', () => {
     test('parent dashboard shows family tabs for children', async ({ page }) => {
         await page.goto(BASE + '/parent/');
         await assertNoPhpErrors(page, 'parent dashboard');
-        // Both linked children should appear as nav tabs. Assert by student_id
-        // rather than display name — inline_edit.spec.js renames a child
-        // mid-run in a parallel worker, so name-based checks are racy.
-        await expect(page.locator(`.nav-tabs a[href*="student_id=${CHILD_EMILY}"]`)).toBeVisible();
-        await expect(page.locator(`.nav-tabs a[href*="student_id=${CHILD_CARLOS}"]`)).toBeVisible();
+        // Both linked children should appear as nav tabs (React SPA routes).
+        // Assert by student_id rather than display name — inline_edit.spec.js
+        // renames a child mid-run in a parallel worker, so name-based checks
+        // are racy.
+        await expect(page.locator(`.nav-tabs a[href$="/student/${CHILD_EMILY}"]`)).toBeVisible();
+        await expect(page.locator(`.nav-tabs a[href$="/student/${CHILD_CARLOS}"]`)).toBeVisible();
     });
 
     test('parent dashboard default tab shows welcome heading', async ({ page }) => {
@@ -39,15 +42,14 @@ test.describe('Parent portal — integration', () => {
     test('switching to Emily tab shows her data', async ({ page }) => {
         await page.goto(BASE + `/parent/?student_id=${CHILD_EMILY}`);
         await assertNoPhpErrors(page, 'parent dashboard Emily tab');
-        const body = await page.textContent('body');
-        expect(body).toContain('Emily');
+        // toContainText retries until the SPA has fetched and rendered
+        await expect(page.locator('body')).toContainText('Emily');
     });
 
     test('switching to Carlos tab shows his data', async ({ page }) => {
         await page.goto(BASE + `/parent/?student_id=${CHILD_CARLOS}`);
         await assertNoPhpErrors(page, 'parent dashboard Carlos tab');
-        const body = await page.textContent('body');
-        expect(body).toContain('Carlos');
+        await expect(page.locator('body')).toContainText('Carlos');
     });
 
     test('invalid student_id does not crash — falls back to default tab', async ({ page }) => {

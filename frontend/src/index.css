@@ -1,0 +1,166 @@
+/* Portal look-and-feel — ported from includes/header.php so the React pages
+   are visually indistinguishable from the PHP pages they replace. */
+
+.navbar { background: #6f42c1 !important; }
+.navbar .navbar-brand,
+.navbar .nav-link,
+.navbar .navbar-text { color: #fff !important; font-size: 1rem; }
+.navbar .navbar-brand { font-size: 1.25rem; }
+.navbar .nav-link:hover { opacity: .8; }
+
+.nav-tabs .nav-link { color: #495057 !important; }
+.nav-tabs .nav-link.active { color: #6f42c1 !important; font-weight: 600; }
+.nav-tabs .nav-link:hover { opacity: 1; color: #6f42c1 !important; }
+[data-bs-theme="dark"] .nav-tabs .nav-link { color: #adb5bd !important; }
+[data-bs-theme="dark"] .nav-tabs .nav-link.active { color: #c89ef2 !important; }
+[data-bs-theme="dark"] .nav-tabs .nav-link:hover { color: #c89ef2 !important; }
+
+/* Dark mode: make text-muted the same brightness as body text */
+[data-bs-theme="dark"] { --bs-secondary-color: #dee2e6; }
+
+/* Dark mode card fixes */
+[data-bs-theme="dark"] .card { border: 1px solid rgba(255,255,255,.15) !important; }
+[data-bs-theme="dark"] .card-header.bg-white {
+    background-color: #2c2f33 !important;
+    color: #dee2e6 !important;
+}
+[data-bs-theme="dark"] thead.table-light,
+[data-bs-theme="dark"] .table-light > * > tr {
+    --bs-table-bg: #2c2f33;
+    --bs-table-color: #dee2e6;
+    background-color: #2c2f33 !important;
+    color: #dee2e6 !important;
+}
+[data-bs-theme="dark"] thead.table-light th {
+    background-color: #2c2f33 !important;
+    color: #dee2e6 !important;
+}
+
+.role-badge {
+    font-size: .7rem;
+    background: rgba(255,255,255,.25);
+    border-radius: 4px;
+    padding: 2px 6px;
+    margin-left: 6px;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+}
+
+body { background: #f8f9fa; }
+[data-bs-theme="dark"] body { background: #212529; }
+
+.form-check-input { border: 2px solid #555; width: 1.15em; height: 1.15em; }
+.form-check-input:checked { background-color: #6f42c1; border-color: #6f42c1; }
+.form-check-input:focus {
+    border-color: #6f42c1;
+    box-shadow: 0 0 0 .25rem rgba(111,66,193,.25);
+}
+
+.form-control, .form-select { background-color: #f0f0f0; }
+[data-bs-theme="dark"] .form-control,
+[data-bs-theme="dark"] .form-select { background-color: #2a2a2a; }
+
+/* Global green buttons (portal convention: primary = green, accent = purple) */
+.btn-primary {
+    --bs-btn-bg: #198754;
+    --bs-btn-border-color: #198754;
+    --bs-btn-hover-bg: #157347;
+    --bs-btn-hover-border-color: #146c43;
+    --bs-btn-active-bg: #146c43;
+    --bs-btn-color: #fff;
+    --bs-btn-hover-color: #fff;
+    --bs-btn-active-color: #fff;
+}
+.btn-outline-secondary, .btn-outline-primary {
+    --bs-btn-bg: #198754;
+    --bs-btn-color: #fff;
+    --bs-btn-border-color: #198754;
+    --bs-btn-hover-bg: #157347;
+    --bs-btn-hover-border-color: #146c43;
+    --bs-btn-hover-color: #fff;
+    --bs-btn-active-bg: #146c43;
+    --bs-btn-active-color: #fff;
+}
+
+.btn-logout {
+    color: #fff !important;
+    border: 1px solid #dc3545;
+    background: transparent;
+    transition: background .15s, color .15s;
+}
+.btn-logout:hover, .btn-logout:focus {
+    background: #dc3545;
+    color: #fff !important;
+    border-color: #dc3545;
+}
+
+a { text-decoration: none; }
+a:hover { text-decoration: none; }
+
+/* Current-rank row highlight in Rank History */
+.table-purple {
+    --bs-table-bg: rgba(111, 66, 193, .15);
+}
+
+/* Dark-mode toggle (ported from the header's inline-styled button) */
+.dark-toggle {
+    position: relative;
+    width: 78px;
+    height: 28px;
+    border-radius: 14px;
+    border: 2px solid #888;
+    cursor: pointer;
+    transition: background .25s, border-color .25s;
+    background: #3d1a7a;
+    flex-shrink: 0;
+}
+.dark-toggle .dark-label {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    font-size: .72rem;
+    font-weight: 700;
+    color: #e0e0e0;
+    user-select: none;
+    pointer-events: none;
+    letter-spacing: .05em;
+}
+.dark-toggle .dark-knob {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #fff;
+    transition: transform .25s;
+}
+.dark-toggle.on .dark-knob { transform: translateX(50px); }
+
+/* Waiver document (ported from parent/waiver.php) */
+.waiver-wrap { max-width: 760px; }
+.waiver-doc  { font-size: .92rem; line-height: 1.8; }
+.waiver-doc h2 { font-size: 1.15rem; font-weight: 700; text-align: center; margin-bottom: 0; }
+.waiver-doc h3 { font-size: 1rem;    font-weight: 700; text-align: center; margin-bottom: 1.2rem; }
+.w-label { display: block; font-size: .9rem; color: #444; margin-bottom: 2px; margin-top: 1.4rem; }
+[data-bs-theme="dark"] .w-label { color: #ccc; }
+.w-input {
+    display: block; width: 100%;
+    border: none; border-bottom: 1.5px solid #444;
+    border-radius: 0; background: transparent;
+    padding: 3px 2px; font-size: .95rem;
+    outline: none; color: inherit;
+}
+.w-input:focus     { border-bottom-color: #6f42c1; }
+.w-input[readonly] { cursor: default; }
+.w-sig             { font-family: cursive; font-size: 1.15rem; }
+.w-static          { border-bottom: 1.5px solid #444; padding: 3px 2px; font-size: .95rem; min-height: 1.8rem; }
+
+/* Mobile: bump .btn-sm in tables up to a comfortable touch target */
+@media (max-width: 767px) {
+    .table .btn-sm {
+        padding: .375rem .75rem;
+        font-size: .875rem;
+    }
+}

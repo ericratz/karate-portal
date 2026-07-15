@@ -4,6 +4,20 @@ Full version history for the Shotokan Karate Portal. See `README.md` for the cur
 
 ---
 
+## V4.0
+
+- **Parent portal migrated to React 19 + TypeScript** — the tabbed family dashboard, payment history, attendance, belt tests, and the injury waiver (view + sign) are now a single-page app (`frontend/`, built with Vite + react-router + Chart.js, Bootstrap bundled via npm instead of the CDN). A thin PHP shell (`parent/app.php`) keeps the server-side role gate and reads the Vite manifest for the hashed bundle; the old page URLs live on as server-side redirect stubs that preserve their role gates and ownership checks, so existing links and access-control semantics are unchanged. `pay.php` (PayPal) and `profile_edit.php` (password change) intentionally stay server-rendered pending their own migrations
+- **Versioned JSON API** — new `portal/api/v1/` endpoints (`me.php` session bootstrap + seven `parent/*` endpoints) mirror the old pages' queries exactly, on the same session auth. Mutations authenticate via an `X-CSRF-Token` header (`includes/api.php`); every response passes through a whitelist serializer (`family_student_profile()`) so admin-only columns (`notes`, `active_override`, …) can never leak, backed by a dedicated unit test
+- **Family ownership scoping centralized** — the parent allowed-student-ids logic, previously copy-pasted in five files (four parent pages + `api/paypal_create.php`), is now `includes/family.php`, covered by a new `FamilyScopeTest` integration suite that seeds a sentinel family and asserts the access boundary from both sides
+- **CSP survives the SPA unchanged** — the React bundle loads as an external module from `'self'`, so the nonce-only `script-src` needed no relaxing; the shell page serves the same header as every PHP page
+- **New Vitest + React Testing Library suite** (31 tests) — API client envelope/CSRF contract, PHP-parity formatters (`hn`, `fmt_date`, `fmt_phone`), belt/homework age boundaries, and ProfileCard edit/save/validation flows — run in CI alongside a strict-mode `tsc` check of the SPA
+- **Docker builds the frontend** — `app.Dockerfile` gained a multi-stage Node step (`npm ci && npm run build`) so the image never depends on a host-side build; `portal/parent/dist/` is git- and docker-ignored. The ci image carries the frontend toolchain, and the GitHub Actions workflow gained a frontend typecheck + Vitest step
+- **Parent Playwright specs adapted to the SPA** — same coverage (role denials, ownership redirects, inline profile edit, IDOR regressions), now exercising the React UI and the JSON API; the other 30+ spec files pass untouched, which is the proof the migration stayed contained
+- **Security scanners scheduled in CI** — new `security.yml` workflow runs nmap, Nikto, and the OWASP ZAP baseline against the containerized app weekly and on-demand; ZAP (rules in `docker/zap/zap-baseline.conf`) gates the run, nmap/Nikto reports upload as artifacts. All three re-run clean against the post-React app (including the new `api/v1` surface)
+- **Test coverage** — 514 Playwright tests (39 spec files), 113 PHPUnit tests (up from 94), 31 Vitest tests, all passing
+
+---
+
 ## V3.7
 
 - **Full Docker migration** — the entire stack now runs in containers orchestrated by `docker-compose.yml`, one container per responsibility: `app` (`php:8.4-apache`), `db` (`mysql:8.0`, schema auto-imported on first start), and `ci` (the official Playwright image plus PHP 8.4 CLI, Composer, and the MySQL client — one image that runs Psalm, PHPUnit, and Playwright). A real `composer install` at image-build time finally replaces the old `portal/vendor` filesystem junction into the live htdocs install, so dependencies are reproducible instead of machine-coupled
@@ -97,7 +111,7 @@ Full version history for the Shotokan Karate Portal. See `README.md` for the cur
 
 ---
 
-## V3.11
+## V3.1.1
 
 - Added scroll bars to all data cards
 - Two-column layout bug fix

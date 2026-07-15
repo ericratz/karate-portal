@@ -1,4 +1,15 @@
-# Application container: Apache + PHP 8.4 serving the portal.
+# ── Stage 1: build the React SPA (frontend/ → portal/parent/dist) ──────────
+# tsc --noEmit + vite build, so the app image never depends on a host-side
+# npm run build. The dist output is copied into the PHP image below.
+FROM node:22-slim AS frontend
+WORKDIR /src
+COPY frontend/package.json frontend/package-lock.json ./frontend/
+RUN cd frontend && npm ci
+COPY frontend/ ./frontend/
+# vite.config.ts emits hashed bundles + manifest to ../portal/parent/dist
+RUN cd frontend && npm run build
+
+# ── Stage 2: Apache + PHP 8.4 serving the portal ───────────────────────────
 # PHP 8.4 matches the live production stack (CHANGELOG: "PHP upgraded to 8.4"),
 # standardizing out the 8.2/8.4 drift between this dev box and production.
 FROM php:8.4-apache
@@ -38,5 +49,9 @@ RUN cd portal && composer install --no-dev --no-interaction --no-progress --opti
 # nothing. If a writable dir is ever added, chown only that path.
 COPY portal/ ./portal/
 COPY tests/ ./tests/
+
+# React SPA bundle from the frontend build stage (dist is dockerignored, so
+# it always comes from the in-image build — never a stale host build).
+COPY --from=frontend /src/portal/parent/dist ./portal/parent/dist
 
 EXPOSE 80

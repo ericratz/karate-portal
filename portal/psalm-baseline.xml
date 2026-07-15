@@ -111,7 +111,6 @@
       <code><![CDATA[$page_title]]></code>
       <code><![CDATA[$page_title]]></code>
       <code><![CDATA[$page_title]]></code>
-      <code><![CDATA[$page_title]]></code>
     </RedundantCondition>
     <TypeDoesNotContainNull>
       <code><![CDATA['Portal']]></code>
@@ -146,10 +145,8 @@
       <code><![CDATA['Portal']]></code>
       <code><![CDATA['Portal']]></code>
       <code><![CDATA['Portal']]></code>
-      <code><![CDATA['Portal']]></code>
     </TypeDoesNotContainNull>
     <UndefinedConstant>
-      <code><![CDATA[SITE_URL]]></code>
       <code><![CDATA[SITE_URL]]></code>
       <code><![CDATA[SITE_URL]]></code>
       <code><![CDATA[SITE_URL]]></code>
@@ -261,9 +258,6 @@
       <code><![CDATA['']]></code>
       <code><![CDATA['placeholder="Type full name to sign"']]></code>
     </TypeDoesNotContainType>
-    <UndefinedGlobalVariable>
-      <code><![CDATA[$is_minor]]></code>
-    </UndefinedGlobalVariable>
   </file>
   <file src="student/attendance.php">
     <InvalidOperand>
@@ -305,9 +299,6 @@
       <code><![CDATA['']]></code>
       <code><![CDATA['placeholder="Type your full name"']]></code>
     </TypeDoesNotContainType>
-    <UndefinedGlobalVariable>
-      <code><![CDATA[$is_minor]]></code>
-    </UndefinedGlobalVariable>
   </file>
   <file src="tests/Integration/AttemptLoginTest.php">
     <InvalidScalarArgument>
@@ -384,6 +375,24 @@
       <code><![CDATA[record_failed_login(self::FAIL_USER, self::FAIL_IP)]]></code>
       <code><![CDATA[record_failed_login(self::FAIL_USER, self::FAIL_IP)]]></code>
       <code><![CDATA[record_failed_login(self::FAIL_USER, self::FAIL_IP)]]></code>
+    </UndefinedFunction>
+  </file>
+  <file src="tests/Integration/FamilyScopeTest.php">
+    <UndefinedFunction>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[db()]]></code>
+      <code><![CDATA[family_allowed_ids($this->outsider_user_id)]]></code>
+      <code><![CDATA[family_allowed_ids($this->parent_user_id)]]></code>
+      <code><![CDATA[family_can_access($this->outsider_user_id, $this->child_sid)]]></code>
+      <code><![CDATA[family_can_access($this->outsider_user_id, $this->parent_sid)]]></code>
+      <code><![CDATA[family_can_access($this->parent_user_id, $this->child_sid)]]></code>
+      <code><![CDATA[family_can_access($this->parent_user_id, $this->parent_sid)]]></code>
+      <code><![CDATA[family_can_access($this->parent_user_id, $this->unrelated_sid)]]></code>
+      <code><![CDATA[family_can_access($this->parent_user_id, -$this->child_sid)]]></code>
+      <code><![CDATA[family_can_access($this->parent_user_id, 0)]]></code>
+      <code><![CDATA[family_child_ids($this->parent_sid)]]></code>
+      <code><![CDATA[family_own_student($this->outsider_user_id)]]></code>
+      <code><![CDATA[family_own_student($this->parent_user_id)]]></code>
     </UndefinedFunction>
   </file>
   <file src="tests/Integration/FindMatchesTest.php">
@@ -471,6 +480,29 @@
       <code><![CDATA[db()]]></code>
     </UndefinedFunction>
   </file>
+  <file src="tests/Unit/ApiInputTest.php">
+    <UndefinedFunction>
+      <code><![CDATA[api_bool(['k' => 0], 'k')]]></code>
+      <code><![CDATA[api_bool(['k' => 1], 'k')]]></code>
+      <code><![CDATA[api_bool(['k' => false], 'k')]]></code>
+      <code><![CDATA[api_bool(['k' => true], 'k')]]></code>
+      <code><![CDATA[api_bool([], 'k')]]></code>
+      <code><![CDATA[api_int(['k' => '5'], 'k')]]></code>
+      <code><![CDATA[api_int(['k' => 'abc'], 'k')]]></code>
+      <code><![CDATA[api_int(['k' => 5.9], 'k')]]></code>
+      <code><![CDATA[api_int(['k' => ['nested']], 'k')]]></code>
+      <code><![CDATA[api_int(['k' => ['nested']], 'k', -1)]]></code>
+      <code><![CDATA[api_int([], 'k', -1)]]></code>
+      <code><![CDATA[api_str(['k' => 'hello'], 'k')]]></code>
+      <code><![CDATA[api_str(['k' => 2.5], 'k')]]></code>
+      <code><![CDATA[api_str(['k' => 5], 'k')]]></code>
+      <code><![CDATA[api_str(['k' => ['nested']], 'k')]]></code>
+      <code><![CDATA[api_str(['k' => ['nested']], 'k', 'fb')]]></code>
+      <code><![CDATA[api_str(['k' => null], 'k', 'fb')]]></code>
+      <code><![CDATA[api_str(['k' => true], 'k', 'fb')]]></code>
+      <code><![CDATA[api_str([], 'k', 'fb')]]></code>
+    </UndefinedFunction>
+  </file>
   <file src="tests/Unit/AuthSessionTest.php">
     <UndefinedFunction>
       <code><![CDATA[current_user_id()]]></code>
@@ -528,6 +560,14 @@
       <code><![CDATA[verify_csrf()]]></code>
       <code><![CDATA[verify_csrf()]]></code>
       <code><![CDATA[verify_csrf()]]></code>
+    </UndefinedFunction>
+  </file>
+  <file src="tests/Unit/FamilyStudentProfileTest.php">
+    <UndefinedFunction>
+      <code><![CDATA[family_student_profile($row)]]></code>
+      <code><![CDATA[family_student_profile($this->studentRow())]]></code>
+      <code><![CDATA[family_student_profile($this->studentRow())]]></code>
+      <code><![CDATA[family_student_profile($this->studentRow())]]></code>
     </UndefinedFunction>
   </file>
   <file src="tests/Unit/PaypalFeeTest.php">

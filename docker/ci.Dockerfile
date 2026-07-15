@@ -1,8 +1,9 @@
 # CI-tools container: one image that runs every existing check —
-#   npm run typecheck  (tsc)
+#   npm run typecheck  (tsc — Playwright suite)
 #   psalm --taint-analysis
 #   phpunit
 #   npx playwright test
+#   cd frontend && npm run typecheck && npm test  (tsc + Vitest — React SPA)
 #
 # Based on the official Playwright image (Node + Chromium prebuilt),
 # version-matched to @playwright/test in package.json so the bundled
@@ -36,11 +37,16 @@ RUN cd portal && composer install --no-interaction --no-progress --ignore-platfo
 COPY package.json package-lock.json ./
 RUN npm ci
 
+# Frontend deps — own layer, for the React SPA's typecheck + Vitest suite.
+COPY frontend/package.json frontend/package-lock.json ./frontend/
+RUN cd frontend && npm ci
+
 # Project source. tests/ and .env are also bind-mounted at run time
 # (see docker-compose.yml) so edited specs and DB creds don't need a rebuild.
 COPY tsconfig.json playwright.config.js ./
 COPY portal/ ./portal/
 COPY tests/ ./tests/
+COPY frontend/ ./frontend/
 
 # Reach the app service by its Compose DNS name from inside this container.
 ENV TEST_BASE_URL=http://app/karate/portal

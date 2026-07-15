@@ -1,97 +1,17 @@
 <?php
+// Attendance history now lives in the React SPA (app.php#/attendance/N).
+// Stub keeps the old URL: same parent-only gate and ownership check, invalid
+// ids bounce to the dashboard exactly as the PHP page did.
+
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/db.php';
+require_once __DIR__ . '/../includes/family.php';
 require_role('parent');
 
-$user_id = current_user_id();
-
-// Build allowed student IDs for this parent
-$allowed_ids = [];
-$own = db()->prepare('SELECT id FROM students WHERE user_id = ?');
-$own->execute([$user_id]);
-if ($r = $own->fetch()) {
-    $own_sid = (int)$r['id'];
-    $allowed_ids[] = $own_sid;
-    $ch = db()->prepare('SELECT child_student_id FROM student_guardians WHERE parent_student_id = ?');
-    $ch->execute([$own_sid]);
-    foreach ($ch->fetchAll() as $r) $allowed_ids[] = (int)$r['child_student_id'];
-}
-
 $student_id = get_int('student_id');
-if (!$student_id || !in_array($student_id, $allowed_ids, true)) {
+if (!$student_id || !family_can_access((int)current_user_id(), $student_id)) {
     header('Location: index.php'); exit;
 }
 
-$student = db()->prepare('SELECT id, first_name, last_name FROM students WHERE id = ?');
-$student->execute([$student_id]);
-$student = $student->fetch();
-if (!$student) { header('Location: index.php'); exit; }
-
-// All sessions this student attended
-$attended = db()->prepare(
-    'SELECT cs.session_date
-     FROM attendance a
-     JOIN class_sessions cs ON cs.id = a.session_id
-     WHERE a.student_id = ? AND a.present = 1
-     ORDER BY cs.session_date DESC'
-);
-$attended->execute([$student_id]);
-$attended = $attended->fetchAll();
-
-$summary = db()->prepare(
-    'SELECT COUNT(DISTINCT cs.id) AS total_sessions,
-            COALESCE(SUM(a.present), 0) AS total_attended
-     FROM class_sessions cs
-     LEFT JOIN attendance a ON a.session_id = cs.id AND a.student_id = ?'
-);
-$summary->execute([$student_id]);
-$summary = $summary->fetch();
-
-$page_title = 'Attendance History';
-include __DIR__ . '/../includes/header.php';
-?>
-
-<div class="d-flex align-items-center gap-3 mb-4">
-    <h4 class="mb-0">Attendance History — <?= hn($student['first_name'] . ' ' . $student['last_name']) ?></h4>
-</div>
-
-<div class="row g-3 mb-4">
-    <div class="col-sm-4">
-        <div class="card border-0 shadow-sm text-center">
-            <div class="card-body">
-                <div class="display-6 fw-bold text-primary"><?= (int)$summary['total_attended'] ?></div>
-                <div class="text-muted small">Classes Attended</div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="card border-0 shadow-sm" style="max-width:400px">
-    <div class="card-header bg-white fw-semibold">
-        All Attended Dates (<?= count($attended) ?>)
-    </div>
-    <div class="card-body p-0">
-        <?php if (empty($attended)): ?>
-            <p class="p-3 text-muted">No attendance on record yet.</p>
-        <?php else: ?>
-        <div class="table-responsive">
-        <table class="table table-sm table-hover mb-0">
-            <thead class="table-light">
-                <tr><th>#</th><th>Date</th></tr>
-            </thead>
-            <tbody>
-            <?php foreach ($attended as $i => $row): ?>
-                <tr>
-                    <td class="text-muted small"><?= count($attended) - $i ?></td>
-                    <td><?= date('l d M Y', strtotime($row['session_date'])) ?></td>
-                </tr>
-            <?php endforeach; ?>
-            </tbody>
-        </table>
-        </div>
-        <?php endif; ?>
-    </div>
-</div>
-
-<?php include __DIR__ . '/../includes/footer.php'; ?>
-
+header('Location: app.php#/attendance/' . $student_id);
+exit;

@@ -13,6 +13,8 @@ $_prev_reporting = error_reporting(0);
 set_error_handler(function(): bool { return true; });
 
 require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/api.php';
+require_once __DIR__ . '/../includes/family.php';
 require_once __DIR__ . '/../includes/belt_helpers.php';
 require_once __DIR__ . '/../includes/registration.php';
 require_once __DIR__ . '/../includes/paypal.php';

@@ -1,9 +1,11 @@
 // @ts-check
-// Tests for inline profile editing on parent/index.php.
-// Verifies the HTMX card-swap flow: Edit → fill → Save → card updates without full reload.
-// Also verifies auth boundary: parent cannot update an unlinked student.
+// Tests for inline profile editing on the parent dashboard (React SPA).
+// Verifies the card flow: Edit → fill → Save → card updates without a reload
+// (React state + fetch to api/v1/parent/profile.php, replacing the old HTMX
+// swap). Also verifies the auth boundary: a parent cannot update an unlinked
+// student through the JSON API.
 const { test, expect } = require('@playwright/test');
-const { assertNoPhpErrors, apiPost, BASE, AUTH } = require('../../helpers');
+const { assertNoPhpErrors, BASE, AUTH } = require('../../helpers');
 
 const PARENT_OWN_ID = 6;
 const CHILD_EMILY   = 4;
@@ -41,32 +43,28 @@ test.describe('Parent inline profile edit', () => {
         await expect(page.locator('#profile-view')).not.toContainText('SHOULD_NOT_SAVE');
     });
 
-    test('Save updates card in-place via HTMX without full page reload', async ({ page }) => {
+    test('Save updates card in-place without full page reload', async ({ page }) => {
         await page.goto(BASE + `/parent/?student_id=${CHILD_EMILY}`);
         await assertNoPhpErrors(page, 'parent inline edit before save');
-
-        // Read original first name from view section
-        const originalFirst = await page.locator('#profile-view').textContent();
 
         await page.click('#profileEditBtn');
         await page.fill('input[name="first_name"]', 'EmilyEdited');
 
-        // Capture navigation events — there should be none (HTMX swap, not full reload)
+        // Capture navigation events — there should be none (React fetch, not a reload)
         let navigated = false;
         page.on('framenavigated', () => { navigated = true; });
 
         await page.click('#profileEditBtn'); // now labelled "Save"
-        await page.waitForLoadState('networkidle');
-
-        expect(navigated).toBe(false);
-        // hn() applies ucwords(strtolower()), so 'EmilyEdited' displays as 'Emilyedited'
+        // personName() mirrors PHP hn() (ucwords(strtolower())),
+        // so 'EmilyEdited' displays as 'Emilyedited'
         await expect(page.locator('#profile-card')).toContainText('Emilyedited');
+        expect(navigated).toBe(false);
 
         // Restore original value
         await page.click('#profileEditBtn');
         await page.fill('input[name="first_name"]', 'Emily');
         await page.click('#profileEditBtn');
-        await page.waitForLoadState('networkidle');
+        await expect(page.locator('#profile-card')).toContainText('Emily');
     });
 
     test('Save shows success alert inside card', async ({ page }) => {
@@ -75,7 +73,6 @@ test.describe('Parent inline profile edit', () => {
         await page.click('#profileEditBtn');
         // Keep first name as-is, just save
         await page.click('#profileEditBtn');
-        await page.waitForLoadState('networkidle');
 
         await expect(page.locator('#profile-card .alert-success')).toBeVisible();
     });
@@ -87,29 +84,42 @@ test.describe('Parent inline profile edit', () => {
         await page.fill('input[name="first_name"]', '');
         await page.fill('input[name="last_name"]', '');
 
-        // Remove required attribute to bypass browser validation and hit server-side check
+        // Remove required attribute to bypass browser validation and hit the
+        // server-side check (api/v1/parent/profile.php answers 422)
         await page.evaluate(() => {
             document.querySelectorAll('#profile-form input[required]').forEach(el => el.removeAttribute('required'));
         });
 
         await page.click('#profileEditBtn');
-        await page.waitForLoadState('networkidle');
 
         await expect(page.locator('#profile-card .alert-danger')).toBeVisible();
     });
 
     test('parent cannot update an unlinked student via API', async ({ page }) => {
-        // Load a page to get a valid CSRF token in session
+        // Load the SPA to establish the session, then hit the JSON API the way
+        // the React client does: CSRF token from me.php, X-CSRF-Token header.
         await page.goto(BASE + `/parent/?student_id=${PARENT_OWN_ID}`);
 
-        const { body } = await apiPost(page, `/parent/?student_id=${PARENT_OWN_ID}`, {
-            action:     'update_profile',
-            student_id: String(UNLINKED_ID), // unlinked — should be blocked
-            first_name: 'HACKED',
-            last_name:  'HACKED',
-        });
+        const result = await page.evaluate(async ({ base, unlinkedId }) => {
+            const me = await (await fetch(base + '/api/v1/me.php', { credentials: 'same-origin' })).json();
+            const res = await fetch(base + '/api/v1/parent/profile.php', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': me.data.csrf_token,
+                },
+                body: JSON.stringify({
+                    student_id: unlinkedId, // unlinked — must be blocked
+                    first_name: 'HACKED',
+                    last_name:  'HACKED',
+                }),
+            });
+            return { status: res.status, body: await res.text() };
+        }, { base: BASE, unlinkedId: UNLINKED_ID });
 
+        expect(result.status).toBe(403);
         // Response must not confirm a save of the injected name
-        expect(body).not.toContain('HACKED');
+        expect(result.body).not.toContain('HACKED');
     });
 });

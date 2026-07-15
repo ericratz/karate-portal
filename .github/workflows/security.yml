@@ -1,0 +1,89 @@
+name: Security Scans
+
+# nmap + Nikto + OWASP ZAP against the containerized app, on a weekly schedule
+# and on demand (Actions tab → Security Scans → Run workflow). Kept out of
+# tests.yml so pushes stay fast; ZAP's baseline (rules in
+# docker/zap/zap-baseline.conf) is the gating scan — nmap and Nikto are
+# informational and land in the run artifact for review.
+#
+# Note: the self-hosted runner can only reach Docker while Docker Desktop is
+# running, which auto-starts on interactive login — a scheduled run after an
+# unattended reboot will fail at the first docker command (same limitation as
+# tests.yml).
+
+on:
+  schedule:
+    - cron: '0 16 * * 1'   # Mondays 16:00 UTC (~10:00 Mountain)
+  workflow_dispatch:
+
+jobs:
+  scan:
+    runs-on: self-hosted
+    timeout-minutes: 30
+    env:
+      APP_PORT: "0"   # random host port; scanners reach the app via the Compose network
+    defaults:
+      run:
+        shell: powershell
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Same gitignored runtime files tests.yml needs: .env for DB creds and
+      # the DB seed it points at — the app healthcheck curls login.php, which
+      # needs a working database.
+      - name: Copy gitignored runtime files (.env, DB seed)
+        run: |
+          $src = "C:\Users\ericratz\XAMPP\htdocs\karate"
+          if (Test-Path "$src\.env") { Copy-Item "$src\.env" .env -Force }
+          else { Write-Error "missing $src\.env"; exit 1 }
+          if (Test-Path "$src\backups") {
+            New-Item -ItemType Directory -Force backups | Out-Null
+            Copy-Item "$src\backups\*.sql" backups\ -Force -ErrorAction SilentlyContinue
+          }
+
+      - name: Clean prior state
+        run: |
+          docker compose down -v --remove-orphans
+          exit 0
+
+      - name: Build app image
+        run: docker compose build app
+
+      - name: Start db + app and wait for health
+        run: docker compose up -d --wait db app
+
+      - name: nmap (informational)
+        run: |
+          cmd /c "docker compose run --rm nmap > scan-nmap.txt 2>&1"
+          Get-Content scan-nmap.txt
+          exit 0
+
+      - name: Nikto (informational)
+        run: |
+          cmd /c "docker compose run --rm nikto > scan-nikto.txt 2>&1"
+          Get-Content scan-nikto.txt
+          exit 0
+
+      # The gate: zap-baseline.py exits non-zero when a rule marked FAIL in
+      # docker/zap/zap-baseline.conf fires (-I keeps WARNs non-fatal).
+      - name: OWASP ZAP baseline (gating)
+        run: docker compose run --rm zap
+
+      - name: Upload scan outputs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-scans
+          path: |
+            scan-nmap.txt
+            scan-nikto.txt
+            docker/zap/*.html
+            docker/zap/*.json
+          retention-days: 30
+          if-no-files-found: ignore
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v

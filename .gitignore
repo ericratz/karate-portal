@@ -1,5 +1,7 @@
 .env
 node_modules/
+# Vite build output — rebuilt from frontend/ (npm run build)
+portal/parent/dist/
 tests/report/
 tests/results/
 tests/.db-snapshot.sql

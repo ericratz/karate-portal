@@ -4,6 +4,9 @@
 .git
 .github
 node_modules
+frontend/node_modules
+# Host-side Vite output — the app image builds the frontend in-image instead
+portal/parent/dist
 portal/vendor
 portal/.psalm-cache
 portal/.phpunit.result.cache

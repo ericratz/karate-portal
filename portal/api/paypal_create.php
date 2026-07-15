@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../includes/family.php';
 require_once __DIR__ . '/../includes/paypal.php';
 require_login();
 
@@ -32,19 +33,7 @@ $role             = $_SESSION['role'] ?? 'student';
 $input_student_id = (int)($input['student_id'] ?? 0);
 
 if (in_array($role, ['parent', 'instructor'], true) && $input_student_id) {
-    // Build the allowed list for this parent
-    $allowed_ids = [];
-    $own = db()->prepare('SELECT id FROM students WHERE user_id = ?');
-    $own->execute([current_user_id()]);
-    if ($own_row = $own->fetch()) {
-        $own_sid = (int)$own_row['id'];
-        $allowed_ids[] = $own_sid;
-        $ch = db()->prepare('SELECT child_student_id FROM student_guardians WHERE parent_student_id = ?');
-        $ch->execute([$own_sid]);
-        foreach ($ch->fetchAll() as $r) $allowed_ids[] = (int)$r['child_student_id'];
-    }
-
-    if (!in_array($input_student_id, $allowed_ids, true)) {
+    if (!family_can_access((int)current_user_id(), $input_student_id)) {
         http_response_code(403);
         echo json_encode(['error' => 'Student not linked to your account']);
         exit;

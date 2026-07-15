@@ -97,6 +97,9 @@ jobs:
       - name: Run PHPUnit tests
         run: docker compose run --rm ci sh -c "cd portal && vendor/bin/phpunit"
 
+      - name: Run frontend typecheck + Vitest component tests
+        run: docker compose run --rm ci sh -c "cd frontend && npm run typecheck && npm test"
+
       - name: Run Playwright tests
         run: docker compose run --rm ci npx playwright test
 

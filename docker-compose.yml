@@ -92,7 +92,9 @@ services:
     image: ghcr.io/sullo/nikto:latest
     profiles: ["security"]
     depends_on: [app]
-    command: ["-h", "http://app/karate/portal/login.php"]
+    # -ask=no: never prompt to submit unknown server strings to CIRT.net — that
+    # prompt blocks on stdin and hangs a non-interactive CI run indefinitely.
+    command: ["-h", "http://app/karate/portal/login.php", "-ask", "no"]
 
   zap:
     image: ghcr.io/zaproxy/zaproxy:stable
