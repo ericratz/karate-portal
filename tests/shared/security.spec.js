@@ -23,14 +23,10 @@ test('all key POST forms have csrf_token hidden input', async ({ page }) => {
     await expect(page.locator('input[name="csrf_token"]')).toHaveCount(1);
     await page.goto(BASE + '/register.php');
     await expect(page.locator('input[name="csrf_token"]')).toHaveCount(1);
-    // Authenticated pages
-    await login(page, INST_USER, INST_PASS);
-    const today = new Date().toISOString().slice(0, 10);
-    await page.goto(BASE + `/instructor/attendance.php?date=${today}`);
-    expect(await page.locator('form input[name="csrf_token"]').count()).toBeGreaterThanOrEqual(1);
-    await page.goto(BASE + '/instructor/belt_test_edit.php');
-    await expect(page.locator('form input[name="csrf_token"]')).toHaveCount(1);
-    await logout(page);
+    // Authenticated pages. The instructor pages are React SPA routes now —
+    // their mutations send the CSRF token in the X-CSRF-Token header instead
+    // of a hidden input (enforced by api_verify_csrf(); covered by the API
+    // CSRF tests below), so only the remaining PHP forms are checked here.
     await login(page, ADMIN_USER, ADMIN_PASS);
     await page.goto(BASE + '/admin/payments.php?action=add');
     await page.waitForSelector('#addPaymentForm.show');

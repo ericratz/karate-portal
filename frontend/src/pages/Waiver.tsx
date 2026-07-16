@@ -2,6 +2,8 @@
 // a read-only document with the submitted values; unsigned ones present the
 // form, validated client-side the same way the server validates (the server
 // remains authoritative — its 422 messages surface in the alert).
+// Inputs keep the legacy name= attributes (like ProfileCard) so the shared
+// Playwright waiver spec can address fields the same way it did the PHP page.
 
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
@@ -181,7 +183,7 @@ export default function Waiver() {
             {signed ? (
               <WStatic value={sub?.print_name ?? form.print_name} />
             ) : (
-              <input type="text" className="w-input" required
+              <input type="text" name="print_name" className="w-input" required
                      value={form.print_name} onChange={(e) => set('print_name')(e.target.value)} />
             )}
 
@@ -199,7 +201,7 @@ export default function Waiver() {
                   {signed ? (
                     <WStatic value={sub?.signature ?? form.signature ?? ''} />
                   ) : (
-                    <input type="text" className="w-input w-sig"
+                    <input type="text" name="signature" className="w-input w-sig"
                            required={!isMinor}
                            placeholder="Type full name to sign"
                            value={form.signature} onChange={(e) => set('signature')(e.target.value)} />
@@ -210,7 +212,7 @@ export default function Waiver() {
                   {signed ? (
                     <WStatic value={sub?.signed_date ? fmtDate(sub.signed_date) : (status.signed_date ? fmtDate(status.signed_date) : '')} />
                   ) : (
-                    <input type="date" className="w-input" required={!isMinor}
+                    <input type="date" name="signed_date" className="w-input" required={!isMinor}
                            value={form.signed_date} onChange={(e) => set('signed_date')(e.target.value)} />
                   )}
                 </div>
@@ -230,7 +232,7 @@ export default function Waiver() {
                 {signed ? (
                   <WStatic value={sub?.guardian_signature ?? ''} />
                 ) : (
-                  <input type="text" className="w-input w-sig"
+                  <input type="text" name="guardian_signature" className="w-input w-sig"
                          required={isMinor}
                          placeholder={isMinor ? 'Guardian full name' : 'Guardian full name (if applicable)'}
                          value={form.guardian_signature}
@@ -242,7 +244,7 @@ export default function Waiver() {
                 {signed ? (
                   <WStatic value={sub?.guardian_signed_date ? fmtDate(sub.guardian_signed_date) : ''} />
                 ) : (
-                  <input type="date" className="w-input" required={isMinor}
+                  <input type="date" name="guardian_signed_date" className="w-input" required={isMinor}
                          value={form.guardian_signed_date}
                          onChange={(e) => set('guardian_signed_date')(e.target.value)} />
                 )}
@@ -253,7 +255,7 @@ export default function Waiver() {
             {signed ? (
               <WStatic value={sub?.date_of_birth ? fmtDate(sub.date_of_birth) : ''} style={{ maxWidth: 220 }} />
             ) : (
-              <input type="date" className="w-input" style={{ maxWidth: 220 }}
+              <input type="date" name="date_of_birth" className="w-input" style={{ maxWidth: 220 }}
                      value={form.date_of_birth} onChange={(e) => set('date_of_birth')(e.target.value)} />
             )}
 
@@ -261,7 +263,7 @@ export default function Waiver() {
             {signed ? (
               <WStatic value={sub?.cell_phone ? fmtPhone(sub.cell_phone) : ''} style={{ maxWidth: 280 }} />
             ) : (
-              <input type="tel" className="w-input" style={{ maxWidth: 280 }} required
+              <input type="tel" name="cell_phone" className="w-input" style={{ maxWidth: 280 }} required
                      value={form.cell_phone} onChange={(e) => set('cell_phone')(e.target.value)} />
             )}
 
@@ -269,7 +271,7 @@ export default function Waiver() {
             {signed ? (
               <WStatic value={sub?.home_phone ? fmtPhone(sub.home_phone) : ''} style={{ maxWidth: 280 }} />
             ) : (
-              <input type="tel" className="w-input" style={{ maxWidth: 280 }}
+              <input type="tel" name="home_phone" className="w-input" style={{ maxWidth: 280 }}
                      value={form.home_phone} onChange={(e) => set('home_phone')(e.target.value)} />
             )}
 
@@ -277,7 +279,7 @@ export default function Waiver() {
             {signed ? (
               <WStatic value={sub?.email ?? ''} />
             ) : (
-              <input type="email" className="w-input" required
+              <input type="email" name="email" className="w-input" required
                      value={form.email} onChange={(e) => set('email')(e.target.value)} />
             )}
 
@@ -285,7 +287,7 @@ export default function Waiver() {
             {signed ? (
               <WStatic value={sub?.street_address ?? ''} />
             ) : (
-              <input type="text" className="w-input" required
+              <input type="text" name="street_address" className="w-input" required
                      value={form.street_address} onChange={(e) => set('street_address')(e.target.value)} />
             )}
 
@@ -293,7 +295,7 @@ export default function Waiver() {
             {signed ? (
               <WStatic value={sub?.city_state_zip ?? ''} style={{ maxWidth: 420 }} />
             ) : (
-              <input type="text" className="w-input" style={{ maxWidth: 420 }} required
+              <input type="text" name="city_state_zip" className="w-input" style={{ maxWidth: 420 }} required
                      value={form.city_state_zip} onChange={(e) => set('city_state_zip')(e.target.value)} />
             )}
 
@@ -301,7 +303,7 @@ export default function Waiver() {
             {signed ? (
               <WStatic value={sub?.mailing_address ?? ''} />
             ) : (
-              <input type="text" className="w-input"
+              <input type="text" name="mailing_address" className="w-input"
                      value={form.mailing_address} onChange={(e) => set('mailing_address')(e.target.value)} />
             )}
 
@@ -309,7 +311,7 @@ export default function Waiver() {
             {signed ? (
               <WStatic value={sub?.mailing_city_state_zip ?? ''} style={{ maxWidth: 420 }} />
             ) : (
-              <input type="text" className="w-input" style={{ maxWidth: 420 }}
+              <input type="text" name="mailing_city_state_zip" className="w-input" style={{ maxWidth: 420 }}
                      value={form.mailing_city_state_zip}
                      onChange={(e) => set('mailing_city_state_zip')(e.target.value)} />
             )}
@@ -318,7 +320,7 @@ export default function Waiver() {
               <>
                 <hr className="mt-4 mb-3" />
                 <div className="form-check mb-3">
-                  <input type="checkbox" className="form-check-input" id="i_agree" required
+                  <input type="checkbox" className="form-check-input" id="i_agree" name="i_agree" required
                          checked={form.i_agree} onChange={(e) => set('i_agree')(e.target.checked)} />
                   <label className="form-check-label" htmlFor="i_agree">
                     I have read and fully understand this agreement and voluntarily agree to be bound by its terms.

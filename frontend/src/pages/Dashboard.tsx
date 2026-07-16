@@ -236,9 +236,9 @@ export default function Dashboard() {
           >
             Member Card <ExtIcon size={12} />
           </a>
-          <a href={`pay.php?student_id=${studentId}`} className="btn btn-success">
+          <Link to={`/pay/${studentId}`} className="btn btn-success">
             Make a Payment
-          </a>
+          </Link>
         </div>
       </div>
 

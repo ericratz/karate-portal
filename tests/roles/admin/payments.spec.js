@@ -65,11 +65,13 @@ test.describe('student view', () => {
     test('student payment history shows Month column and year filter', async ({ page }) => {
         await page.goto(BASE + '/student/payment_history.php');
         await expect(page.locator('th:has-text("Month")')).toBeVisible();
-        const yearBtn = page.locator('a.btn[href*="?year="]').first();
+        // SPA year filter renders as buttons (was <a href="?year="> links)
+        const yearBtn = page.locator('.card-header button.btn').filter({ hasText: /^\d{4}$/ }).first();
         if (await yearBtn.isVisible()) {
-            const year = (await yearBtn.textContent())?.trim();
+            const year = (await yearBtn.textContent())?.trim() ?? '';
             await yearBtn.click();
-            await page.waitForLoadState('domcontentloaded');
+            // Filtered rows re-render client-side; every date cell shows that year
+            await expect(page.locator('.card-header')).toContainText(year);
             const dates = await page.locator('tbody td:nth-child(2)').allTextContents();
             dates.forEach(d => expect(d).toContain(year));
         }

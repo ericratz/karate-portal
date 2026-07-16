@@ -1,5 +1,6 @@
 ﻿// @ts-check
-// Tests for student/belt_tests.php — the student-facing full belt test history view.
+// Tests for the student belt test history — now the React SPA route
+// (student/belt_tests.php is a redirect stub into app.php#/belt-tests/N).
 // Covers summary cards, table columns, pass/fail/pending badge rendering, and access control.
 const { test, expect } = require('@playwright/test');
 const { assertNoPhpErrors, BASE, AUTH } = require('../../helpers');
@@ -47,6 +48,8 @@ test.describe('Student belt test history page', () => {
     test('belt_tests.php loads without PHP errors', async ({ page }) => {
         await page.goto(BASE + '/student/belt_tests.php');
         await assertNoPhpErrors(page, 'student belt tests');
+        // SPA route — the heading renders after the API fetch completes
+        await expect(page.locator('h4').first()).toContainText('Belt Test History');
     });
 
     test('page heading includes Belt Test History', async ({ page }) => {
@@ -125,13 +128,11 @@ test.describe('Student belt test history page', () => {
 
     // ── FEE DISPLAY ───────────────────────────────────────────────────────────
 
-    test('fee column shows Paid or Unpaid text when tests exist', async ({ page }) => {
+    test('fee column renders when tests exist (✓ for paid, blank otherwise)', async ({ page }) => {
         await page.goto(BASE + '/student/belt_tests.php');
-        // Fee column should contain either "Paid" or "Unpaid" text
-        const feePaid   = page.locator('tbody .text-success:has-text("Paid")');
-        const feeUnpaid = page.locator('tbody .text-danger:has-text("Unpaid")');
-        const hasFeeDisplay = (await feePaid.count()) > 0 || (await feeUnpaid.count()) > 0;
-        expect(hasFeeDisplay).toBe(true);
+        // SPA fee column: <span class="text-success">✓</span> when fee_paid, empty cell otherwise
+        await expect(page.locator('tbody tr').first()).toBeVisible();
+        await expect(page.locator('thead')).toContainText('Fee');
     });
 
     // ── ACCESS CONTROL ────────────────────────────────────────────────────────

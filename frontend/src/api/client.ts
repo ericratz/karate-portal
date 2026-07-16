@@ -7,6 +7,7 @@
 import type { Me } from './types';
 
 const BASE = '/karate/portal/api/v1';
+const PORTAL_BASE = '/karate/portal';
 const LOGIN_URL = '/karate/portal/login.php';
 
 export class ApiError extends Error {
@@ -59,6 +60,31 @@ export async function apiPost<T>(path: string, payload: unknown): Promise<T> {
     },
     body: JSON.stringify(payload),
   });
+}
+
+/**
+ * POST to a legacy portal endpoint (api/paypal_create.php, paypal_capture.php)
+ * that predates the v1 envelope — returns the raw JSON body and leaves error
+ * handling to the caller, since those endpoints signal failure in-body.
+ */
+export async function portalPost<T>(path: string, payload: unknown): Promise<T> {
+  if (csrfToken === null) {
+    await fetchMe();
+  }
+  const res = await fetch(PORTAL_BASE + path, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': csrfToken ?? '',
+    },
+    body: JSON.stringify(payload),
+  });
+  if (res.status === 401) {
+    window.location.href = LOGIN_URL;
+    throw new ApiError('Not logged in', 401);
+  }
+  return (await res.json()) as T;
 }
 
 /** Session bootstrap — also caches the CSRF token for later apiPost calls. */

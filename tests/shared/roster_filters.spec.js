@@ -238,6 +238,8 @@ test.describe('Instructor roster filters', () => {
     });
 
     test('typing in search hides non-matching rows', async ({ page }) => {
+        // SPA renders after the API fetch — wait for rows before counting
+        await expect(page.locator('tbody tr[data-name]').first()).toBeVisible();
         const totalRows = await page.locator('tbody tr[data-name]').count();
         // The test DB has 9 students — the roster is never empty.
         expect(totalRows).toBeGreaterThan(0);

@@ -85,12 +85,15 @@ test.describe('Mobile layout — student pages', () => {
         test(`${label} has no horizontal page overflow`, async ({ page }) => {
             await page.goto(BASE + url, { waitUntil: 'domcontentloaded' });
             await assertNoPhpErrors(page, `mobile ${label}`);
+            // Student pages are SPA routes now — wait for content before measuring
+            await expect(page.locator('.card').first()).toBeVisible();
             await assertNoPageOverflow(page, label);
         });
     }
 
     test('student dashboard attendance chart is hidden on mobile', async ({ page }) => {
         await page.goto(BASE + '/student/', { waitUntil: 'domcontentloaded' });
+        await expect(page.locator('.card').first()).toBeVisible();
         await expect(page.locator('#attChart')).toBeHidden();
     });
 });
@@ -109,5 +112,13 @@ test.describe('Mobile layout — parent pages', () => {
         await assertNoPhpErrors(page, 'mobile parent dashboard');
         await assertNoPageOverflow(page, 'parent dashboard');
         await expect(page.locator('#attChart')).toBeHidden();
+    });
+
+    test('parent pay page: no overflow', async ({ page }) => {
+        await page.goto(BASE + '/parent/pay.php', { waitUntil: 'domcontentloaded' });
+        await assertNoPhpErrors(page, 'mobile parent pay');
+        // SPA route — wait for the fetched form before measuring
+        await expect(page.locator('#studentSelect')).toBeVisible();
+        await assertNoPageOverflow(page, 'parent pay page');
     });
 });

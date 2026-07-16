@@ -7,7 +7,7 @@ require_once __DIR__ . '/../../../includes/api.php';
 require_once __DIR__ . '/../../../includes/family.php';
 
 api_require_method('POST');
-api_require_role('parent', 'instructor', 'admin');
+api_require_role('parent', 'student', 'guest', 'instructor', 'admin');
 api_verify_csrf();
 
 $user_id = (int)current_user_id();

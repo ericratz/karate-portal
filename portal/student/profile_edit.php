@@ -40,6 +40,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['change_passwo
 }
 
 if (isset($_GET['pw_changed'])) $pw_msg = 'Password updated successfully.';
+if (isset($_GET['saved']))      $msg    = 'Profile saved successfully.';
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && !isset($_POST['change_password'])) {
     $first        = trim(post_str('first_name'));
@@ -81,7 +82,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && !isset($_POST['change_passw
         db()->prepare('UPDATE users SET first_name=?, last_name=?, email=? WHERE id=?')
              ->execute([$first, $last, $email ?: null, $user_id]);
 
-        header('Location: index.php?saved=1');
+        // Stay on this page — index.php is now a SPA redirect stub, so a
+        // ?saved=1 flag sent there would never render
+        header('Location: profile_edit.php?saved=1');
         exit;
     }
 } // end profile POST

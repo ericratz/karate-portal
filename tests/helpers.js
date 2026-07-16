@@ -81,8 +81,16 @@ async function visit(page, urlPath, label) {
  * @returns {Promise<void>}
  */
 async function logout(page) {
-    await page.goto(BASE + '/logout.php');
+    // Leaving an SPA page can race: an in-flight api/v1 fetch 401s once the
+    // session dies and the client redirects to login.php itself, aborting our
+    // navigation (net::ERR_ABORTED) even though both roads end at login.
+    // Tolerate the loser, then make sure the session is actually gone.
+    await page.goto(BASE + '/logout.php').catch(() => {});
     await page.waitForLoadState('domcontentloaded');
+    if (!page.url().includes('login.php')) {
+        await page.goto(BASE + '/logout.php');
+        await page.waitForLoadState('domcontentloaded');
+    }
 }
 
 /**

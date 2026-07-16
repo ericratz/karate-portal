@@ -115,21 +115,24 @@ test('add payment with amount=0 does not save a payment', async ({ page }) => {
 });
 
 test('add note with empty content is rejected by server', async ({ page }) => {
-    // add_note.php was removed — note-adding is now an inline form on
-    // instructor/student_profile.php.
+    // Note-adding now lives on the SPA student profile, posting JSON to
+    // api/v1/instructor/student.php with the CSRF token in X-CSRF-Token.
     await login(page, INST_USER, INST_PASS);
     await page.goto(BASE + '/instructor/student_profile.php?id=2');
-    const token = await getCsrfToken(page);
-    const res = await page.evaluate(async ({ url, token }) => {
-        const res = await fetch(url, {
+    const res = await page.evaluate(async ({ base }) => {
+        const me = await (await fetch(base + '/api/v1/me.php', { credentials: 'same-origin' })).json();
+        const r = await fetch(base + '/api/v1/instructor/student.php', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({
-                csrf_token: token, action: 'add_note', note_content: '',
-            }).toString(),
+            credentials: 'same-origin',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': me.data.csrf_token,
+            },
+            body: JSON.stringify({ action: 'add_note', id: 2, content: '' }),
         });
-        return { status: res.status, body: await res.text() };
-    }, { url: BASE + '/instructor/student_profile.php?id=2', token });
+        return { status: r.status, body: await r.text() };
+    }, { base: BASE });
+    expect(res.status).toBe(422);
     expect(res.body).toContain('empty');
     await logout(page);
 });

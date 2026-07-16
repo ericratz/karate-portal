@@ -46,12 +46,14 @@ function DarkToggle() {
 export default function Layout({ children }: { children: ReactNode }) {
   const { me } = useSession();
   const tip = roleTips[me.role];
+  // Brand goes to the role's home, like the PHP header did
+  const isStaff = me.role === 'instructor' || me.role === 'admin';
 
   return (
     <>
       <nav className="navbar navbar-expand-md sticky-top">
         <div className="container-fluid">
-          <Link className="navbar-brand fw-semibold" to="/">
+          <Link className="navbar-brand fw-semibold" to={isStaff ? '/instructor' : '/'}>
             My Dashboard
           </Link>
           <div className="d-flex align-items-center gap-3 ms-auto">

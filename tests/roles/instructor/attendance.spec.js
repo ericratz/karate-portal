@@ -10,6 +10,7 @@ const TEST_DATE = '2099-01-15';
 test('attendance page shows student list', async ({ page }) => {
     await page.goto(BASE + `/instructor/attendance.php?date=${TEST_DATE}`);
     await assertNoPhpErrors(page, 'attendance form');
+    await expect(page.locator('input[name="present[]"]').first()).toBeVisible();
     expect(await page.locator('input[name="present[]"]').count()).toBeGreaterThan(0);
 });
 

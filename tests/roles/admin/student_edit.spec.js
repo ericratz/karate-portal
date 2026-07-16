@@ -29,12 +29,13 @@ test.describe('Student Edit Cards', () => {
         expect(href).toContain('attendance.php?date=');
     });
 
-    test('clicking an attendance date link navigates to attendance.php', async ({ page }) => {
+    test('clicking an attendance date link navigates to the attendance page', async ({ page }) => {
         const link = page.locator('a[href*="attendance.php?date="]').first();
         await expect(link).toHaveCount(1);
         await link.click();
         await page.waitForLoadState('domcontentloaded');
-        expect(page.url()).toContain('attendance.php');
+        // attendance.php is a redirect stub into the SPA route now
+        expect(page.url()).toContain('attendance');
         expect(page.url()).toContain('date=');
     });
 

@@ -26,15 +26,16 @@ test.describe('Instructor dashboard navigation', () => {
     test('Record New Class form, navigation links, and belt test badges', async ({ page }) => {
         const formAction = await page.locator('button:has-text("Record New Class")').evaluate(el => el.closest('form')?.action ?? '');
         expect(formAction).toContain('attendance.php');
-        expect(await page.locator('a:has-text("View All Classes")').getAttribute('href')).toContain('attendance_sessions.php');
-        expect(await page.locator('a:has-text("View Student Roster")').getAttribute('href')).toContain('students.php');
-        expect(await page.locator('a:has-text("View Tests")').getAttribute('href')).toContain('belt_tests_all.php');
-        // Recent session links (if any)
+        // Navigation links are SPA hash routes now
+        expect(await page.locator('a:has-text("View All Classes")').getAttribute('href')).toContain('classes');
+        expect(await page.locator('a:has-text("View Student Roster")').getAttribute('href')).toContain('roster');
+        expect(await page.locator('a:has-text("View Tests")').getAttribute('href')).toContain('belt-tests');
+        // Recent session links keep the legacy stub href (if any)
         const link = page.locator('td a[href*="attendance.php?date="]').first();
         if (await link.count() > 0) {
             await link.click();
             await page.waitForLoadState('domcontentloaded');
-            expect(page.url()).toContain('attendance.php');
+            expect(page.url()).toContain('attendance');
             expect(page.url()).toContain('date=');
         }
         // Belt test result badges only (exclude ⚠ waiver-warning badges from roster section)
@@ -116,6 +117,7 @@ test.describe('Admin students page links', () => {
         await expect(link).toHaveCount(1);
         await link.click();
         await page.waitForLoadState('domcontentloaded');
-        expect(page.url()).toContain('student_profile.php');
+        // student_profile.php is a redirect stub into the SPA route now
+        expect(page.url()).toMatch(/student_profile\.php|#\/instructor\/student\//);
     });
 });

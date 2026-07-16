@@ -66,9 +66,9 @@ test.describe('Parent portal — integration', () => {
         await expect(page.locator('body')).not.toContainText('Fatal error');
     });
 
-    test('dashboard shows Make a Payment button linking to pay.php', async ({ page }) => {
+    test('dashboard shows Make a Payment button linking to the pay route', async ({ page }) => {
         await page.goto(BASE + `/parent/?student_id=${CHILD_EMILY}`);
-        await expect(page.locator('a[href*="pay.php"]').first()).toBeVisible();
+        await expect(page.locator(`a[href$="/pay/${CHILD_EMILY}"]`).first()).toBeVisible();
     });
 
     test('dashboard shows inline Edit Profile button', async ({ page }) => {
@@ -113,10 +113,69 @@ test.describe('Parent portal — integration', () => {
         expect(page.url()).not.toContain('attendance.php');
     });
 
-    // ── PAY PAGE ──────────────────────────────────────────────────────────────
+    // ── PAY PAGE (React SPA at app.php#/pay; pay.php is a redirect stub) ──────
 
     test('pay.php loads for parent role', async ({ page }) => {
         await visit(page, '/parent/pay.php', 'parent pay page');
+        await expect(page.locator('#studentSelect')).toBeVisible();
+    });
+
+    test('pay.php deep link preselects the linked child', async ({ page }) => {
+        await page.goto(BASE + `/parent/pay.php?student_id=${CHILD_EMILY}`);
+        await assertNoPhpErrors(page, 'parent pay deep link');
+        await expect(page.locator('#studentSelect')).toHaveValue(String(CHILD_EMILY));
+    });
+
+    test('pay.php with unlinked student_id falls back to own record', async ({ page }) => {
+        await page.goto(BASE + `/parent/pay.php?student_id=${UNLINKED_ID}`);
+        await assertNoPhpErrors(page, 'parent pay unlinked id');
+        await expect(page.locator('#studentSelect')).toHaveValue(String(PARENT_OWN_ID));
+    });
+
+    test('checking a fee updates the total and shows the month picker', async ({ page }) => {
+        await page.goto(BASE + `/parent/pay.php?student_id=${CHILD_EMILY}`);
+        await expect(page.locator('#studentSelect')).toBeVisible();
+
+        await page.locator('input[aria-label="Monthly Tuition"]').check();
+        await expect(page.locator('#tuitionMonth')).toBeVisible();
+        await expect(page.locator('.fs-4')).toContainText('$30.00');
+
+        await page.locator('input[aria-label="Belt Test Fee"]').check();
+        await expect(page.locator('.fs-4')).toContainText('$40.00');
+
+        await page.locator('input[aria-label="Monthly Tuition"]').uncheck();
+        await expect(page.locator('#tuitionMonth')).not.toBeVisible();
+        await expect(page.locator('.fs-4')).toContainText('$10.00');
+    });
+
+    test('pay page shows the auto-pay manager for every family member', async ({ page }) => {
+        await page.goto(BASE + '/parent/pay.php');
+        await expect(page.locator('body')).toContainText('Monthly Auto-Pay');
+        // Own record + 2 children — one row (Active badge or setup button) each
+        await expect(
+            page.locator('.btn-success:has-text("Set up Auto-Pay"), .text-success:has-text("Active")'),
+        ).toHaveCount(3);
+    });
+
+    test('parent cannot create auto-pay for an unlinked student via API', async ({ page }) => {
+        await page.goto(BASE + `/parent/?student_id=${PARENT_OWN_ID}`);
+
+        const result = await page.evaluate(async ({ base, unlinkedId }) => {
+            const me = await (await fetch(base + '/api/v1/me.php', { credentials: 'same-origin' })).json();
+            const res = await fetch(base + '/api/v1/parent/subscription.php', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': me.data.csrf_token,
+                },
+                body: JSON.stringify({ action: 'create', student_id: unlinkedId }),
+            });
+            return { status: res.status, body: await res.json() };
+        }, { base: BASE, unlinkedId: UNLINKED_ID });
+
+        expect(result.status).toBe(403);
+        expect(result.body.ok).toBe(false);
     });
 
     // ── PAYMENT HISTORY ───────────────────────────────────────────────────────

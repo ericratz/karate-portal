@@ -35,18 +35,20 @@ test('setup: register fresh account for waiver tests', async ({ page }) => {
 
 // ── DASHBOARD BUTTON ──────────────────────────────────────────────────────────
 
-test('dashboard shows Complete Waiver button when unsigned', async ({ page }) => {
+test('dashboard shows Complete Waiver card when unsigned', async ({ page }) => {
     await login(page, W_USER, W_PASS);
     await page.goto(BASE + '/student/');
-    await expect(page.locator('a:has-text("Complete Waiver")')).toBeVisible();
+    // SPA stat card: ✗ link (aria-labelled) with a "Complete Waiver" caption
+    await expect(page.locator('.card', { hasText: 'Complete Waiver' })).toBeVisible();
     await logout(page);
 });
 
-test('Complete Waiver button links to waiver.php', async ({ page }) => {
+test('Complete Waiver card links to the SPA waiver route', async ({ page }) => {
     await login(page, W_USER, W_PASS);
     await page.goto(BASE + '/student/');
-    const href = await page.locator('a:has-text("Complete Waiver")').getAttribute('href');
-    expect(href).toContain('waiver.php');
+    const link = page.locator('.card', { hasText: 'Complete Waiver' }).locator('a');
+    await expect(link).toBeVisible();
+    expect(await link.getAttribute('href')).toContain('/waiver/');
     await logout(page);
 });
 
@@ -93,9 +95,14 @@ test('waiver form pre-fills signed date as today', async ({ page }) => {
     await login(page, W_USER, W_PASS);
     await page.goto(BASE + '/student/waiver.php');
     const date = await page.inputValue('input[name="signed_date"]');
-    // Server runs in Mountain Time; use local date string to match PHP's date()
-    const serverDate = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Denver' });
-    expect(date).toBe(serverDate);
+    // The SPA fills the date from the browser clock — compute the expected
+    // value in the same page context so timezones can't drift
+    const browserDate = await page.evaluate(() => {
+        const d = new Date();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        return `${d.getFullYear()}-${m}-${String(d.getDate()).padStart(2, '0')}`;
+    });
+    expect(date).toBe(browserDate);
     await logout(page);
 });
 
@@ -177,18 +184,18 @@ test('valid submission redirects to dashboard with waiver signed', async ({ page
     await page.check('input[name="i_agree"]');
 
     await page.click('button:has-text("Submit Signed Waiver")');
-    await page.waitForLoadState('domcontentloaded');
 
-    // Should redirect to dashboard
-    expect(page.url()).toContain('index.php');
+    // SPA stays on the page and swaps to the signed confirmation view
+    await expect(page.locator('.alert-success').first()).toContainText('was signed on');
     await logout(page);
 });
 
 test('dashboard hides waiver card after signing', async ({ page }) => {
     await login(page, W_USER, W_PASS);
     await page.goto(BASE + '/student/');
-    // Complete Waiver button should be gone — card is hidden once signed
-    await expect(page.locator('a:has-text("Complete Waiver")')).toHaveCount(0);
+    // Wait for the SPA dashboard, then confirm the waiver card is gone
+    await expect(page.locator('h3').first()).toBeVisible();
+    await expect(page.locator('.card:has-text("Complete Waiver")')).toHaveCount(0);
     await logout(page);
 });
 
@@ -196,23 +203,22 @@ test('waiver.php shows read-only signed view after submission', async ({ page })
     await login(page, W_USER, W_PASS);
     await page.goto(BASE + '/student/waiver.php');
 
-    // Fields should be read-only (not an editable form)
-    await expect(page.locator('input[name="signature"]')).toHaveAttribute('readonly', '');
-    await expect(page.locator('input[name="print_name"]')).toHaveAttribute('readonly', '');
-    // Should show the signed confirmation banner
-    await expect(page.locator('.alert-success').first()).toContainText('signed this waiver');
-    // Signed data should be pre-filled into the readonly inputs
-    await expect(page.locator('input[name="print_name"]')).toHaveValue('Waiver Tester');
-    await expect(page.locator('input[name="street_address"]')).toHaveValue('123 Karate Lane');
+    // Signed view renders static fields (no editable form) with the banner
+    await expect(page.locator('.alert-success').first()).toContainText('was signed on');
+    await expect(page.locator('input[name="signature"]')).toHaveCount(0);
+    await expect(page.locator('button:has-text("Submit Signed Waiver")')).toHaveCount(0);
+    // Signed data renders in the static fields
+    await expect(page.locator('.w-static').filter({ hasText: 'Waiver Tester' }).first()).toBeVisible();
+    await expect(page.locator('.w-static').filter({ hasText: '123 Karate Lane' })).toBeVisible();
     await logout(page);
 });
 
-test('waiver.php has navigation to student dashboard', async ({ page }) => {
+test('waiver page has navigation back to the dashboard', async ({ page }) => {
     await login(page, W_USER, W_PASS);
     await page.goto(BASE + '/student/waiver.php');
-    // Navigation back to dashboard is via the navbar brand ("My Dashboard")
+    // Navigation back to dashboard is via the SPA navbar brand ("My Dashboard")
     const href = await page.locator('.navbar-brand').getAttribute('href');
-    expect(href).toContain('/student/');
+    expect(href).toContain('#/');
     await logout(page);
 });
 

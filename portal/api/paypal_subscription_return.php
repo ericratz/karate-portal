@@ -7,10 +7,11 @@ require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/config.php';
 require_login();
 
-// Parents approve subscriptions for children — send them back to their own pages
+// Both roles land back on their pay page (now the SPA pay route) so the
+// success message shows next to the auto-pay list.
 $is_parent = has_role('parent');
 $pay_url   = SITE_URL . ($is_parent ? '/parent/pay.php' : '/student/pay.php');
-$home_url  = SITE_URL . ($is_parent ? '/parent/index.php' : '/student/index.php');
+$home_url  = $pay_url;
 
 $sub_id = get_str('subscription_id');
 

@@ -345,9 +345,9 @@ test.describe('Waiver label', () => {
     test('student profile shows "Waiver" not "Injury Waiver"', async ({ page }) => {
         await page.goto(BASE + '/instructor/student_profile.php?id=2');
         await assertNoPhpErrors(page, 'student profile waiver label');
-        const body = await page.textContent('body');
-        expect(body).toContain('Waiver');
-        expect(body).not.toContain('Injury Waiver');
+        // SPA renders after the API fetch — toContainText retries until then
+        await expect(page.locator('body')).toContainText('Waiver');
+        await expect(page.locator('body')).not.toContainText('Injury Waiver');
     });
 
     test('student_edit.php labels the waiver row "Waiver"', async ({ page }) => {

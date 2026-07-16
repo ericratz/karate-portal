@@ -110,7 +110,8 @@ test.describe('instructor smoke', () => {
             ['/instructor/student_profile.php?id=2', 'student profile'],
         ];
         for (const [path, label] of pages) await visit(page, path, label);
-        expect(await page.getAttribute('.navbar-brand', 'href')).toContain('/instructor/');
+        // SPA hash-router brand link points at the instructor home route
+        expect(await page.getAttribute('.navbar-brand', 'href')).toContain('instructor');
     });
 
     test('instructor dashboard shows correct cards', async ({ page }) => {
@@ -146,13 +147,13 @@ test.describe('student smoke', () => {
 
     test('student dashboard shows summary cards', async ({ page }) => {
         await page.goto(BASE + '/student/');
-        const body = await page.textContent('body');
-        expect(body).toContain('Classes Attended');
-        expect(body).toContain('Current Rank');
-        expect(body).toContain('Recent Payments');
-        // Nav brand routes correctly
+        // SPA renders after the API fetch — toContainText retries until then
+        await expect(page.locator('body')).toContainText('Classes Attended');
+        await expect(page.locator('body')).toContainText('Current Rank');
+        await expect(page.locator('body')).toContainText('Recent Payments');
+        // Nav brand is the SPA hash-router home link
         const href = await page.getAttribute('.navbar-brand', 'href');
-        expect(href).toMatch(/\/(student|instructor|admin)\//);
+        expect(href).toContain('#/');
     });
 });
 

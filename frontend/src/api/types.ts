@@ -219,3 +219,250 @@ export interface WaiverSigned {
   signed: boolean;
   signed_date: string;
 }
+
+// GET /parent/pay.php — payment page context
+export interface PayFee {
+  label: string;
+  amount: number;
+}
+
+export interface PayFamilyMember {
+  id: number;
+  name: string;
+}
+
+export interface PayMonthOption {
+  value: string; // YYYY-MM-01
+  label: string; // e.g. "July 2026"
+}
+
+export interface PayContext {
+  family: PayFamilyMember[];
+  own_id: number;
+  fees: Record<string, PayFee>;
+  monthly_fee: number;
+  tuition_paid_ids: number[];
+  paid_months_by_student: Record<string, string[]>;
+  reg_paid_ids: number[];
+  autopay_active_ids: number[];
+  month_options: PayMonthOption[];
+  current_month_value: string;
+  next_month_value: string;
+  paypal_client_id: string;
+}
+
+// POST /parent/subscription.php
+export interface SubscriptionCreated {
+  approve_url: string;
+}
+
+export interface SubscriptionCancelled {
+  cancelled: boolean;
+}
+
+// ── api/v1/instructor ────────────────────────────────────────────────────
+
+// GET /instructor/dashboard.php
+export interface InstructorDashboardData {
+  recent_sessions: { id: number; session_date: string; class_type: string }[];
+  recent_belt_tests: {
+    id: number;
+    test_date: string;
+    result: string;
+    student_id: number;
+    student: string;
+    kyu_dan: string;
+  }[];
+  has_more_tests: boolean;
+  own_student_id: number;
+  has_children: boolean;
+}
+
+// GET /instructor/roster.php
+export interface RosterStudent {
+  id: number;
+  first_name: string;
+  last_name: string;
+  student_type: string;
+  active: boolean;
+  active_override: boolean;
+  injury_waiver: boolean;
+  medical_note: string | null;
+  kyu_dan: string | null;
+  has_login: boolean;
+  last_attended: string | null;
+}
+
+export interface RosterData {
+  students: RosterStudent[];
+  ranks: string[];
+}
+
+// GET /instructor/attendance.php
+export interface AttendanceStudent {
+  id: number;
+  first_name: string;
+  last_name: string;
+  student_type: string;
+  injury_waiver: boolean;
+  present: boolean;
+  last_attended: string | null;
+}
+
+export interface AttendanceContext {
+  date: string;
+  session_exists: boolean;
+  class_type: string;
+  students: AttendanceStudent[];
+}
+
+export interface AttendanceSaved {
+  saved: number;
+  removed: boolean;
+}
+
+// GET /instructor/sessions.php
+export interface ClassSession {
+  id: number;
+  session_date: string;
+  class_type: string;
+  present_count: number;
+  attendees: { first_name: string; last_name: string }[];
+}
+
+export interface SessionsData {
+  sessions: ClassSession[];
+  years: number[];
+}
+
+// GET /instructor/belt_tests.php
+export interface InstructorBeltTest {
+  id: number;
+  test_date: string;
+  result: string;
+  score: number | null;
+  fee_paid: boolean;
+  belt_awarded: boolean;
+  notes: string | null;
+  student_id: number;
+  student: string;
+  kyu_dan: string;
+  rank_name: string;
+}
+
+export interface InstructorBeltTestsData {
+  tests: InstructorBeltTest[];
+  years: number[];
+  students: { id: number; name: string }[];
+  is_admin: boolean;
+}
+
+// GET /instructor/student.php
+export interface InstructorStudent {
+  id: number;
+  first_name: string;
+  last_name: string;
+  student_type: string;
+  active: boolean;
+  date_of_birth: string | null;
+  phone: string | null;
+  email: string | null;
+  emergency_contact_name: string | null;
+  emergency_contact_phone: string | null;
+  street_address: string | null;
+  city_state_zip: string | null;
+  registration_date: string | null;
+  injury_waiver: boolean;
+  injury_waiver_date: string | null;
+  uniform_size: string | null;
+  belt_size: string | null;
+  medical_note: string | null;
+  username: string | null;
+  last_login: string | null;
+  user_id: number | null;
+}
+
+export interface InstructorStudentProfile {
+  student: InstructorStudent;
+  can_edit_profile: boolean;
+  is_admin: boolean;
+  ranks: { rank_id: number; name: string; kyu_dan: string; achieved_date: string | null }[];
+  attended_sessions: { session_id: number; session_date: string }[];
+  belt_tests: {
+    id: number;
+    test_date: string;
+    result: string;
+    score: number | null;
+    fee_paid: boolean;
+    kyu_dan: string;
+    rank_name: string;
+  }[];
+  payments: {
+    payment_date: string;
+    payment_type: string;
+    payment_method: string;
+    amount: number;
+  }[];
+  notes: { id: number; content: string; created_at: string; username: string | null }[];
+  family_tabs: { id: number; name: string; role: string }[];
+}
+
+export interface InstructorProfileSaved {
+  saved: boolean;
+  student: InstructorStudent;
+}
+
+// GET /instructor/belt_test_edit.php
+export interface BeltTestHistoryRow {
+  test_date: string;
+  kyu_dan: string;
+  rank_name: string;
+  result: string;
+  score: number | null;
+  fee_paid: boolean;
+}
+
+export interface BeltTestEditStudent {
+  id: number;
+  name: string;
+  name_lf: string;
+  current_rank_label: string;
+  next_rank_id: number | null;
+  history: BeltTestHistoryRow[];
+}
+
+export interface BeltTestEditContext {
+  test: {
+    id: number;
+    student_id: number;
+    test_date: string;
+    rank_id: number;
+    score: number | null;
+    notes: string;
+    fee_paid: boolean;
+  } | null;
+  students: BeltTestEditStudent[];
+  ranks: { id: number; kyu_dan: string; name: string; rank_order: number }[];
+  is_admin: boolean;
+}
+
+export interface BeltTestSaved {
+  test_id: number;
+  duplicate: boolean;
+  result: string;
+  score: number | null;
+}
+
+// Legacy JSON endpoints (portal/api/paypal_create.php / paypal_capture.php) —
+// no {ok,data} envelope; errors arrive as {error} with a 4xx/5xx status.
+export interface PayPalOrderCreated {
+  id?: string;
+  error?: string;
+}
+
+export interface PayPalCaptureResult {
+  success: boolean;
+  amount?: number;
+  transaction_id?: string | null;
+  error?: string;
+}

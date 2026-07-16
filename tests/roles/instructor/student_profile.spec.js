@@ -17,15 +17,14 @@ test.describe('Student profile — instructor', () => {
 
     test('shows student name in heading', async ({ page }) => {
         await page.goto(BASE + `/instructor/student_profile.php?id=${STUDENT_ID}`);
-        const body = await page.textContent('body');
-        expect(body).toMatch(/Sarah|Johnson/);
+        // SPA renders after the API fetch — toContainText retries until then
+        await expect(page.locator('h4').first()).toContainText(/Sarah|Johnson/);
     });
 
     test('shows Uniform Size and Belt Size labels', async ({ page }) => {
         await page.goto(BASE + `/instructor/student_profile.php?id=${STUDENT_ID}`);
-        const body = await page.textContent('body');
-        expect(body).toContain('Uniform Size');
-        expect(body).toContain('Belt Size');
+        await expect(page.locator('body')).toContainText('Uniform Size');
+        await expect(page.locator('body')).toContainText('Belt Size');
     });
 
     test('has Belt Test History card', async ({ page }) => {
@@ -59,8 +58,7 @@ test.describe('Student profile — admin', () => {
     test('admin can view student profile', async ({ page }) => {
         await page.goto(BASE + `/instructor/student_profile.php?id=${STUDENT_ID}`);
         await assertNoPhpErrors(page, 'admin view student profile');
-        const body = await page.textContent('body');
-        expect(body).toMatch(/Sarah|Johnson/);
+        await expect(page.locator('h4').first()).toContainText(/Sarah|Johnson/);
     });
 });
 

@@ -33,6 +33,8 @@ test('belt_test_edit.php loads and form fields are correct', async ({ page }) =>
 
 test('type-to-filter student selector shows matching names and hides after selection', async ({ page }) => {
     await page.goto(BASE + '/instructor/belt_test_edit.php');
+    // SPA renders the picker after the API fetch
+    await expect(page.locator('#studentFilter')).toBeVisible();
     // No students visible before typing
     const allBtns = page.locator('.student-btn');
     const total = await allBtns.count();
@@ -72,37 +74,29 @@ test('3rd Dan rank is not listed in rank options', async ({ page }) => {
 
 test('score preview shows Pass/Fail/empty based on sub-score inputs', async ({ page }) => {
     await page.goto(BASE + '/instructor/belt_test_edit.php');
+    await expect(page.locator('#studentFilter')).toBeVisible();
     // Select a student to reveal the chart section
     await page.fill('#studentFilter', 'a');
     await page.waitForTimeout(100);
     await page.locator('.student-btn:visible').first().click();
     await expect(page.locator('#chartSection')).toBeVisible({ timeout: 3000 });
-    // Fill sub-score inputs for a passing total (>= 80)
-    await page.evaluate(() => {
-        const type = document.getElementById('chartTypeInput').value;
-        if (type === 'lower') {
-            [['l_basics_form', 22], ['l_basics_eff', 22], ['l_kumite_form', 18], ['l_kumite_eff', 18]]
-                .forEach(([id, v]) => { const el = document.getElementById(id); if (el) el.value = v; });
-        } else {
-            [['r_kata_form', 15], ['r_kata_eff', 15], ['r_basics_form', 15], ['r_basics_eff', 15],
-             ['r_kumite_form', 10], ['r_kumite_eff', 10]]
-                .forEach(([id, v]) => { const el = document.getElementById(id); if (el) el.value = v; });
-        }
-        recomputeScore();
-    });
+    // Fill sub-score inputs for a passing total (>= 80) — fill() drives the
+    // React state (the old page's global recomputeScore() no longer exists)
+    const chartType = await page.inputValue('#chartTypeInput');
+    const fields = chartType === 'lower'
+        ? [['#l_basics_form', '50'], ['#l_basics_eff', '30'], ['#l_kumite_form', '0'], ['#l_kumite_eff', '5']] // 85
+        : [['#r_kata_form', '15'], ['#r_kata_eff', '15'], ['#r_basics_form', '15'], ['#r_basics_eff', '15'],
+           ['#r_kumite_form', '10'], ['#r_kumite_eff', '10']]; // 80
+    for (const [sel, v] of fields) await page.fill(sel, v);
     await expect(page.locator('#resultBadge .badge.bg-success')).toBeVisible();
     // Clear all inputs → badge should empty
-    await page.evaluate(() => {
-        ['r_kata_form','r_kata_eff','r_basics_form','r_basics_eff','r_kumite_form','r_kumite_eff',
-         'l_basics_form','l_basics_eff','l_kumite_form','l_kumite_eff']
-            .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-        recomputeScore();
-    });
+    for (const [sel] of fields) await page.fill(sel, '');
     expect((await page.textContent('#resultBadge'))?.trim()).toBe('');
 });
 
 test('submitting without student and rank shows validation error', async ({ page }) => {
     await page.goto(BASE + '/instructor/belt_test_edit.php');
+    await expect(page.locator('#studentFilter')).toBeVisible(); // SPA mounted
     // Make the chart section visible (submit button is hidden by default until a "student" is conceptually selected)
     await page.evaluate(() => {
         document.getElementById('chartSection').style.display = '';
@@ -116,10 +110,11 @@ test('submitting without student and rank shows validation error', async ({ page
 
 // ── BELT TESTS ALL — DASHBOARD + TOGGLE ──────────────────────────────────────
 
-test('instructor dashboard shows Recent Belt Tests and links to belt_tests_all.php', async ({ page }) => {
+test('instructor dashboard shows Recent Belt Tests and links to the belt tests list', async ({ page }) => {
     await page.goto(BASE + '/instructor/');
     await expect(page.locator('.card-header').filter({ hasText: 'Recent Belt Tests' })).toBeVisible();
-    await expect(page.locator('a[href="belt_tests_all.php"]')).toBeVisible();
+    // SPA route link (was a[href="belt_tests_all.php"])
+    await expect(page.locator('a[href*="belt-tests"]').first()).toBeVisible();
 });
 
 test('belt_tests_all.php loads, shows count, and edit toggle works', async ({ page }) => {
@@ -134,6 +129,7 @@ test('belt_tests_all.php loads, shows count, and edit toggle works', async ({ pa
 
 test('belt tests edit toggle shows and hides delete column', async ({ page }) => {
     await page.goto(BASE + '/instructor/belt_tests_all.php');
+    await expect(page.locator('#beltTestsTable')).toBeVisible();
     const hasBeltTests = await page.locator('#beltTestsTable tbody tr').count() > 0;
     if (hasBeltTests) {
         // Initially hidden
@@ -225,10 +221,10 @@ test('create a passing belt test (score >= 80) for student 2', async ({ page }) 
     await page.click('button[type="submit"]');
     await page.waitForLoadState('domcontentloaded');
     await assertNoPhpErrors(page, 'create passing belt test');
-    // Save redirects to belt_test_edit.php?id=X&saved=1, but instructors are then
-    // immediately bounced to belt_tests_all.php — the full grading chart for an
-    // existing test is admin-only (see belt_test_edit.php's role check).
-    expect(page.url()).toContain('belt_tests_all.php');
+    // Instructors can't view saved tests (the full grading chart is admin-only),
+    // so the SPA sends them to the belt tests list after saving.
+    await expect(page.locator('body')).toContainText(/\d+\s*test/i);
+    expect(page.url()).toContain('belt-tests');
 });
 
 test('passing belt test appears in list with a score badge', async ({ page }) => {

@@ -202,23 +202,33 @@ test('student dashboard has attendance chart canvas', async ({ page }) => {
     await logout(page);
 });
 
-test('student dashboard loads Chart.js script', async ({ page }) => {
+test('student dashboard renders the Chart.js chart', async ({ page }) => {
     await login(page, STU_USER, STU_PASS);
     await page.goto(BASE + '/student/');
-    // Use page.content() — Playwright locators don't reliably query <script> elements.
-    const html = await page.content();
-    expect(html).toContain('chart.js');
+    // Chart.js is bundled into the SPA (no CDN script tag) — assert the
+    // canvas was actually initialized: Chart.js sets inline width/height.
+    await expect(page.locator('#attChart')).toBeVisible();
+    await expect(async () => {
+        const w = await page.locator('#attChart').getAttribute('width');
+        expect(Number(w)).toBeGreaterThan(0);
+    }).toPass();
     await logout(page);
 });
 
-test('attendance chart is initialized with 12 monthly labels', async ({ page }) => {
+test('attendance chart data covers 12 months', async ({ page }) => {
+    // The SPA feeds the chart from api/v1 — assert the payload the way the
+    // React app consumes it (the old test parsed inline JS that no longer exists).
     await login(page, STU_USER, STU_PASS);
     await page.goto(BASE + '/student/');
-    const content = await page.content();
-    const match = content.match(/labels:\s*(\[.*?\])/s);
-    expect(match).not.toBeNull();
-    const labels = JSON.parse(match[1]);
-    expect(labels).toHaveLength(12);
+    await expect(page.locator('#attChart')).toBeVisible();
+    const months = await page.evaluate(async () => {
+        const base = '/karate/portal/api/v1';
+        const fam = (await (await fetch(base + '/parent/family.php', { credentials: 'same-origin' })).json()).data;
+        const sid = fam.own_student.id;
+        const dash = (await (await fetch(base + `/parent/student.php?student_id=${sid}`, { credentials: 'same-origin' })).json()).data;
+        return dash.attendance_chart.length;
+    });
+    expect(months).toBe(12);
     await logout(page);
 });
 

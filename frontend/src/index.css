@@ -164,3 +164,28 @@ a:hover { text-decoration: none; }
         font-size: .875rem;
     }
 }
+
+/* ── Instructor: All Belt Tests (belt_tests_all port) ── */
+.delete-col { display: none; }
+table.editing .delete-col { display: table-cell; }
+
+/* Student type-to-filter dropdown — overlays content instead of
+   growing the card; scrolls once it has more than ~10 rows. */
+.stu-filter-wrap { position: relative; }
+.stu-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 1050;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, .15);
+  border-radius: .375rem;
+  box-shadow: 0 .5rem 1rem rgba(0, 0, 0, .15);
+  max-height: 400px;
+  overflow-y: auto;
+}
+[data-bs-theme='dark'] .stu-dropdown {
+  background: #2c2f33;
+  border-color: rgba(255, 255, 255, .15);
+}

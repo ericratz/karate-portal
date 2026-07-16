@@ -8,7 +8,7 @@ require_once __DIR__ . '/../../../includes/family.php';
 require_once __DIR__ . '/../../../includes/belt_helpers.php';
 
 api_require_method('GET');
-api_require_role('parent', 'instructor', 'admin');
+api_require_role('parent', 'student', 'guest', 'instructor', 'admin');
 
 $user_id    = (int)current_user_id();
 $student_id = get_int('student_id');

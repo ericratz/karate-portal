@@ -10,7 +10,7 @@
 require_once __DIR__ . '/auth.php';
 
 /** Send a success envelope and stop. */
-function api_respond(array $data, int $status = 200): void {
+function api_respond(array $data, int $status = 200): never {
     http_response_code($status);
     header('Content-Type: application/json');
     echo json_encode(['ok' => true, 'data' => $data]);
@@ -18,7 +18,7 @@ function api_respond(array $data, int $status = 200): void {
 }
 
 /** Send an error envelope and stop. */
-function api_error(string $message, int $status): void {
+function api_error(string $message, int $status): never {
     http_response_code($status);
     header('Content-Type: application/json');
     echo json_encode(['ok' => false, 'error' => $message]);

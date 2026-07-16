@@ -45,6 +45,7 @@ test.describe('Attendance sessions page', () => {
 
     test('type select has Class / Seminar / Private options', async ({ page }) => {
         await page.goto(BASE + '/instructor/attendance_sessions.php');
+        await expect(page.locator('select[name="type"]')).toBeVisible();
         const opts = await page.locator('select[name="type"] option').allTextContents();
         expect(opts.map(o => o.trim())).toEqual(
             expect.arrayContaining(['All Types', 'Class', 'Seminar', 'Private'])
@@ -61,7 +62,7 @@ test.describe('Attendance sessions page', () => {
         await page.goto(BASE + '/instructor/attendance_sessions.php');
         const currentYear = new Date().getFullYear().toString();
         await Promise.all([
-            page.waitForResponse(r => r.url().includes('/instructor/attendance_sessions.php')),
+            page.waitForResponse(r => r.url().includes('/api/v1/instructor/sessions.php')),
             page.selectOption('select[name="year"]', currentYear),
         ]);
         await assertNoPhpErrors(page, 'sessions filtered by year');
@@ -72,7 +73,7 @@ test.describe('Attendance sessions page', () => {
         await page.goto(BASE + '/instructor/attendance_sessions.php');
         const currentYear = new Date().getFullYear().toString();
         await Promise.all([
-            page.waitForResponse(r => r.url().includes('/instructor/attendance_sessions.php')),
+            page.waitForResponse(r => r.url().includes('/api/v1/instructor/sessions.php')),
             page.selectOption('select[name="year"]', currentYear),
         ]);
         await expect(page.locator('a:has-text("Clear")')).toBeVisible();
@@ -82,11 +83,11 @@ test.describe('Attendance sessions page', () => {
         await page.goto(BASE + '/instructor/attendance_sessions.php');
         const currentYear = new Date().getFullYear().toString();
         await Promise.all([
-            page.waitForResponse(r => r.url().includes('/instructor/attendance_sessions.php')),
+            page.waitForResponse(r => r.url().includes('/api/v1/instructor/sessions.php')),
             page.selectOption('select[name="year"]', currentYear),
         ]);
         await Promise.all([
-            page.waitForResponse(r => r.url().includes('/instructor/attendance_sessions.php')),
+            page.waitForResponse(r => r.url().includes('/api/v1/instructor/sessions.php')),
             page.click('a:has-text("Clear")'),
         ]);
         // htmx swaps the URL via history.pushState asynchronously after the

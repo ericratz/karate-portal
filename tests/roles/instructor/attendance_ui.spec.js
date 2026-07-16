@@ -29,7 +29,8 @@ test.describe('Attendance UI', () => {
 
     test('name filter hides non-matching rows', async ({ page }) => {
         await page.goto(BASE + `/instructor/attendance.php?date=${today}`);
-        // Count visible student rows before filtering
+        // SPA renders after the API fetch — wait for rows before counting
+        await expect(page.locator('#students-body tr').first()).toBeVisible();
         const totalBefore = await page.locator('#students-body tr').count();
         // The test DB has 9 students — the roster is never empty.
         expect(totalBefore).toBeGreaterThan(0);
@@ -106,6 +107,7 @@ test.describe('Attendance UI', () => {
 
     test('attendance checkboxes use name="present[]"', async ({ page }) => {
         await page.goto(BASE + `/instructor/attendance.php?date=${today}`);
+        await expect(page.locator('input[name="present[]"]').first()).toBeVisible();
         const cbCount = await page.locator('input[name="present[]"]').count();
         expect(cbCount).toBeGreaterThan(0);
     });

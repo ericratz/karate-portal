@@ -12,13 +12,15 @@ const TEST_CSZ    = 'Provo, UT 84601';
 
 // ── PROFILE SAVE FLASH ────────────────────────────────────────────────────────
 
-test('student dashboard shows success banner when ?saved=1', async ({ page }) => {
-    await page.goto(BASE + '/student/?saved=1');
-    await assertNoPhpErrors(page, 'student dashboard saved flash');
+// The saved flash now lives on profile_edit.php itself — the dashboard is a
+// SPA redirect stub, so a query flag sent there would never render.
+test('profile_edit shows success banner when ?saved=1', async ({ page }) => {
+    await page.goto(BASE + '/student/profile_edit.php?saved=1');
+    await assertNoPhpErrors(page, 'profile edit saved flash');
     await expect(page.locator('.alert-success').first()).toContainText('Profile saved successfully');
 });
 
-test('student dashboard does NOT show profile banner without ?saved=1', async ({ page }) => {
+test('student dashboard (SPA) does NOT show a profile banner', async ({ page }) => {
     await page.goto(BASE + '/student/');
     await assertNoPhpErrors(page, 'student dashboard no flash');
     await expect(page.locator('.alert-success:has-text("Profile saved")')).toHaveCount(0);
@@ -38,7 +40,7 @@ test('profile_edit.php loads and shows address fields', async ({ page }) => {
 
 // ── ADDRESS FIELD PERSISTENCE ─────────────────────────────────────────────────
 
-test('saving profile with address fields redirects to dashboard with success banner', async ({ page }) => {
+test('saving profile with address fields stays on profile_edit with success banner', async ({ page }) => {
     await page.goto(BASE + '/student/profile_edit.php');
     // Fill ALL required fields explicitly — don't rely on jsmith's DB values being non-null.
     // The DB snapshot is restored after all tests so these temporary changes are fine.
@@ -50,8 +52,8 @@ test('saving profile with address fields redirects to dashboard with success ban
     await page.fill('input[name="city_state_zip"]', TEST_CSZ);
     await page.click('button:has-text("Save Profile")');
     await page.waitForLoadState('domcontentloaded');
-    // Should redirect to student dashboard with ?saved=1
-    expect(page.url()).toContain('index.php?saved=1');
+    // Should stay on profile_edit with ?saved=1
+    expect(page.url()).toContain('profile_edit.php?saved=1');
     await expect(page.locator('.alert-success').first()).toContainText('Profile saved successfully');
 });
 
@@ -73,7 +75,7 @@ test('clearing address fields and saving persists empty values', async ({ page }
     await page.fill('input[name="city_state_zip"]', '');
     await page.click('button:has-text("Save Profile")');
     await page.waitForLoadState('domcontentloaded');
-    expect(page.url()).toContain('index.php?saved=1');
+    expect(page.url()).toContain('profile_edit.php?saved=1');
 });
 
 // ── PASSWORD CHANGE CARD ──────────────────────────────────────────────────────
