@@ -189,3 +189,81 @@ table.editing .delete-col { display: table-cell; }
   background: #2c2f33;
   border-color: rgba(255, 255, 255, .15);
 }
+
+/* ── Admin pages ── */
+
+/* Filter pill buttons (ported from includes/header.php) */
+.btn-filter {
+  --bs-btn-bg: #e8e8e8;
+  --bs-btn-color: #333;
+  --bs-btn-border-color: #ccc;
+  --bs-btn-hover-bg: #d5d5d5;
+  --bs-btn-hover-color: #111;
+  --bs-btn-hover-border-color: #bbb;
+  --bs-btn-active-bg: #c8c8c8;
+  --bs-btn-active-color: #111;
+}
+[data-bs-theme='dark'] .btn-filter {
+  --bs-btn-bg: #3a3a3a;
+  --bs-btn-color: #ddd;
+  --bs-btn-border-color: #555;
+  --bs-btn-hover-bg: #4a4a4a;
+  --bs-btn-hover-color: #fff;
+  --bs-btn-active-bg: #555;
+  --bs-btn-active-color: #fff;
+}
+.btn-filter.active {
+  background-color: #6f42c1 !important;
+  border-color: #6f42c1 !important;
+  color: #fff !important;
+  font-weight: 600;
+}
+[data-bs-theme='dark'] .btn-filter.active {
+  background-color: #8a5cd6 !important;
+  border-color: #8a5cd6 !important;
+  color: #fff !important;
+}
+
+/* .btn-primary is repurposed site-wide as green, so a genuinely blue
+   button (logs page backup download) needs its own class. */
+.btn-blue {
+  --bs-btn-bg: #0d6efd;
+  --bs-btn-border-color: #0d6efd;
+  --bs-btn-hover-bg: #0b5ed7;
+  --bs-btn-hover-border-color: #0a58ca;
+  --bs-btn-active-bg: #0a58ca;
+  --bs-btn-active-border-color: #0a53be;
+  --bs-btn-color: #fff;
+  --bs-btn-hover-color: #fff;
+  --bs-btn-active-color: #fff;
+}
+
+/* Admin navbar dropdown (React-controlled, no bootstrap JS) */
+.navbar .dropdown-menu { z-index: 1080; }
+
+/* Compare & Link account tables (ported from compare_account.php) */
+.compare-table td:first-child { width: 38%; color: #6c757d; font-size: .85rem; }
+.compare-table td:last-child  { font-weight: 500; }
+
+/* Payments page: per-row Edit button column (shown with the delete column) */
+.edit-col { display: none; }
+table.editing .edit-col { display: table-cell; }
+
+/* ── Student editor reveal columns (ported from student_edit.php) ── */
+.pw-action-col      { display: none !important; }
+.rank-delete-col    { display: none !important; }
+.note-delete        { display: none !important; }
+.bt-delete-btn      { display: none !important; }
+.pay-action-col     { display: none !important; }
+.guardian-delete-col{ display: none !important; }
+#pwTable.editing       .pw-action-col       { display: table-cell !important; }
+#rankTable.editing     .rank-delete-col     { display: table-cell !important; }
+#notesContainer.notes-editing .note-delete  { display: inline-block !important; }
+#btList.editing        .bt-delete-btn       { display: inline !important; }
+#payTable.editing      .pay-action-col      { display: table-cell !important; }
+#guardianTable.editing .guardian-delete-col { display: table-cell !important; }
+.table-purple { --bs-table-bg: rgba(111,66,193,.12); }
+
+/* Class notes log delete buttons (ported from student_notes.php) */
+.delete-btn { display: none !important; }
+#notesContainer.editing .delete-btn { display: inline-block !important; }

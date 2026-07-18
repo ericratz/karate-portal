@@ -133,9 +133,7 @@ include __DIR__ . '/../includes/header.php';
     <div class="card-body">
         <?php if ($msg):   ?><div class="alert alert-success py-2 mb-3"><?= htmlspecialchars($msg) ?></div><?php endif; ?>
         <?php if ($error): ?><div class="alert alert-danger py-2 mb-3"><?= htmlspecialchars($error) ?></div><?php endif; ?>
-        <form method="post" class="row g-3"
-              hx-post="profile_edit.php?student_id=<?= $student_id ?>"
-              hx-target="#profile-card" hx-swap="outerHTML" hx-select="#profile-card">
+        <form method="post" class="row g-3">
             <?= csrf_input() ?>
             <input type="hidden" name="student_id" value="<?= $student_id ?>">
 
@@ -216,9 +214,7 @@ include __DIR__ . '/../includes/header.php';
             <?php if ($pw_msg):   ?><div class="alert alert-success py-2 mb-3"><?= htmlspecialchars($pw_msg) ?></div><?php endif; ?>
             <?php if ($pw_error): ?><div class="alert alert-danger py-2 mb-3"><?= htmlspecialchars($pw_error) ?></div><?php endif; ?>
             <p class="text-muted small mb-3">This changes your own login password.</p>
-            <form method="post" class="row g-3"
-                  hx-post="profile_edit.php?student_id=<?= $student_id ?>"
-                  hx-target="#password-card" hx-swap="outerHTML" hx-select="#password-card">
+            <form method="post" class="row g-3">
                 <?= csrf_input() ?>
                 <input type="hidden" name="student_id" value="<?= $student_id ?>">
                 <input type="hidden" name="change_password" value="1">

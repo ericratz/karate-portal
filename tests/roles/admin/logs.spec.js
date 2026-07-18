@@ -69,37 +69,40 @@ test.describe('Combined logs page', () => {
     });
 });
 
-// ── ERROR LOG PAGE (app_log.php) ──────────────────────────────────────────────
+// ── LEGACY ERROR LOG URL (app_log.php → SPA error tab) ────────────────────────
 
 test.describe('Error log page', () => {
     test.use({ storageState: AUTH.admin });
 
-    test('loads with "Error Log" heading', async ({ page }) => {
-        // No assertNoPhpErrors — this page intentionally displays error log entries
-        // whose message text can contain "Uncaught", "Warning:", etc.
+    test('app_log.php redirects into the SPA error tab', async ({ page }) => {
+        // No assertNoPhpErrors — the error tab intentionally displays error log
+        // entries whose message text can contain "Uncaught", "Warning:", etc.
         await page.goto(BASE + '/admin/app_log.php');
-        await expect(page.locator('h4')).toContainText('Error Log');
+        await page.waitForLoadState('domcontentloaded');
+        expect(page.url()).toContain('app.php#/admin/logs?tab=error');
+        await expect(page.locator('a.nav-link.active:has-text("Errors")')).toBeVisible();
     });
 
-    test('has level and channel filter selects', async ({ page }) => {
+    test('error tab has timeframe, level, and channel filter selects', async ({ page }) => {
         await page.goto(BASE + '/admin/app_log.php');
+        await expect(page.locator('select[name="timeframe"]')).toBeVisible();
         await expect(page.locator('select[name="level"]')).toBeVisible();
         await expect(page.locator('select[name="channel"]')).toBeVisible();
     });
 
-    test('has from and to date inputs', async ({ page }) => {
-        await page.goto(BASE + '/admin/app_log.php');
-        await expect(page.locator('input[name="from"]')).toBeVisible();
-        await expect(page.locator('input[name="to"]')).toBeVisible();
-    });
-
     test('filtering by level returns only that level', async ({ page }) => {
         // No assertNoPhpErrors — error log entries may contain "Uncaught" etc.
-        await page.goto(BASE + '/admin/app_log.php?level=error');
+        // The seed's error_log rows are all level=warning, so filter by that.
+        // Pass every param in the URL (all-time so it doesn't depend on when
+        // they were logged) — a single fetch, not three sequential ones, which
+        // keeps the assertion off the flaky path under parallel worker load.
+        await page.goto(BASE + '/admin/app.php#/admin/logs?tab=error&timeframe=all&level=warning');
+        await expect(page.locator('select[name="level"]')).toHaveValue('warning');
+        await expect(page.locator('tbody tr').first()).toBeVisible(); // the test DB has warning-level entries
         const rows = await page.locator('tbody tr').count();
-        expect(rows).toBeGreaterThan(0); // the test DB has error-level entries
-        // Level badge is in the 2nd column; all visible rows should show "error".
-        const otherLevel = page.locator('tbody td:nth-child(2)').filter({ hasNotText: 'error' });
+        expect(rows).toBeGreaterThan(0);
+        // Level badge is in the 2nd column; all visible rows should show "warning".
+        const otherLevel = page.locator('tbody td:nth-child(2)').filter({ hasNotText: 'warning' });
         expect(await otherLevel.count()).toBe(0);
     });
 

@@ -21,16 +21,20 @@ test('POST to protected endpoint without session redirects to login', async ({ r
     expect([302, 301, 403]).toContain(res.status());
 });
 
+// The admin payments page is a React SPA route now — its mutations go to
+// api/v1/admin/payments.php with the CSRF token in the X-CSRF-Token header
+// (api_verify_csrf()), so the CSRF probes target the API endpoint.
+
 test('POST without CSRF token returns 403', async ({ page }) => {
     await login(page, ADMIN_USER, ADMIN_PASS);
     const status = await page.evaluate(async (url) => {
         const res = await fetch(url, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: 'action=delete_payment&payment_id=99999',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'delete', id: 99999 }),
         });
         return res.status;
-    }, BASE + '/admin/payments.php');
+    }, BASE + '/api/v1/admin/payments.php');
     expect(status).toBe(403);
     await logout(page);
 });
@@ -40,11 +44,11 @@ test('POST with wrong CSRF token returns 403', async ({ page }) => {
     const status = await page.evaluate(async (url) => {
         const res = await fetch(url, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: 'action=delete_payment&payment_id=99999&csrf_token=badtoken',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': 'badtoken' },
+            body: JSON.stringify({ action: 'delete', id: 99999 }),
         });
         return res.status;
-    }, BASE + '/admin/payments.php');
+    }, BASE + '/api/v1/admin/payments.php');
     expect(status).toBe(403);
     await logout(page);
 });

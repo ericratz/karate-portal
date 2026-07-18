@@ -72,9 +72,9 @@ test.describe('admin smoke', () => {
         await expect(page.locator('h4')).toContainText('New Student');
         await page.goto(BASE + '/admin/student_edit.php?id=2');
         await assertNoPhpErrors(page, 'edit student');
-        await expect(page.locator('h4')).toContainText('Edit');
-        // Nav brand
-        expect(await page.getAttribute('.navbar-brand', 'href')).toContain('/admin/');
+        await expect(page.locator('h4').first()).toContainText('Edit');
+        // Nav brand is the SPA hash-router admin home link now
+        expect(await page.getAttribute('.navbar-brand', 'href')).toContain('/admin');
     });
 
     test('admin email page has checkboxes and recipient count', async ({ page }) => {
@@ -87,6 +87,8 @@ test.describe('admin smoke', () => {
 
     test('admin payments edit toggle shows delete column', async ({ page }) => {
         await page.goto(BASE + '/admin/payments.php');
+        // SPA page — wait for the results card to render first
+        await expect(page.locator('#payments-results')).toBeVisible();
         expect(await page.isVisible('table.editing .delete-col')).toBe(false);
         const editBtn = page.locator('#editToggle');
         if (await editBtn.isVisible()) {

@@ -30,6 +30,16 @@ export function fmtMonth(iso: string): string {
   return `${d.toLocaleString('en-US', { month: 'short' })} ${d.getFullYear()}`;
 }
 
+/** "2026-07-04 15:05:00" → "04 Jul 2026 3:05 pm" (PHP date('d M Y g:i a')) */
+export function fmtDateTime(iso: string): string {
+  const d = new Date(iso.replace(' ', 'T'));
+  if (Number.isNaN(d.getTime())) return iso;
+  const h24 = d.getHours();
+  const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+  const ampm = h24 < 12 ? 'am' : 'pm';
+  return `${fmtDate(iso)} ${h12}:${String(d.getMinutes()).padStart(2, '0')} ${ampm}`;
+}
+
 /** "monthly_tuition" → "Monthly Tuition" (PHP fmt_type()) */
 export function paymentType(type: string): string {
   return type

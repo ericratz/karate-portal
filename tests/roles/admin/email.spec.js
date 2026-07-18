@@ -51,8 +51,8 @@ test.describe('Guest auto-promotion', () => {
         await expect(guestCard.locator('body, td').filter({ hasText: `Me${TS}` })).toBeVisible().catch(() => {
             // Fallback: just check the page contains the name
         });
-        const body = await page.textContent('body');
-        expect(body).toContain(`Me${TS}`);
+        // toContainText retries until the SPA roster has rendered
+        await expect(page.locator('body')).toContainText(`Me${TS}`);
         await logout(page);
     });
 
@@ -115,6 +115,8 @@ test.describe('Email mailing list', () => {
     test('all student rows appear in the recipient table', async ({ page }) => {
         await login(page, ADMIN_USER, ADMIN_PASS);
         await page.goto(BASE + '/admin/email_students.php');
+        // SPA page — wait for the table to render before the non-waiting count()
+        await expect(page.locator('.recipient-row').first()).toBeVisible();
         const rows = await page.locator('.recipient-row').count();
         expect(rows).toBeGreaterThan(0);
         await logout(page);
@@ -209,31 +211,43 @@ test.describe('Email mailing list', () => {
         await logout(page);
     });
 
+    // Server-side validation now lives in api/v1/admin/email_students.php —
+    // the old "bypass the JS and submit the form natively" trick doesn't
+    // exist for a fetch()-based SPA, so hit the endpoint directly.
+
+    /** POST the email endpooint from the page context with the session CSRF token. */
+    async function postEmailApi(page, payload) {
+        return page.evaluate(async (body) => {
+            const me = await fetch('../api/v1/me.php').then(r => r.json());
+            const res = await fetch('../api/v1/admin/email_students.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': me.data.csrf_token,
+                },
+                body: JSON.stringify(body),
+            });
+            return { status: res.status, body: await res.json() };
+        }, payload);
+    }
+
     test('submitting with no recipients shows error', async ({ page }) => {
         await login(page, ADMIN_USER, ADMIN_PASS);
         await page.goto(BASE + '/admin/email_students.php');
-        await page.fill('input[name="subject"]', 'Test subject');
-        await page.fill('textarea[name="body"]', 'Test body');
-        // All unchecked — bypass the JS confirm and submit directly
-        await page.evaluate(() => {
-            document.getElementById('emailForm').submit();
-        });
-        await page.waitForLoadState('domcontentloaded');
-        await expect(page.locator('.alert-danger').first()).toContainText('select at least one recipient');
+        await expect(page.locator('#recipientCount')).toBeVisible();
+        const res = await postEmailApi(page, { subject: 'Test subject', body: 'Test body', send_to: [] });
+        expect(res.status).toBe(422);
+        expect(res.body.error).toContain('select at least one recipient');
         await logout(page);
     });
 
     test('submitting without subject shows error', async ({ page }) => {
         await login(page, ADMIN_USER, ADMIN_PASS);
         await page.goto(BASE + '/admin/email_students.php');
-        await page.check('#chk_all');
-        // Remove required from subject to let it POST empty
-        await page.evaluate(() => {
-            document.querySelector('input[name="subject"]').removeAttribute('required');
-        });
-        await page.evaluate(() => document.getElementById('emailForm').submit());
-        await page.waitForLoadState('domcontentloaded');
-        await expect(page.locator('.alert-danger').first()).toContainText('Subject and message body are required');
+        await expect(page.locator('#recipientCount')).toBeVisible();
+        const res = await postEmailApi(page, { subject: '', body: 'Test body', send_to: [1] });
+        expect(res.status).toBe(422);
+        expect(res.body.error).toContain('Subject and message body are required');
         await logout(page);
     });
 

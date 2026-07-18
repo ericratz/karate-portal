@@ -36,16 +36,22 @@ test('filter by method and by type show only matching rows', async ({ page }) =>
     // Filter by cash — the method select live-filters via HTMX on change
     await page.goto(BASE + '/admin/payments.php');
     await Promise.all([
-        page.waitForResponse(r => r.url().includes('/admin/payments.php')),
+        page.waitForResponse(r => r.url().includes('/admin/payments.php') && r.url().includes('method=cash')),
         page.selectOption('select[name="method"]', 'cash'),
     ]);
     await assertNoPhpErrors(page, 'payment filter cash');
-    const methods = await page.locator('tbody td:nth-child(5)').allTextContents();
-    methods.forEach(m => expect(m.toLowerCase()).toBe('cash'));
-    // Filter by registration type — navigate directly to avoid HTMX timing (filter form uses hx-get)
+    // Poll — the SPA re-renders just after the filtered response resolves
+    await expect.poll(async () => {
+        const methods = await page.locator('tbody td:nth-child(5)').allTextContents();
+        return methods.every(m => m.toLowerCase() === 'cash');
+    }).toBe(true);
+    // Filter by registration type — navigate directly (stub forwards ?type=)
     await page.goto(BASE + '/admin/payments.php?type=registration');
     await page.waitForLoadState('domcontentloaded');
     await assertNoPhpErrors(page, 'payment filter registration');
+    // SPA page — wait for the filtered fetch to render before reading cells
+    await expect(page.locator('select[name="type"]')).toHaveValue('registration');
+    await expect(page.locator('tbody tr, p:has-text("No payments match")').first()).toBeVisible();
     const types = await page.locator('tbody td:nth-child(4)').allTextContents();
     types.forEach(t => expect(t.toLowerCase()).toContain('registration'));
 });

@@ -36,6 +36,10 @@ echo "SET FOREIGN_KEY_CHECKS = 0;\n\n";
 // ── Tables ────────────────────────────────────────────────────────────────────
 $tables = $pdo->query('SHOW TABLES')->fetchAll(PDO::FETCH_COLUMN);
 
+// Same audit entry the combined logs page's exporter wrote before the SPA
+// migration made this the only backup-download endpoint.
+audit('manual_backup_download', null, null, count($tables) . ' tables');
+
 foreach ($tables as $table) {
     $safe = '`' . str_replace('`', '``', (string)$table) . '`';
 

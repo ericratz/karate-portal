@@ -96,6 +96,8 @@ test('admin can set a new password for another user via the detail page', async 
 test.afterAll(async ({ browser }) => {
     const page = await browser.newPage({ storageState: AUTH.admin });
     await page.goto(BASE + '/admin/students.php');
+    // SPA roster — wait for render before the non-waiting count() below
+    await page.locator('#rosterSearch').waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
     const row = page.locator('tr').filter({ hasText: `User${TS}` });
     if (await row.count() > 0) {
         const profileHref = await row.locator('a[href*="student_profile.php"]').first().getAttribute('href');
@@ -104,6 +106,8 @@ test.afterAll(async ({ browser }) => {
             await page.goto(BASE + '/admin/student_edit.php?id=' + match[1]);
             await page.waitForLoadState('domcontentloaded');
             const deleteBtn = page.locator('button:has-text("Delete Profile")');
+            // SPA page — the button appears once the editor has rendered
+            await deleteBtn.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
             if (await deleteBtn.isVisible()) {
                 page.once('dialog', d => d.accept());
                 await deleteBtn.click();

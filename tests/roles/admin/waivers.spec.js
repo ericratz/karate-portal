@@ -37,6 +37,8 @@ test('grant form has student type-to-filter, type select, reason textarea, date,
 
 test('waiver_type select contains all expected exemption types', async ({ page }) => {
     await page.goto(BASE + '/admin/waivers.php');
+    // SPA page — wait for render before the non-waiting allTextContents()
+    await expect(page.locator('select[name="waiver_type"]')).toBeVisible();
     const opts = await page.locator('select[name="waiver_type"] option').allTextContents();
     const lower = opts.map(o => o.trim().toLowerCase());
     expect(lower).toContain('monthly tuition');

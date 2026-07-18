@@ -77,7 +77,9 @@ test('logout redirects to login and protects pages after', async ({ page }) => {
 test('delete profile button only visible to admin on edit page', async ({ page }) => {
     await login(page, ADMIN_USER, ADMIN_PASS);
     await page.goto(BASE + '/admin/student_edit.php?id=2');
-    await expect(page.locator('button:has-text("Delete Profile")')).toBeVisible();
+    // Generous timeout — the SPA editor loads a lazy chunk + several fetches,
+    // which can be slow under the containerized suite's parallel load
+    await expect(page.locator('button:has-text("Delete Profile")')).toBeVisible({ timeout: 15000 });
     await page.goto(BASE + '/instructor/student_profile.php?id=2');
     await expect(page.locator('button:has-text("Delete Profile")')).toHaveCount(0);
     await logout(page);

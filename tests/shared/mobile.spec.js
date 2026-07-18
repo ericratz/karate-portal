@@ -54,7 +54,9 @@ test.describe('Mobile layout — admin pages', () => {
     });
 
     test('footer is collapsed to chevron; expands and collapses', async ({ page }) => {
-        await page.goto(BASE + '/admin/', { waitUntil: 'domcontentloaded' });
+        // The dashboard is a SPA route now (no PHP footer) — use a page that
+        // still renders includes/footer.php.
+        await page.goto(BASE + '/admin/checkin_pin.php', { waitUntil: 'domcontentloaded' });
         const grid = page.locator('#site-footer .footer-grid');
         await expect(grid).toBeHidden();
         await page.click('#footerCollapseBtn');

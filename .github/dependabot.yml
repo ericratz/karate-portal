@@ -1,0 +1,42 @@
+# Dependabot version updates — watches the three lockfiles plus the Actions
+# workflows for known-vulnerable or outdated dependencies. Security ALERTS
+# (CVE notifications) are a repo setting: Settings → Code security & analysis
+# → enable Dependabot alerts + security updates.
+version: 2
+updates:
+  # PHP dependencies (portal/composer.lock)
+  - package-ecosystem: composer
+    directory: /portal
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      composer-minor:
+        update-types: [minor, patch]
+
+  # React SPA dependencies (frontend/package-lock.json)
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      frontend-minor:
+        update-types: [minor, patch]
+
+  # Playwright toolchain (root package-lock.json)
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      test-toolchain-minor:
+        update-types: [minor, patch]
+
+  # GitHub Actions pins in .github/workflows
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3

@@ -14,6 +14,8 @@ async function goToNonAdminProfile(page) {
     await nonAdminRow.waitFor({ state: 'attached' });
     await nonAdminRow.locator('a:has-text("View")').click();
     await page.waitForLoadState('domcontentloaded');
+    // SPA page — wait for the profile to render before non-waiting reads
+    await expect(page.locator('.card-header').filter({ hasText: 'Account Details' })).toBeVisible();
 }
 
 // Helper: navigate to user_profile.php for the first user (any role)
@@ -21,6 +23,8 @@ async function goToAnyProfile(page) {
     await page.goto(BASE + '/admin/users.php');
     await page.locator('a:has-text("View")').first().click();
     await page.waitForLoadState('domcontentloaded');
+    // SPA page — wait for the profile to render before non-waiting reads
+    await expect(page.locator('.card-header').filter({ hasText: 'Account Details' })).toBeVisible();
 }
 
 test.describe('User Profile (admin/user_profile.php)', () => {

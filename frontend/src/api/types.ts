@@ -453,6 +453,418 @@ export interface BeltTestSaved {
   score: number | null;
 }
 
+// ── api/v1/admin ─────────────────────────────────────────────────────────
+
+// GET /admin/roster.php — instructor roster shape plus admin-only columns
+export interface AdminRosterStudent extends RosterStudent {
+  email: string | null;
+  phone: string | null;
+  reg_paid: boolean;
+}
+
+export interface AdminRosterData {
+  students: AdminRosterStudent[];
+  ranks: string[];
+}
+
+// GET /admin/users.php
+export interface AdminUser {
+  id: number;
+  username: string;
+  active: boolean;
+  last_login: string | null;
+  student_id: number | null;
+  student_name: string | null;
+  role: string;
+}
+
+export interface AdminUsersData {
+  users: AdminUser[];
+  current_user_id: number;
+}
+
+// GET /admin/waivers.php (payment exemptions)
+export interface AdminExemption {
+  id: number;
+  student_id: number;
+  student_name: string;
+  waiver_type: string;
+  reason: string | null;
+  granted_date: string;
+  granted_by_name: string | null;
+}
+
+export interface AdminExemptionsData {
+  waivers: AdminExemption[];
+  students: StudentRef[];
+  years: number[];
+}
+
+// GET /admin/donations.php
+export interface AdminDonation {
+  id: number;
+  payment_date: string;
+  student_id: number | null;
+  donor_name: string | null;
+  student_name: string | null;
+  payment_method: string;
+  notes: string | null;
+  recorded_by_name: string | null;
+  amount: number;
+}
+
+export interface AdminDonationsData {
+  donations: AdminDonation[];
+  total_shown: number;
+  years: number[];
+  students: StudentRef[];
+}
+
+// GET /admin/expenses.php
+export interface AdminExpense {
+  id: number;
+  expense_date: string;
+  expense_type: string;
+  description: string | null;
+  amount: number;
+  paid: boolean;
+  recorded_by: string | null;
+}
+
+export interface AdminExpensesData {
+  expenses: AdminExpense[];
+  total: number;
+  total_paid: number;
+  years: number[];
+}
+
+// GET /admin/logs.php — one payload per tab
+export interface ActivityLogEntry {
+  id: number;
+  created_at: string;
+  username: string | null;
+  action: string;
+  target_type: string | null;
+  target_id: number | null;
+  detail: string | null;
+  ip_address: string | null;
+}
+
+export interface ActivityLogData {
+  limit: number;
+  entries: ActivityLogEntry[];
+  actions: string[];
+  users: string[];
+}
+
+export interface ErrorLogEntry {
+  id: number;
+  logged_at: string;
+  level: string;
+  channel: string;
+  message: string;
+  user_id: number | null;
+  context: Record<string, unknown> | null;
+}
+
+export interface ErrorLogData {
+  limit: number;
+  logs: ErrorLogEntry[];
+  levels: string[];
+  channels: string[];
+}
+
+export interface MailLogEntry {
+  id: number;
+  sent_at: string;
+  to_email: string;
+  subject: string;
+  type: string | null;
+  status: string;
+}
+
+export interface MailLogData {
+  limit: number;
+  mails: MailLogEntry[];
+  types: string[];
+}
+
+// GET /admin/dashboard.php
+export interface AdminAlertRow {
+  id: number;
+  created_at: string;
+  student_id: number | null;
+  user_id: number;
+  username: string;
+  user_name: string;
+  student_name: string | null;
+}
+
+export interface AdminDashboardData {
+  stats: {
+    active_students: number;
+    inactive_students: number;
+    revenue_month: number;
+    revenue_ytd: number;
+    rent_ytd: number;
+  };
+  unpaid: { id: number; name: string }[];
+  no_waiver: { id: number; name: string }[];
+  alerts_linking: AdminAlertRow[];
+  alerts_claimed: AdminAlertRow[];
+  alerts_new: AdminAlertRow[];
+  link_requests: {
+    id: number;
+    request_type: string;
+    notes: string | null;
+    created_at: string;
+    user_id: number;
+    username: string;
+    user_name: string;
+  }[];
+  possible_links: {
+    user_id: number;
+    username: string;
+    user_name: string;
+    student_id: number;
+    student_name: string;
+    email_match: boolean;
+  }[];
+  attendance_alert: { show: boolean; date: string };
+  rent_alert: boolean;
+  recent_payments: {
+    payment_date: string;
+    amount: number;
+    payment_type: string;
+    name: string;
+  }[];
+  has_more_payments: boolean;
+  chart: {
+    labels: string[];
+    data: Record<string, number[]>;
+  };
+}
+
+// GET /admin/user_profile.php
+export interface AdminUserProfile {
+  user: {
+    id: number;
+    username: string;
+    email: string | null;
+    first_name: string | null;
+    last_name: string | null;
+    date_of_birth: string | null;
+    is_admin: boolean;
+    active: boolean;
+    created_at: string;
+    last_login: string | null;
+    student_id: number | null;
+    student_name: string | null;
+    student_type: string | null;
+  };
+  unlinked: { id: number; first_name: string; last_name: string; student_type: string }[];
+  current_user_id: number;
+}
+
+// GET /admin/compare_account.php
+export interface CompareAccountData {
+  user: {
+    id: number;
+    username: string;
+    first_name: string | null;
+    last_name: string | null;
+    email: string | null;
+    date_of_birth: string | null;
+    is_admin: boolean;
+    active: boolean;
+  };
+  existing_link: { id: number; name: string } | null;
+  link_request: {
+    id: number;
+    request_type: string;
+    notes: string | null;
+    created_at: string;
+  } | null;
+  student: {
+    id: number;
+    first_name: string;
+    last_name: string;
+    email: string | null;
+    date_of_birth: string | null;
+    student_type: string;
+    current_rank: string | null;
+    last_attended: string | null;
+    registration_date: string | null;
+    injury_waiver: boolean;
+    linked_user: { id: number; username: string } | null;
+  } | null;
+  students: { id: number; first_name: string; last_name: string; student_type: string }[];
+}
+
+// GET /admin/resolve_link.php
+export interface ResolveLinkData {
+  request: {
+    id: number;
+    created_at: string;
+    username: string;
+    user_name: string;
+    user_email: string | null;
+    user_dob: string | null;
+    duplicate: {
+      id: number;
+      name: string;
+      date_of_birth: string | null;
+      email: string | null;
+      student_type: string | null;
+    } | null;
+  };
+  candidates: {
+    id: number;
+    first_name: string;
+    last_name: string;
+    date_of_birth: string | null;
+    email: string | null;
+    student_type: string;
+    rank_name: string | null;
+  }[];
+}
+
+// GET /admin/payments.php
+export interface AdminPayment {
+  id: number;
+  student_id: number;
+  student_name: string;
+  payment_date: string;
+  payment_type: string;
+  payment_method: string;
+  amount: number;
+  transaction_id: string | null;
+  notes: string | null;
+  month_covered: string | null;
+  payer_name: string | null;
+  payer_note: string | null;
+  recorded_by_name: string | null;
+}
+
+export interface AdminPaymentsData {
+  payments: AdminPayment[];
+  total_shown: number;
+  years: number[];
+  students: StudentRef[];
+  fees: Record<string, number>;
+}
+
+export interface PaymentRecorded {
+  recorded: boolean;
+  dup_count: number;
+}
+
+// GET /admin/email_students.php
+export interface EmailRecipient {
+  id: number;
+  name: string;
+  email: string;
+  student_type: string;
+}
+
+export interface EmailRecipientsData {
+  recipients: EmailRecipient[];
+}
+
+export interface EmailSendResult {
+  sent: number;
+  failed: number;
+}
+
+// GET /admin/student_edit.php
+export interface StudentEditStudent {
+  id: number;
+  first_name: string;
+  last_name: string;
+  date_of_birth: string | null;
+  phone: string | null;
+  email: string | null;
+  emergency_contact_name: string | null;
+  emergency_contact_phone: string | null;
+  street_address: string | null;
+  city_state_zip: string | null;
+  registration_date: string | null;
+  student_type: string;
+  medical_note: string | null;
+  uniform_size: string | null;
+  belt_size: string | null;
+  active: boolean;
+  active_override: number | null;
+  injury_waiver: boolean;
+  injury_waiver_date: string | null;
+}
+
+export interface RankOption {
+  id: number;
+  name: string;
+  kyu_dan: string;
+}
+
+export interface StudentEditData {
+  student: StudentEditStudent | null;
+  linked_user?: { id: number; username: string; is_admin: boolean } | null;
+  attendance?: { session_id: number; session_date: string; present: boolean }[];
+  belt_tests?: {
+    id: number;
+    test_date: string;
+    result: string;
+    score: number | null;
+    fee_paid: boolean;
+    kyu_dan: string;
+  }[];
+  ranks?: {
+    sr_id: number;
+    rank_id: number;
+    name: string;
+    kyu_dan: string;
+    achieved_date: string | null;
+  }[];
+  all_ranks: RankOption[];
+  notes?: { id: number; content: string; created_at: string; username: string | null }[];
+  payment_waivers?: {
+    id: number;
+    waiver_type: string;
+    granted_date: string;
+    reason: string | null;
+  }[];
+  payments?: {
+    id: number;
+    payment_date: string;
+    payment_type: string;
+    payment_method: string;
+    amount: number;
+    is_donation: boolean;
+  }[];
+  is_guardian_type?: boolean;
+  guardian_links?: { link_id: number; student_id: number; name: string }[];
+  guardian_candidates?: { id: number; name: string }[];
+}
+
+// GET /admin/student_notes.php
+export interface ClassNotesData {
+  students: {
+    id: number;
+    first_name: string;
+    last_name: string;
+    student_type: string;
+    active: boolean;
+    active_override: boolean;
+    note_count: number;
+    last_attended: string | null;
+  }[];
+  class_notes: { id: number; content: string; created_at: string; username: string | null }[];
+}
+
+export interface StudentNotesData {
+  student: { id: number; name: string };
+  notes: { id: number; content: string; created_at: string; username: string | null }[];
+}
+
 // Legacy JSON endpoints (portal/api/paypal_create.php / paypal_capture.php) —
 // no {ok,data} envelope; errors arrive as {error} with a 4xx/5xx status.
 export interface PayPalOrderCreated {

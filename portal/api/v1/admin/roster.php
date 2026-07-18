@@ -1,0 +1,57 @@
+<?php
+// GET /api/v1/admin/roster.php — admin roster rows. Superset of the
+// instructor roster: adds email/phone (admin search matches them),
+// registration-paid, and the registration date. Same highest-rank /
+// last-attendance query as the old admin/students.php.
+
+require_once __DIR__ . '/../../../includes/api.php';
+require_once __DIR__ . '/../../../includes/auto_inactive.php';
+
+api_require_method('GET');
+api_require_role('admin');
+apply_auto_inactive();
+
+$all = db()->query(
+    'SELECT s.id, s.first_name, s.last_name, s.student_type, s.active,
+            s.active_override, s.injury_waiver, s.medical_note,
+            s.email, s.phone,
+            r.kyu_dan, u.id AS user_id,
+            (SELECT MAX(cs.session_date)
+             FROM attendance a JOIN class_sessions cs ON cs.id = a.session_id
+             WHERE a.student_id = s.id AND a.present = 1) AS last_attended,
+            (SELECT COUNT(*) FROM payments p
+             WHERE p.student_id = s.id AND p.payment_type = "registration") AS reg_paid
+     FROM students s
+     LEFT JOIN users u ON u.id = s.user_id
+     LEFT JOIN student_ranks sr ON sr.student_id = s.id
+     LEFT JOIN ranks r ON r.id = sr.rank_id
+     WHERE (sr.id IS NULL OR sr.rank_id = (
+         SELECT sr2.rank_id FROM student_ranks sr2
+         JOIN ranks r2 ON r2.id = sr2.rank_id
+         WHERE sr2.student_id = s.id
+         ORDER BY r2.rank_order DESC LIMIT 1
+     ))
+     ORDER BY s.first_name, s.last_name'
+)->fetchAll();
+
+$ranks = db()->query('SELECT kyu_dan FROM ranks ORDER BY rank_order')->fetchAll(PDO::FETCH_COLUMN);
+
+api_respond([
+    'students' => array_map(fn($s) => [
+        'id'              => (int)$s['id'],
+        'first_name'      => (string)$s['first_name'],
+        'last_name'       => (string)$s['last_name'],
+        'student_type'    => (string)$s['student_type'],
+        'active'          => (bool)$s['active'],
+        'active_override' => $s['active_override'] !== null,
+        'injury_waiver'   => (bool)$s['injury_waiver'],
+        'medical_note'    => $s['medical_note'] !== null && trim($s['medical_note']) !== '' ? trim($s['medical_note']) : null,
+        'email'           => $s['email'] !== null ? (string)$s['email'] : null,
+        'phone'           => $s['phone'] !== null ? (string)$s['phone'] : null,
+        'kyu_dan'         => $s['kyu_dan'] ?? null,
+        'has_login'       => $s['user_id'] !== null,
+        'last_attended'   => $s['last_attended'] ?? null,
+        'reg_paid'        => (bool)$s['reg_paid'],
+    ], $all),
+    'ranks' => $ranks,
+]);

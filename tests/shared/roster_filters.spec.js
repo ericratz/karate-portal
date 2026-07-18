@@ -12,6 +12,9 @@ test.describe('Admin roster filters', () => {
 
     test.beforeEach(async ({ page }) => {
         await page.goto(BASE + '/admin/students.php');
+        // SPA route — wait for the roster to render before the non-waiting
+        // count()/textContent() calls below.
+        await page.locator('#rosterSearch').waitFor({ state: 'visible' });
     });
 
     test('roster page loads without errors', async ({ page }) => {

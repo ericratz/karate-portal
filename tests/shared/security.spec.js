@@ -23,15 +23,11 @@ test('all key POST forms have csrf_token hidden input', async ({ page }) => {
     await expect(page.locator('input[name="csrf_token"]')).toHaveCount(1);
     await page.goto(BASE + '/register.php');
     await expect(page.locator('input[name="csrf_token"]')).toHaveCount(1);
-    // Authenticated pages. The instructor pages are React SPA routes now —
-    // their mutations send the CSRF token in the X-CSRF-Token header instead
-    // of a hidden input (enforced by api_verify_csrf(); covered by the API
-    // CSRF tests below), so only the remaining PHP forms are checked here.
-    await login(page, ADMIN_USER, ADMIN_PASS);
-    await page.goto(BASE + '/admin/payments.php?action=add');
-    await page.waitForSelector('#addPaymentForm.show');
-    await expect(page.locator('#addPaymentForm input[name="csrf_token"]')).toHaveCount(1);
-    await logout(page);
+    // Authenticated pages. The instructor and admin pages are React SPA
+    // routes now — their mutations send the CSRF token in the X-CSRF-Token
+    // header instead of a hidden input (enforced by api_verify_csrf();
+    // covered by the API CSRF tests), so only the remaining PHP forms are
+    // checked here.
     await login(page, STU_USER, STU_PASS);
     await page.goto(BASE + '/student/profile_edit.php');
     expect(await page.locator('input[name="csrf_token"]').count()).toBeGreaterThanOrEqual(1);
@@ -206,18 +202,23 @@ test('session cookie has HttpOnly, SameSite=Lax, and broad path', async ({ page 
 
 // ── 7. AUDIT LOG ─────────────────────────────────────────────────────────────
 
+// The standalone audit_log.php page is now a redirect stub into the React SPA
+// combined-logs Activity tab; the ?action= deep links below target the SPA
+// route directly (the stub only forwards fixed-vocabulary parameters).
+
 test('audit log page loads for admin without errors', async ({ page }) => {
     test.setTimeout(25000); // audit log can be slow mid-suite when the table has many entries
     await login(page, ADMIN_USER, ADMIN_PASS);
     await visit(page, '/admin/audit_log.php', 'audit log');
-    await expect(page.locator('h3')).toContainText('Activity Log');
+    await expect(page.locator('h4')).toContainText('Logs');
+    await expect(page.locator('a.nav-link.active:has-text("Activity")')).toBeVisible();
     await logout(page);
 });
 
 test('audit log shows login_success events', async ({ page }) => {
     // Log in to generate a fresh login_success event
     await login(page, ADMIN_USER, ADMIN_PASS);
-    await page.goto(BASE + '/admin/audit_log.php?action=login_success');
+    await page.goto(BASE + '/admin/app.php#/admin/logs?tab=activity&action=login_success');
     await assertNoPhpErrors(page, 'audit log login_success filter');
     await expect(page.locator('body')).toContainText('login_success');
     await logout(page);
@@ -233,40 +234,40 @@ test('audit log records login_fail events', async ({ page }) => {
 
     // Check admin can see it
     await login(page, ADMIN_USER, ADMIN_PASS);
-    await page.goto(BASE + '/admin/audit_log.php?action=login_fail');
+    await page.goto(BASE + '/admin/app.php#/admin/logs?tab=activity&action=login_fail');
     await assertNoPhpErrors(page, 'audit log login_fail filter');
     await expect(page.locator('body')).toContainText('login_fail');
     await logout(page);
 });
 
 test('audit log filter by action only shows matching rows', async ({ page }) => {
+    // The login() just above guarantees at least one fresh login_success row
     await login(page, ADMIN_USER, ADMIN_PASS);
-    await page.goto(BASE + '/admin/audit_log.php?action=login_success');
-    // Every badge in results should say login_success (if any rows exist)
-    const rows = await page.locator('tbody tr').count();
-    if (rows > 0) {
-        const badges = await page.locator('tbody .badge').allTextContents();
-        badges.forEach(b => expect(b.trim()).toBe('login_success'));
-    }
+    await page.goto(BASE + '/admin/app.php#/admin/logs?tab=activity&action=login_success');
+    await expect(page.locator('tbody tr').first()).toBeVisible();
+    const badges = await page.locator('tbody .badge').allTextContents();
+    expect(badges.length).toBeGreaterThan(0);
+    badges.forEach(b => expect(b.trim()).toBe('login_success'));
     await logout(page);
 });
 
-test('audit log has filter inputs for action, user, from, to', async ({ page }) => {
+test('audit log has filter selects for timeframe, action, user', async ({ page }) => {
     await login(page, ADMIN_USER, ADMIN_PASS);
     await page.goto(BASE + '/admin/audit_log.php');
+    await expect(page.locator('select[name="timeframe"]')).toBeVisible();
     await expect(page.locator('select[name="action"]')).toBeVisible();
-    await expect(page.locator('input[name="user"]')).toBeVisible();
-    await expect(page.locator('input[name="from"]')).toBeVisible();
-    await expect(page.locator('input[name="to"]')).toBeVisible();
+    await expect(page.locator('select[name="user"]')).toBeVisible();
     await logout(page);
 });
 
-test('audit log date filter works', async ({ page }) => {
+test('audit log timeframe filter works', async ({ page }) => {
     await login(page, ADMIN_USER, ADMIN_PASS);
-    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Denver' });
-    await page.goto(BASE + `/admin/audit_log.php?from=${today}&to=${today}`);
-    await assertNoPhpErrors(page, 'audit log date filter');
-    await expect(page.locator('h3')).toContainText('Activity Log');
+    await page.goto(BASE + '/admin/audit_log.php');
+    await page.locator('select[name="timeframe"]').selectOption('day');
+    await assertNoPhpErrors(page, 'audit log timeframe filter');
+    await expect(page.locator('h4')).toContainText('Logs');
+    // The fresh login_success from login() above is from today
+    await expect(page.locator('body')).toContainText('login_success');
     await logout(page);
 });
 
@@ -277,8 +278,9 @@ test('audit log is accessible via admin nav dropdown', async ({ page }) => {
     await page.click('.navbar .dropdown-toggle:has-text("Admin")');
     const link = page.locator('.dropdown-menu a:has-text("Logs")');
     await expect(link).toBeVisible();
+    // SPA dropdown — the item is a hash-route link now
     const href = await link.getAttribute('href');
-    expect(href).toContain('logs.php');
+    expect(href).toContain('logs');
     await logout(page);
 });
 

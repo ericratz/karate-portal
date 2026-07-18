@@ -54,6 +54,8 @@ test.describe('Admin dashboard navigation', () => {
 
     test.beforeEach(async ({ page }) => {
         await page.goto(BASE + '/admin/');
+        // SPA dashboard — wait for render before the non-waiting count() calls
+        await expect(page.locator('.card-header').filter({ hasText: 'Tuition Unpaid' })).toBeVisible();
     });
 
     test('dashboard loads without errors', async ({ page }) => {

@@ -18,6 +18,8 @@ test.describe('Student Edit Cards', () => {
     test.beforeEach(async ({ page }) => {
         await page.goto(BASE + `/admin/student_edit.php?id=${STUDENT_ID}`);
         await assertNoPhpErrors(page, 'student edit loads');
+        // SPA page — wait for the profile card to render before DOM queries
+        await expect(page.locator('#profile-view')).toBeVisible();
     });
 
     // ── ATTENDANCE DATE LINKS ────────────────────────────────────────────────────
@@ -180,23 +182,15 @@ test.describe('Student Edit Cards', () => {
     });
 
     test('saving uniform and belt size persists in view mode', async ({ page }) => {
-        // Force-show the edit form and select values via JS, then submit.
-        await page.evaluate(() => {
-            const all = Array.from(document.querySelectorAll('select'));
-            const edit = document.getElementById('profile-edit');
-            const view = document.getElementById('profile-view');
-            const btn  = document.getElementById('profileEditBtn');
-            if (edit) edit.style.display = '';
-            if (view) view.style.display = 'none';
-            if (btn)  btn.dataset.editing = 'true';
-            const u = all.find(s => s.name === 'uniform_size');
-            const b = all.find(s => s.name === 'belt_size');
-            if (u) u.value = '4';
-            if (b) b.value = '3';
-        });
-        await page.evaluate(() => document.getElementById('profile-form').submit());
-        await page.waitForLoadState('domcontentloaded');
+        // Drive the React card: Edit reveals the form, Confirm saves it.
+        // (The old native form.submit() bypass doesn't exist for a SPA form.)
+        await page.click('#profileEditBtn');
+        await expect(page.locator('#profile-edit')).toBeVisible();
+        await page.locator('#profile-edit select[name="uniform_size"]').selectOption('4');
+        await page.locator('#profile-edit select[name="belt_size"]').selectOption('3');
+        await page.click('#profileEditBtn'); // now reads Confirm
         await assertNoPhpErrors(page, 'save uniform/belt size');
+        await expect(page.locator('#profile-view')).toBeVisible();
         await expect(page.locator('#profile-view')).toContainText('4');
         await expect(page.locator('#profile-view')).toContainText('3');
     });

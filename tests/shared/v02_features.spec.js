@@ -26,6 +26,8 @@ test.describe('Parent category on roster views', () => {
 
     test('admin students.php card order: Instructors -> Parents -> Students -> Guests', async ({ page }) => {
         await page.goto(BASE + '/admin/students.php');
+        // SPA roster — wait for render before the non-waiting allTextContents()
+        await expect(page.locator('.card-header').filter({ hasText: 'Parents' })).toBeVisible();
         const headers = await page.locator('.card-header').allTextContents();
         const order = headers.map(h => h.trim());
         const iIdx = order.findIndex(h => h.includes('Instructors'));
@@ -144,7 +146,7 @@ test.describe('Compare & Link page', () => {
         await page.goto(BASE + '/admin/users.php');
         await page.locator('a:has-text("View")').first().click();
         await page.waitForLoadState('domcontentloaded');
-        const uid = new URL(page.url()).searchParams.get('id');
+        const uid = page.url().match(/admin\/user\/(\d+)/)?.[1]; // SPA route: app.php#/admin/user/N
         if (uid) {
             await visit(page, `/admin/compare_account.php?user_id=${uid}`, 'compare account');
         }
@@ -154,7 +156,7 @@ test.describe('Compare & Link page', () => {
         await page.goto(BASE + '/admin/users.php');
         await page.locator('a:has-text("View")').first().click();
         await page.waitForLoadState('domcontentloaded');
-        const uid = new URL(page.url()).searchParams.get('id');
+        const uid = page.url().match(/admin\/user\/(\d+)/)?.[1]; // SPA route: app.php#/admin/user/N
         if (uid) {
             await page.goto(BASE + `/admin/compare_account.php?user_id=${uid}`);
             await expect(page.locator('.card-header').filter({ hasText: 'Login Account' })).toBeVisible();
@@ -166,7 +168,7 @@ test.describe('Compare & Link page', () => {
         await page.goto(BASE + '/admin/users.php');
         await page.locator('a:has-text("View")').first().click();
         await page.waitForLoadState('domcontentloaded');
-        const uid = new URL(page.url()).searchParams.get('id');
+        const uid = page.url().match(/admin\/user\/(\d+)/)?.[1]; // SPA route: app.php#/admin/user/N
         if (uid) {
             // Get first available student for comparison
             await page.goto(BASE + `/admin/compare_account.php?user_id=${uid}`);
@@ -186,7 +188,7 @@ test.describe('Compare & Link page', () => {
         await page.goto(BASE + '/admin/users.php');
         await page.locator('a:has-text("View")').first().click();
         await page.waitForLoadState('domcontentloaded');
-        const uid = new URL(page.url()).searchParams.get('id');
+        const uid = page.url().match(/admin\/user\/(\d+)/)?.[1]; // SPA route: app.php#/admin/user/N
         if (uid) {
             await page.goto(BASE + `/admin/compare_account.php?user_id=${uid}`);
             const link = page.locator('a:has-text("+ Create New Student Record")');
@@ -301,12 +303,12 @@ test.describe('Admin dropdown reorganisation', () => {
         // Specific links in correct sections
         const donations = page.locator('a.dropdown-item:has-text("Donations")');
         await expect(donations).toBeVisible();
-        expect(await donations.getAttribute('href')).toContain('donations.php');
+        expect(await donations.getAttribute('href')).toContain('donations');
         await expect(page.locator('a.dropdown-item:has-text("Expenses")')).toBeVisible();
         await expect(page.locator('a.dropdown-item:has-text("Payments")')).toBeVisible();
         const auditLog = page.locator('a.dropdown-item:has-text("Logs")');
         await expect(auditLog).toBeVisible();
-        expect(await auditLog.getAttribute('href')).toContain('logs.php');
+        expect(await auditLog.getAttribute('href')).toContain('logs');
     });
 });
 
@@ -317,6 +319,8 @@ test.describe('Users page parent role filter', () => {
 
     test('users.php role filter has Parent option', async ({ page }) => {
         await page.goto(BASE + '/admin/users.php');
+        // SPA users page — wait for render before the non-waiting allTextContents()
+        await expect(page.locator('#filterRole')).toBeVisible();
         const opts = await page.locator('#filterRole option').allTextContents();
         const vals = opts.map(o => o.trim().toLowerCase());
         expect(vals).toContain('parent');

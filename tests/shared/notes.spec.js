@@ -57,12 +57,14 @@ test.describe('admin notes', () => {
         await page.click('button:has-text("Add Entry")');
         await page.fill('textarea[name="content"]', text);
         await page.click('button:has-text("Save Entry")');
-        await page.waitForLoadState('domcontentloaded');
+        await expect(page.locator('body')).toContainText(text); // SPA refetch done
         await page.fill('#noteSearch', text);
+        await expect(page.locator('.note-entry:visible').first()).toBeVisible();
         expect(await page.locator('.note-entry:visible').count()).toBeGreaterThanOrEqual(1);
         // Roster shows students table
         await page.goto(BASE + '/admin/student_notes.php');
         await expect(page.locator('.card-header').filter({ hasText: 'Students' })).toBeVisible();
+        await expect(page.locator('tbody tr').first()).toBeVisible();
         expect(await page.locator('tbody tr').count()).toBeGreaterThan(0);
     });
 
@@ -74,21 +76,14 @@ test.describe('admin notes', () => {
         await page.click('button:has-text("Add Entry")');
         await page.fill('textarea[name="content"]', text);
         await page.click('button:has-text("Save Entry")');
-        await page.waitForLoadState('domcontentloaded');
         await expect(page.locator('body')).toContainText(text);
-        // Get the note ID from the data-id attribute on its .note-entry element
-        const noteId = await page.locator('.note-entry').filter({ hasText: text }).first().getAttribute('data-id');
-        if (!noteId) return; // skip if we can't find the ID
-        // Submit the delete form via JavaScript to bypass the confirm() dialog
-        await page.evaluate((id) => {
-            const entry = document.querySelector(`.note-entry[data-id="${id}"]`);
-            if (!entry) return;
-            const form = entry.querySelector('.delete-btn');
-            if (!form) return;
-            form.onsubmit = null; // remove confirm() guard
-            form.submit();
-        }, noteId);
-        await page.waitForLoadState('domcontentloaded');
+        // Reveal the delete buttons and delete the entry through the UI —
+        // the confirm() dialog is accepted via the dialog handler (the old
+        // native form.submit() bypass doesn't exist for the SPA).
+        await page.click('#editToggle');
+        const entry = page.locator('.note-entry').filter({ hasText: text }).first();
+        page.once('dialog', d => d.accept());
+        await entry.locator('.delete-btn button').click();
         await expect(page.locator('body')).not.toContainText(text);
     });
 

@@ -221,13 +221,6 @@
             --bs-btn-active-color: #fff;
         }
     </style>
-    <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.3/dist/htmx.min.js"
-            integrity="sha384-0895/pl2MU10Hqc6jd4RvrthNlDiE9U1tWmX7WRESftEDRosgxNsQG/Ze9YMRzHq"
-            crossorigin="anonymous"></script>
-    <style nonce="<?= csp_nonce() ?>">
-        /* htmx delete-row fade */
-        .htmx-swapping { opacity: 0 !important; transition: opacity 300ms ease !important; }
-    </style>
     <script nonce="<?= csp_nonce() ?>">
         (function() {
             if (localStorage.getItem('theme') === 'dark') {

@@ -247,7 +247,8 @@ test('resolve_link.php without lr_id redirects admin to dashboard', async ({ pag
 test('resolve_link.php with unknown lr_id redirects with error=not_found', async ({ page }) => {
     await login(page, ADMIN_USER, ADMIN_PASS);
     await page.goto(BASE + '/admin/resolve_link.php?lr_id=99999');
-    await page.waitForLoadState('domcontentloaded');
+    // The not-found redirect is client-side now (SPA fetch → 404 → navigate)
+    await page.waitForURL(/error=not_found/);
     expect(page.url()).toContain('error=not_found');
     await logout(page);
 });

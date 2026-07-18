@@ -106,6 +106,9 @@ async function logout(page) {
 async function deleteTestStudent(page, nameFragment, adminUser, adminPass) {
     await login(page, adminUser, adminPass);
     await page.goto(BASE + '/admin/students.php');
+    // The roster is a React SPA route now — wait for it to render before
+    // counting rows (a bare count() right after goto would race the fetch).
+    await page.locator('#rosterSearch').waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
     // students.php has no Edit link in rows — only a student_profile.php link.
     // Extract the student ID from the profile link href, then go to student_edit.php.
     const row = page.locator('tr').filter({ hasText: nameFragment });
@@ -117,6 +120,8 @@ async function deleteTestStudent(page, nameFragment, adminUser, adminPass) {
     await page.goto(BASE + '/admin/student_edit.php?id=' + match[1]);
     await page.waitForLoadState('domcontentloaded');
     const deleteBtn = page.locator('button:has-text("Delete Profile")');
+    // SPA page — the button appears once the editor has rendered
+    await deleteBtn.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
     if (!await deleteBtn.isVisible()) return;
     page.once('dialog', d => d.accept());
     await deleteBtn.click();

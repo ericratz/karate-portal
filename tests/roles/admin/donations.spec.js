@@ -62,8 +62,9 @@ test.describe('Donations page', () => {
         await page.click('.navbar .dropdown-toggle:has-text("Admin")');
         const link = page.locator('a.dropdown-item:has-text("Donations")');
         await expect(link).toBeVisible();
+        // SPA dropdown — the item is a hash-route link now
         const href = await link.getAttribute('href');
-        expect(href).toContain('donations.php');
+        expect(href).toContain('donations');
     });
 
 });
