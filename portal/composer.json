@@ -11,6 +11,6 @@
     },
     "require-dev": {
         "phpunit/phpunit": "^9",
-        "vimeo/psalm": "^5"
+        "vimeo/psalm": "^6"
     }
 }
