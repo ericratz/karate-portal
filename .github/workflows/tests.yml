@@ -23,7 +23,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       # credentials.js is gitignored — recreate it from GitHub secrets. It is
       # bind-mounted into the ci container via ./tests, so global-setup finds it.
