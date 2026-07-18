@@ -55,7 +55,7 @@ test('submitting grant form without student shows validation error', async ({ pa
     await page.click('button[name="grant"]');
     const filter = page.locator('#grantStudentFilter');
     await expect(filter).toHaveJSProperty('validity.valid', false);
-    const message = await filter.evaluate((el) => el.validationMessage);
+    const message = await filter.evaluate((el) => /** @type {HTMLInputElement} */ (el).validationMessage);
     expect(message.length).toBeGreaterThan(0);
 });
 

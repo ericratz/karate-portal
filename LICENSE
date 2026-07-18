@@ -1,6 +1,21 @@
 Copyright (c) 2026 Shotokan Karate and Self-defense
 All rights reserved.
 
-This source code is proprietary and confidential.
-Unauthorized copying, distribution, or use of this code,
-in whole or in part, is strictly prohibited.
+This source code is the proprietary property of Shotokan Karate and
+Self-defense. It is published in this repository for viewing, evaluation,
+and educational reference only.
+
+No license is granted to use, copy, modify, merge, publish, distribute,
+sublicense, deploy, or sell this software, in whole or in part, for any
+purpose, commercial or non-commercial, without prior written permission
+from the copyright holder.
+
+Third-party dependencies bundled with or referenced by this software
+remain under their own respective licenses.
+
+For permission requests, contact the copyright holder via the owner of
+this repository (https://github.com/ericratz/karate-portal).
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY
+CLAIM, DAMAGES, OR OTHER LIABILITY ARISING FROM THE USE OF THE SOFTWARE.

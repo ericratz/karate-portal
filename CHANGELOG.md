@@ -4,6 +4,20 @@ Full version history for the Shotokan Karate Portal. See `README.md` for the cur
 
 ---
 
+## V4.3
+
+Cleanup and dependency-update release following the V4.2 migration.
+
+- **Dependency automation switched on** — Dependabot's first sweep (configured in V4.2's `.github/dependabot.yml`) plus a branch ruleset protecting `main` from force pushes and deletion
+- **Vite 6 → 8 and `@vitejs/plugin-react` 4 → 6** — the interdependent pair upgraded together; production builds dropped from ~6.4s to ~1.5s, full Playwright + Vitest suites green
+- **TypeScript 7 for the test-suite typecheck** — the root toolchain moved to TS 7, whose stricter DOM-element and bare-`resolve()` checks surfaced eight latent type holes in the Playwright specs, fixed with JSDoc casts (the SPA itself stays on TS 5.x for now)
+- **Playwright 1.61 attempted and deliberately reverted** — in the `v1.61` Docker image, Chromium (both the headless shell and the full binary) cannot open TCP connections to sibling compose containers on the Docker Desktop/WSL2 host, while node and curl in the same container connect fine; the toolchain stays pinned at `v1.60.0-noble` with the reason documented in `docker/ci.Dockerfile`
+- **License made coherent** — `LICENSE` rewritten as a proper source-available proprietary license (Shotokan Karate and Self-defense as copyright holder, viewing/evaluation explicitly permitted, all use requiring written permission, no-warranty clause); the contradictory `"ISC"` in `package.json` became `"UNLICENSED"` + `"private": true`, with matching declarations added to `frontend/package.json` and `portal/composer.json`
+- **Repository cleanup** — removed a stray empty `portal;C/` directory (mangled-path artifact), the empty gitignored `migrations/` folder, an obsolete root `memory/` notes folder, pre-Docker `composer.phar`/`composer-setup.php` leftovers, and two accidentally committed artifacts (`test-results/.last-run.json`, `portal/.phpunit.result.cache`); `test-results/` is now gitignored
+- **Test coverage** — 518 Playwright tests, 113 PHPUnit tests, 43 Vitest tests, all passing on the upgraded toolchain
+
+---
+
 ## V4.2
 
 Migrating the admin portal — the last htmx surface — to the same React SPA, phase by phase (see the earlier parent/student/instructor migrations in V4.0/V4.1). Ships as one release when complete.

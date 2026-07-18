@@ -159,8 +159,8 @@ test('submitting without required contact fields shows error', async ({ page }) 
     await page.evaluate(() => {
         ['cell_phone','email','street_address','city_state_zip']
             .forEach(n => document.querySelector(`input[name="${n}"]`).removeAttribute('required'));
-        document.querySelector('input[name="email"]').value = '';
-        document.querySelector('input[name="cell_phone"]').value = '';
+        /** @type {HTMLInputElement} */ (document.querySelector('input[name="email"]')).value = '';
+        /** @type {HTMLInputElement} */ (document.querySelector('input[name="cell_phone"]')).value = '';
     });
     await page.click('button:has-text("Submit Signed Waiver")');
     await page.waitForLoadState('domcontentloaded');

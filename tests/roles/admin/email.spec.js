@@ -191,7 +191,8 @@ test.describe('Email mailing list', () => {
         await page.check('#chk_all');
         await page.locator('.recipient-chk:not(:disabled)').first().uncheck();
         // All checkbox should be indeterminate
-        const allIndeterminate = await page.locator('#chk_all').evaluate(el => el.indeterminate);
+        const allIndeterminate = await page.locator('#chk_all')
+            .evaluate(el => /** @type {HTMLInputElement} */ (el).indeterminate);
         expect(allIndeterminate).toBe(true);
         await logout(page);
     });

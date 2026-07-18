@@ -19,14 +19,14 @@ const SITE_ROOT = BASE.replace(/\/portal\/?$/, '');
 
 /** Clear rate-limit table so tests can always log in. */
 function clearRateLimits() {
-    return new Promise((resolve) => {
+    return /** @type {Promise<void>} */ (new Promise((resolve) => {
         const req = http.get(`${SITE_ROOT}/tests/clear_rate_limit.php`, (res) => {
             res.resume();
             res.on('end', () => resolve());
         });
         req.on('error', () => resolve()); // ignore errors (server may be off)
         req.end();
-    });
+    }));
 }
 
 async function createAuthStates(authDir) {

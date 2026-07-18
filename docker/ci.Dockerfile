@@ -8,6 +8,9 @@
 # Based on the official Playwright image (Node + Chromium prebuilt),
 # version-matched to @playwright/test in package.json so the bundled
 # browsers are compatible without an `npx playwright install`.
+# Pinned at 1.60: the v1.61 image's Chromium cannot open TCP connections to
+# sibling compose containers on this Docker Desktop/WSL2 host (node/curl in
+# the same container work fine) — retry the bump after the next image release.
 FROM mcr.microsoft.com/playwright:v1.60.0-noble
 
 # ── PHP 8.4 CLI + Composer + mysql client ──────────────────────────────────

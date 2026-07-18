@@ -1,4 +1,4 @@
-# Shotokan Karate Portal — V4.2
+# Shotokan Karate Portal — V4.3
 
 A full-stack membership management platform for a martial arts dojo — role-based dashboards, attendance tracking, belt test progression, payments (PayPal + manual), digital waivers, and self-service check-in. Built with PHP and MySQL behind a React 19 + TypeScript SPA: all four portals (admin, instructor, parent, student) were incrementally migrated from server-rendered pages to a single code-split bundle over a versioned JSON API, with every old page URL preserved as a redirect stub. Fully containerized with Docker (app + database + CI toolchain) and verified by a 500+ test Playwright + PHPUnit + Vitest suite and Psalm static analysis running on every push via GitHub Actions.
 
@@ -16,7 +16,7 @@ See [`CHANGELOG.md`](CHANGELOG.md) for full version history.
 - **Mobile-friendly** — layout and touch targets tuned for phone-width viewports, with a dedicated Playwright suite exercising core flows at mobile sizes
 - **518 Playwright tests + 113 PHPUnit tests + 43 Vitest component tests**, plus Psalm static + taint analysis at level 3 and strict TypeScript, run on every push via a self-hosted GitHub Actions CI pipeline
 - **Fully containerized** — app, database, and the entire CI toolchain (Psalm, PHPUnit, Playwright, plus opt-in nmap/Nikto/ZAP scanners) run in Docker via `docker compose`, so dev and CI share one reproducible stack instead of a machine-coupled XAMPP install
-- **17 shipped releases in 5+ weeks**, solo — from a bare attendance tracker to a full multi-role membership platform with payments, security hardening, static analysis, containerization, and CI (see [`CHANGELOG.md`](CHANGELOG.md))
+- **21 shipped releases in 6+ weeks**, solo — from a bare attendance tracker to a full multi-role membership platform with payments, security hardening, static analysis, containerization, and CI (see [`CHANGELOG.md`](CHANGELOG.md))
 - **Iterative data-model refinement** — guardian/family relationships and user-identity fields were each reworked once real usage patterns emerged, rather than over-designed upfront
 - **Security matured alongside features** — CSP hardening, an external verification pass (ZAP, sqlmap, Burp Suite, nmap, Nikto), a full test-suite audit for coverage gaps, and a documented/drilled backup-restore process.
 
@@ -187,7 +187,6 @@ karate/
 ├── tests/              # Playwright test suite (518 tests, 40 spec files)
 ├── docker/             # app.Dockerfile (builds the SPA in-image), ci.Dockerfile
 ├── docker-compose.yml  # app + db + ci + opt-in security scanners
-├── migrations/         # SQL migration scripts
 ├── karate_schema.sql   # Fresh-install schema with seed data
 ├── CHANGELOG.md        # Full version history
 └── README.md

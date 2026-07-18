@@ -145,7 +145,9 @@ test('saving uniform and belt size persists on reload', async ({ page }) => {
     // page.evaluate() — avoids Playwright fill/click issues in serial mode.
     await page.evaluate(() => {
         // Use .name property comparison — attribute selectors unreliable in headless Chrome
-        const inputs = Array.from(document.querySelectorAll('input, textarea'));
+        const inputs = /** @type {(HTMLInputElement | HTMLTextAreaElement)[]} */ (
+            Array.from(document.querySelectorAll('input, textarea'))
+        );
         const setInput = (name, val) => { const el = inputs.find(i => i.name === name); if (el) el.value = val; };
         setInput('first_name',    'John');
         setInput('last_name',     'Smith');

@@ -3,6 +3,7 @@ node_modules/
 # Vite build output — rebuilt from frontend/ (npm run build)
 portal/parent/dist/
 tests/report/
+test-results/
 tests/results/
 tests/.db-snapshot.sql
 tests/.test-status.json
