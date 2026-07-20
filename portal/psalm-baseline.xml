@@ -1,5 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<files psalm-version="5.26.1@d747f6500b38ac4f7dfc5edbcae6e4b637d7add0">
+<files psalm-version="6.16.1@f1f5de594dc76faf8784e02d3dc4716c91c6f6ac">
+  <file src="admin/certificate.php">
+    <PossiblyFalseArgument>
+      <code><![CDATA[strtotime($rank['achieved_date'])]]></code>
+    </PossiblyFalseArgument>
+  </file>
+  <file src="admin/checkin_pin.php">
+    <PossiblyFalseArgument>
+      <code><![CDATA[strtotime($updated_at)]]></code>
+    </PossiblyFalseArgument>
+  </file>
   <file src="admin/db_backup.php">
     <RedundantCondition>
       <code><![CDATA[$pdo->quote($v)]]></code>
@@ -8,44 +18,113 @@
       <code><![CDATA[$v === null]]></code>
     </TypeDoesNotContainNull>
   </file>
-  <file src="admin/logs.php">
-    <RedundantCondition>
-      <code><![CDATA[$pdo->quote($v)]]></code>
-      <code><![CDATA[$tab === 'mail']]></code>
-      <code><![CDATA[$tab === 'mail']]></code>
-    </RedundantCondition>
-    <TypeDoesNotContainNull>
-      <code><![CDATA[$v === null]]></code>
-    </TypeDoesNotContainNull>
+  <file src="admin/member_card.php">
+    <PossiblyFalseArgument>
+      <code><![CDATA[strtotime($student['registration_date'])]]></code>
+    </PossiblyFalseArgument>
   </file>
-  <file src="admin/payments.php">
-    <RedundantCast>
-      <code><![CDATA[(float)MONTHLY_FEE]]></code>
-      <code><![CDATA[(float)REG_FEE]]></code>
-      <code><![CDATA[(float)SEMINAR_FEE]]></code>
-      <code><![CDATA[(float)SLC_FEE]]></code>
-      <code><![CDATA[(float)TEST_FEE]]></code>
-    </RedundantCast>
+  <file src="admin/waiver_view.php">
+    <PossiblyFalseArgument>
+      <code><![CDATA[strtotime($d['date_of_birth'])]]></code>
+      <code><![CDATA[strtotime($d['guardian_signed_date'])]]></code>
+      <code><![CDATA[strtotime($d['signed_date'])]]></code>
+      <code><![CDATA[strtotime($student['injury_waiver_date'])]]></code>
+      <code><![CDATA[strtotime($student['injury_waiver_date'])]]></code>
+    </PossiblyFalseArgument>
+    <PossiblyNullArgument>
+      <code><![CDATA[$d]]></code>
+      <code><![CDATA[$d]]></code>
+      <code><![CDATA[$d]]></code>
+      <code><![CDATA[$d]]></code>
+    </PossiblyNullArgument>
   </file>
-  <file src="admin/student_edit.php">
-    <NoValue>
-      <code><![CDATA[$msg]]></code>
-    </NoValue>
-    <TypeDoesNotContainType>
-      <code><![CDATA[$msg]]></code>
-      <code><![CDATA[$msg]]></code>
-    </TypeDoesNotContainType>
-    <UndefinedGlobalVariable>
-      <code><![CDATA[$is_parent_type]]></code>
-    </UndefinedGlobalVariable>
+  <file src="api/paypal_capture.php">
+    <PossiblyFalseArgument>
+      <code><![CDATA[file_get_contents('php://input')]]></code>
+    </PossiblyFalseArgument>
+  </file>
+  <file src="api/paypal_create.php">
+    <InvalidOperand>
+      <code><![CDATA[$server_total += in_array($item['type'], $user_priced_types, true)
+        ? (float)$item['amount']
+        : fee_for_type($item['type'])]]></code>
+    </InvalidOperand>
+    <PossiblyFalseArgument>
+      <code><![CDATA[file_get_contents('php://input')]]></code>
+    </PossiblyFalseArgument>
+  </file>
+  <file src="api/paypal_webhook.php">
+    <PossiblyFalseArgument>
+      <code><![CDATA[$body]]></code>
+      <code><![CDATA[$body]]></code>
+    </PossiblyFalseArgument>
+    <PossiblyInvalidArgument>
+      <code><![CDATA[str_replace('BILLING.SUBSCRIPTION.', '', $event_type)]]></code>
+    </PossiblyInvalidArgument>
+  </file>
+  <file src="api/v1/admin/dashboard.php">
+    <InvalidOperand>
+      <code><![CDATA[$other += $amt]]></code>
+      <code><![CDATA[array_sum($rev_map[$m] ?? []) + ($don_map[$m] ?? 0)]]></code>
+    </InvalidOperand>
+    <PossiblyFalseArgument>
+      <code><![CDATA[strtotime("-$i months")]]></code>
+      <code><![CDATA[strtotime($m . '-01')]]></code>
+      <code><![CDATA[strtotime('last saturday')]]></code>
+    </PossiblyFalseArgument>
+    <PossiblyFalseOperand>
+      <code><![CDATA[strtotime($check_saturday)]]></code>
+    </PossiblyFalseOperand>
+  </file>
+  <file src="api/v1/admin/logs.php">
+    <PossiblyFalseArgument>
+      <code><![CDATA[strtotime('monday this week')]]></code>
+    </PossiblyFalseArgument>
+  </file>
+  <file src="api/v1/parent/student.php">
+    <PossiblyFalseArgument>
+      <code><![CDATA[$ts]]></code>
+      <code><![CDATA[$ts]]></code>
+    </PossiblyFalseArgument>
+  </file>
+  <file src="cron/attendance_alert.php">
+    <PossiblyFalseArgument>
+      <code><![CDATA[strtotime($today)]]></code>
+      <code><![CDATA[strtotime($today)]]></code>
+      <code><![CDATA[strtotime($today)]]></code>
+      <code><![CDATA[strtotime($today)]]></code>
+    </PossiblyFalseArgument>
   </file>
   <file src="cron/backup.php">
+    <PossiblyFalseOperand>
+      <code><![CDATA[filemtime($a)]]></code>
+      <code><![CDATA[filemtime($b)]]></code>
+      <code><![CDATA[filesize($filename)]]></code>
+    </PossiblyFalseOperand>
     <RedundantCondition>
       <code><![CDATA[$pdo->quote($v)]]></code>
     </RedundantCondition>
     <TypeDoesNotContainNull>
       <code><![CDATA[$v === null]]></code>
     </TypeDoesNotContainNull>
+  </file>
+  <file src="cron/waiver_alert.php">
+    <PossiblyFalseArgument>
+      <code><![CDATA[strtotime($s['last_attended'])]]></code>
+    </PossiblyFalseArgument>
+  </file>
+  <file src="google-register.php">
+    <PossiblyFalseArgument>
+      <code><![CDATA[strtotime($confirm_student['date_of_birth'])]]></code>
+      <code><![CDATA[strtotime($m['date_of_birth'])]]></code>
+      <code><![CDATA[strtotime((string)$reg_data['date_of_birth'])]]></code>
+      <code><![CDATA[strtotime((string)$reg_data['date_of_birth'])]]></code>
+    </PossiblyFalseArgument>
+  </file>
+  <file src="includes/auth.php">
+    <PossiblyFalseArgument>
+      <code><![CDATA[session_name()]]></code>
+    </PossiblyFalseArgument>
   </file>
   <file src="includes/auto_inactive.php">
     <UndefinedFunction>
@@ -63,10 +142,21 @@
     </UndefinedFunction>
   </file>
   <file src="includes/config.php">
+    <PossiblyFalseIterator>
+      <code><![CDATA[file($_env_file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES)]]></code>
+    </PossiblyFalseIterator>
+    <RedundantCast>
+      <code><![CDATA[(string)$_SERVER['HTTPS']]]></code>
+    </RedundantCast>
     <UndefinedFunction>
       <code><![CDATA[db()]]></code>
       <code><![CDATA[db()]]></code>
     </UndefinedFunction>
+  </file>
+  <file src="includes/db.php">
+    <PossiblyFalseIterator>
+      <code><![CDATA[file($_env_file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES)]]></code>
+    </PossiblyFalseIterator>
   </file>
   <file src="includes/footer.php">
     <UndefinedConstant>
@@ -84,62 +174,8 @@
       <code><![CDATA[$page_title]]></code>
       <code><![CDATA[$page_title]]></code>
       <code><![CDATA[$page_title]]></code>
-      <code><![CDATA[$page_title]]></code>
-      <code><![CDATA[$page_title]]></code>
-      <code><![CDATA[$page_title]]></code>
-      <code><![CDATA[$page_title]]></code>
-      <code><![CDATA[$page_title]]></code>
-      <code><![CDATA[$page_title]]></code>
-      <code><![CDATA[$page_title]]></code>
-      <code><![CDATA[$page_title]]></code>
-      <code><![CDATA[$page_title]]></code>
-      <code><![CDATA[$page_title]]></code>
-      <code><![CDATA[$page_title]]></code>
-      <code><![CDATA[$page_title]]></code>
-      <code><![CDATA[$page_title]]></code>
-      <code><![CDATA[$page_title]]></code>
-      <code><![CDATA[$page_title]]></code>
-      <code><![CDATA[$page_title]]></code>
-      <code><![CDATA[$page_title]]></code>
-      <code><![CDATA[$page_title]]></code>
-      <code><![CDATA[$page_title]]></code>
-      <code><![CDATA[$page_title]]></code>
-      <code><![CDATA[$page_title]]></code>
-      <code><![CDATA[$page_title]]></code>
-      <code><![CDATA[$page_title]]></code>
-      <code><![CDATA[$page_title]]></code>
-      <code><![CDATA[$page_title]]></code>
-      <code><![CDATA[$page_title]]></code>
-      <code><![CDATA[$page_title]]></code>
     </RedundantCondition>
     <TypeDoesNotContainNull>
-      <code><![CDATA['Portal']]></code>
-      <code><![CDATA['Portal']]></code>
-      <code><![CDATA['Portal']]></code>
-      <code><![CDATA['Portal']]></code>
-      <code><![CDATA['Portal']]></code>
-      <code><![CDATA['Portal']]></code>
-      <code><![CDATA['Portal']]></code>
-      <code><![CDATA['Portal']]></code>
-      <code><![CDATA['Portal']]></code>
-      <code><![CDATA['Portal']]></code>
-      <code><![CDATA['Portal']]></code>
-      <code><![CDATA['Portal']]></code>
-      <code><![CDATA['Portal']]></code>
-      <code><![CDATA['Portal']]></code>
-      <code><![CDATA['Portal']]></code>
-      <code><![CDATA['Portal']]></code>
-      <code><![CDATA['Portal']]></code>
-      <code><![CDATA['Portal']]></code>
-      <code><![CDATA['Portal']]></code>
-      <code><![CDATA['Portal']]></code>
-      <code><![CDATA['Portal']]></code>
-      <code><![CDATA['Portal']]></code>
-      <code><![CDATA['Portal']]></code>
-      <code><![CDATA['Portal']]></code>
-      <code><![CDATA['Portal']]></code>
-      <code><![CDATA['Portal']]></code>
-      <code><![CDATA['Portal']]></code>
       <code><![CDATA['Portal']]></code>
       <code><![CDATA['Portal']]></code>
       <code><![CDATA['Portal']]></code>
@@ -168,7 +204,6 @@
       <code><![CDATA[SITE_URL]]></code>
     </UndefinedConstant>
     <UndefinedFunction>
-      <code><![CDATA[csp_nonce()]]></code>
       <code><![CDATA[csp_nonce()]]></code>
       <code><![CDATA[csp_nonce()]]></code>
       <code><![CDATA[csrf_token()]]></code>
@@ -193,6 +228,18 @@
       <code><![CDATA[$resp]]></code>
       <code><![CDATA[$resp]]></code>
     </InvalidScalarArgument>
+    <PossiblyFalseArgument>
+      <code><![CDATA[$body]]></code>
+      <code><![CDATA[$body]]></code>
+      <code><![CDATA[$ch]]></code>
+      <code><![CDATA[$ch]]></code>
+      <code><![CDATA[$ch]]></code>
+      <code><![CDATA[$ch]]></code>
+      <code><![CDATA[$ch]]></code>
+      <code><![CDATA[$ch]]></code>
+      <code><![CDATA[$payload]]></code>
+      <code><![CDATA[json_encode(['reason' => 'Cancelled by subscriber'])]]></code>
+    </PossiblyFalseArgument>
     <TypeDoesNotContainType>
       <code><![CDATA[PAYPAL_MODE === 'live']]></code>
     </TypeDoesNotContainType>
@@ -231,73 +278,20 @@
       <code><![CDATA[db()]]></code>
     </UndefinedFunction>
   </file>
-  <file src="parent/attendance.php">
-    <InvalidOperand>
-      <code><![CDATA[$i]]></code>
-    </InvalidOperand>
-  </file>
-  <file src="parent/belt_tests.php">
-    <InvalidOperand>
-      <code><![CDATA[$i]]></code>
-    </InvalidOperand>
-  </file>
-  <file src="parent/payment_history.php">
-    <InvalidOperand>
-      <code><![CDATA[$i]]></code>
-    </InvalidOperand>
-  </file>
-  <file src="parent/waiver.php">
-    <RedundantCondition>
-      <code><![CDATA[!$is_minor]]></code>
-      <code><![CDATA[!$is_minor]]></code>
-      <code><![CDATA[!$is_minor]]></code>
-      <code><![CDATA[!$is_minor]]></code>
-      <code><![CDATA[$signed]]></code>
-    </RedundantCondition>
-    <TypeDoesNotContainType>
-      <code><![CDATA['']]></code>
-      <code><![CDATA['placeholder="Type full name to sign"']]></code>
-    </TypeDoesNotContainType>
-  </file>
-  <file src="student/attendance.php">
-    <InvalidOperand>
-      <code><![CDATA[$i]]></code>
-    </InvalidOperand>
-  </file>
-  <file src="student/belt_tests.php">
-    <InvalidOperand>
-      <code><![CDATA[$i]]></code>
-    </InvalidOperand>
-  </file>
-  <file src="student/payment_history.php">
-    <InvalidOperand>
-      <code><![CDATA[$i]]></code>
-    </InvalidOperand>
+  <file src="register.php">
+    <PossiblyFalseArgument>
+      <code><![CDATA[strtotime($confirm_student['date_of_birth'])]]></code>
+      <code><![CDATA[strtotime($m['date_of_birth'])]]></code>
+      <code><![CDATA[strtotime($reg_data['date_of_birth'])]]></code>
+      <code><![CDATA[strtotime($reg_data['date_of_birth'])]]></code>
+    </PossiblyFalseArgument>
   </file>
   <file src="student/profile_edit.php">
-    <NoValue>
-      <code><![CDATA[$msg]]></code>
-    </NoValue>
     <RedundantCondition>
       <code><![CDATA[$email]]></code>
     </RedundantCondition>
     <TypeDoesNotContainType>
-      <code><![CDATA[$msg]]></code>
-      <code><![CDATA[$msg]]></code>
       <code><![CDATA[null]]></code>
-    </TypeDoesNotContainType>
-  </file>
-  <file src="student/waiver.php">
-    <RedundantCondition>
-      <code><![CDATA[!$is_minor]]></code>
-      <code><![CDATA[!$is_minor]]></code>
-      <code><![CDATA[!$is_minor]]></code>
-      <code><![CDATA[!$is_minor]]></code>
-      <code><![CDATA[$signed]]></code>
-    </RedundantCondition>
-    <TypeDoesNotContainType>
-      <code><![CDATA['']]></code>
-      <code><![CDATA['placeholder="Type your full name"']]></code>
     </TypeDoesNotContainType>
   </file>
   <file src="tests/Integration/AttemptLoginTest.php">
@@ -305,6 +299,11 @@
       <code><![CDATA[$_SESSION]]></code>
       <code><![CDATA[$_SESSION]]></code>
     </InvalidScalarArgument>
+    <MissingOverrideAttribute>
+      <code><![CDATA[protected function setUp(): void]]></code>
+      <code><![CDATA[public static function setUpBeforeClass(): void]]></code>
+      <code><![CDATA[public static function tearDownAfterClass(): void]]></code>
+    </MissingOverrideAttribute>
     <UndefinedFunction>
       <code><![CDATA[attempt_login('no_such_user_xyz_phpunit', 'anypassword')]]></code>
       <code><![CDATA[attempt_login(self::USER, 'WrongPassword!')]]></code>
@@ -335,6 +334,11 @@
     </UndefinedFunction>
   </file>
   <file src="tests/Integration/CheckinPinTest.php">
+    <MissingOverrideAttribute>
+      <code><![CDATA[protected function setUp(): void]]></code>
+      <code><![CDATA[public static function setUpBeforeClass(): void]]></code>
+      <code><![CDATA[public static function tearDownAfterClass(): void]]></code>
+    </MissingOverrideAttribute>
     <UndefinedFunction>
       <code><![CDATA[db()]]></code>
       <code><![CDATA[db()]]></code>
@@ -354,6 +358,10 @@
     </UndefinedFunction>
   </file>
   <file src="tests/Integration/DbWriteTest.php">
+    <MissingOverrideAttribute>
+      <code><![CDATA[protected function setUp(): void]]></code>
+      <code><![CDATA[protected function tearDown(): void]]></code>
+    </MissingOverrideAttribute>
     <UndefinedFunction>
       <code><![CDATA[audit(self::AUDIT_ACT)]]></code>
       <code><![CDATA[audit(self::AUDIT_ACT)]]></code>
@@ -378,6 +386,10 @@
     </UndefinedFunction>
   </file>
   <file src="tests/Integration/FamilyScopeTest.php">
+    <MissingOverrideAttribute>
+      <code><![CDATA[protected function setUp(): void]]></code>
+      <code><![CDATA[protected function tearDown(): void]]></code>
+    </MissingOverrideAttribute>
     <UndefinedFunction>
       <code><![CDATA[db()]]></code>
       <code><![CDATA[db()]]></code>
@@ -396,6 +408,10 @@
     </UndefinedFunction>
   </file>
   <file src="tests/Integration/FindMatchesTest.php">
+    <MissingOverrideAttribute>
+      <code><![CDATA[protected function setUp(): void]]></code>
+      <code><![CDATA[protected function tearDown(): void]]></code>
+    </MissingOverrideAttribute>
     <UndefinedFunction>
       <code><![CDATA[db()]]></code>
       <code><![CDATA[db()]]></code>
@@ -412,6 +428,18 @@
     </UndefinedFunction>
   </file>
   <file src="tests/Integration/LogRetentionTest.php">
+    <MissingOverrideAttribute>
+      <code><![CDATA[protected function tearDown(): void]]></code>
+    </MissingOverrideAttribute>
+    <PossiblyFalseArgument>
+      <code><![CDATA[strtotime('-1 day')]]></code>
+      <code><![CDATA[strtotime('-1 day')]]></code>
+      <code><![CDATA[strtotime('-1 day')]]></code>
+      <code><![CDATA[strtotime('-2 months')]]></code>
+      <code><![CDATA[strtotime('-3 weeks')]]></code>
+      <code><![CDATA[strtotime('-7 months')]]></code>
+      <code><![CDATA[strtotime('-7 months')]]></code>
+    </PossiblyFalseArgument>
     <UndefinedFunction>
       <code><![CDATA[apply_log_retention()]]></code>
       <code><![CDATA[apply_log_retention()]]></code>
@@ -434,6 +462,10 @@
     </UndefinedFunction>
   </file>
   <file src="tests/Integration/UpdateProfileAuthTest.php">
+    <MissingOverrideAttribute>
+      <code><![CDATA[public static function setUpBeforeClass(): void]]></code>
+      <code><![CDATA[public static function tearDownAfterClass(): void]]></code>
+    </MissingOverrideAttribute>
     <UndefinedFunction>
       <code><![CDATA[db()]]></code>
       <code><![CDATA[db()]]></code>
@@ -471,6 +503,9 @@
     </UndefinedFunction>
   </file>
   <file src="tests/Integration/WebhookIdempotencyTest.php">
+    <MissingOverrideAttribute>
+      <code><![CDATA[protected function tearDown(): void]]></code>
+    </MissingOverrideAttribute>
     <UndefinedFunction>
       <code><![CDATA[db()]]></code>
       <code><![CDATA[db()]]></code>
@@ -504,6 +539,9 @@
     </UndefinedFunction>
   </file>
   <file src="tests/Unit/AuthSessionTest.php">
+    <MissingOverrideAttribute>
+      <code><![CDATA[protected function setUp(): void]]></code>
+    </MissingOverrideAttribute>
     <UndefinedFunction>
       <code><![CDATA[current_user_id()]]></code>
       <code><![CDATA[current_user_id()]]></code>
@@ -547,6 +585,9 @@
     </UndefinedFunction>
   </file>
   <file src="tests/Unit/CsrfTest.php">
+    <MissingOverrideAttribute>
+      <code><![CDATA[protected function setUp(): void]]></code>
+    </MissingOverrideAttribute>
     <UndefinedFunction>
       <code><![CDATA[csrf_input()]]></code>
       <code><![CDATA[csrf_token()]]></code>

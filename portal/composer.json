@@ -5,6 +5,9 @@
             "advisories": {
                 "block": false
             }
+        },
+        "platform": {
+            "php": "8.4.23"
         }
     },
     "require": {
@@ -12,6 +15,6 @@
     },
     "require-dev": {
         "phpunit/phpunit": "^9",
-        "vimeo/psalm": "^5"
+        "vimeo/psalm": "^6"
     }
 }

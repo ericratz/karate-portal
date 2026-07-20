@@ -19,13 +19,8 @@
         </ignoreFiles>
     </projectFiles>
 
-    <issueHandlers>
-        <!-- False positive: every header() here builds the Location from an
-             (int)-cast id and urlencode()'d ref, so CRLF injection is impossible -->
-        <TaintedHeader>
-            <errorLevel type="suppress">
-                <file name="admin/student_edit.php" />
-            </errorLevel>
-        </TaintedHeader>
-    </issueHandlers>
+    <!-- The TaintedHeader suppression for admin/student_edit.php was removed in
+         the Psalm 6 upgrade: V4.2 reduced that file to a redirect stub, so the
+         suppression no longer matched anything and Psalm 6 reports unused
+         suppressions as errors (UnusedIssueHandlerSuppression). -->
 </psalm>

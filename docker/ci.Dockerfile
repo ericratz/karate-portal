@@ -31,10 +31,13 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 WORKDIR /app
 
 # PHP deps (incl. dev: Psalm + PHPUnit) — own layer for cache reuse.
-# Psalm 5.26.1's composer constraint conservatively caps at PHP 8.3 but runs
-# fine on 8.4, so skip the platform check rather than diverge from the lock file.
+# --ignore-platform-req=php used to be needed here: Psalm 5.26.1 capped at PHP
+# 8.3 while this image runs 8.4. Psalm 6.16.1 supports 8.4 natively and
+# composer.json now pins config.platform.php to live's 8.4.23, so the lock file
+# is honest about the runtime and the override is gone. Keep it that way — with
+# the flag back, a genuinely incompatible dependency would install silently.
 COPY portal/composer.json portal/composer.lock ./portal/
-RUN cd portal && composer install --no-interaction --no-progress --ignore-platform-req=php
+RUN cd portal && composer install --no-interaction --no-progress
 
 # Node deps — own layer. Browsers already live in the base image.
 COPY package.json package-lock.json ./

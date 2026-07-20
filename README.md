@@ -1,6 +1,6 @@
-# Shotokan Karate Portal — V4.3
+# Shotokan Karate Portal — V4.4
 
-A full-stack membership management platform for a martial arts dojo — role-based dashboards, attendance tracking, belt test progression, payments (PayPal + manual), digital waivers, and self-service check-in. Built with PHP and MySQL behind a React 19 + TypeScript SPA: all four portals (admin, instructor, parent, student) were incrementally migrated from server-rendered pages to a single code-split bundle over a versioned JSON API, with every old page URL preserved as a redirect stub. Fully containerized with Docker (app + database + CI toolchain) and verified by a 500+ test Playwright + PHPUnit + Vitest suite and Psalm static analysis running on every push via GitHub Actions.
+A full-stack membership management platform for a martial arts dojo — role-based dashboards, attendance tracking, belt test progression, payments (PayPal + manual), digital waivers, and self-service check-in. Built with PHP and MySQL behind a React 19 + TypeScript SPA: all four portals (admin, instructor, parent, student) were incrementally migrated from server-rendered pages to a single code-split bundle over a versioned JSON API, with every old page URL preserved as a redirect stub. Fully containerized with Docker (app + database + CI toolchain) and verified by a 500+ test Playwright + PHPUnit + Vitest suite and Psalm static + taint analysis running on every push via GitHub Actions.
 
 See [`CHANGELOG.md`](CHANGELOG.md) for full version history.
 
@@ -14,8 +14,8 @@ See [`CHANGELOG.md`](CHANGELOG.md) for full version history.
 - **Defense-in-depth access control** — role checks on every protected page, plus per-record ownership scoping (a parent can only ever query their own linked children's data, verified server-side, not just hidden client-side)
 - **Digital workflows end-to-end** — self-service registration with duplicate-account detection, digital injury waivers, PayPal one-time + subscription payments, PDF rank certificates, PIN-gated self check-in
 - **Mobile-friendly** — layout and touch targets tuned for phone-width viewports, with a dedicated Playwright suite exercising core flows at mobile sizes
-- **518 Playwright tests + 113 PHPUnit tests + 43 Vitest component tests**, plus Psalm static + taint analysis at level 3 and strict TypeScript, run on every push via a self-hosted GitHub Actions CI pipeline
-- **Fully containerized** — app, database, and the entire CI toolchain (Psalm, PHPUnit, Playwright, plus opt-in nmap/Nikto/ZAP scanners) run in Docker via `docker compose`, so dev and CI share one reproducible stack instead of a machine-coupled XAMPP install
+- **518 Playwright tests + 113 PHPUnit tests + 43 Vitest component tests**, plus Psalm static analysis at level 3 and taint analysis, and strict TypeScript, run on every push via a self-hosted GitHub Actions CI pipeline
+- **Fully containerized** — app, database, and the entire CI toolchain (Psalm, PHPUnit, Playwright, plus opt-in nmap/Nikto/ZAP scanners) run in Docker via `docker compose`, so dev and CI share one reproducible stack — as of V4.4 the containers are also the local dev server, running the same PHP 8.4.23 as production instead of a machine-coupled XAMPP install
 - **21 shipped releases in 6+ weeks**, solo — from a bare attendance tracker to a full multi-role membership platform with payments, security hardening, static analysis, containerization, and CI (see [`CHANGELOG.md`](CHANGELOG.md))
 - **Iterative data-model refinement** — guardian/family relationships and user-identity fields were each reworked once real usage patterns emerged, rather than over-designed upfront
 - **Security matured alongside features** — CSP hardening, an external verification pass (ZAP, sqlmap, Burp Suite, nmap, Nikto), a full test-suite audit for coverage gaps, and a documented/drilled backup-restore process.
@@ -32,9 +32,9 @@ See [`CHANGELOG.md`](CHANGELOG.md) for full version history.
 | Payments | PayPal JS SDK (one-time + subscriptions), loaded on demand by the SPA pay route |
 | Auth | Username/password + Google OAuth |
 | Tests | Playwright 1.60 (518 tests) + PHPUnit 9.6 (113 tests) + Vitest/React Testing Library (43 tests) |
-| Static analysis | Psalm (level 3, + taint analysis) — PHP; TypeScript strict — SPA; `@ts-check` + JSDoc via `tsconfig.json` (`checkJs`) — test suite |
+| Static analysis | Psalm 6 (level 3 + taint analysis, both CI-gating) — PHP; TypeScript strict — SPA; `@ts-check` + JSDoc via `tsconfig.json` (`checkJs`) — test suite |
 | Containerization | Docker + docker-compose — `app` (php:8.4-apache), `db` (mysql:8.0), `ci` (Playwright + PHP + Composer) |
-| CI | GitHub Actions — self-hosted Windows runner, containerized pipeline; `tests.yml` (Psalm, PHPUnit, Vitest, Playwright) on every push to `main`, plus `security.yml` (nmap/Nikto/ZAP) weekly and on-demand |
+| CI | GitHub Actions — self-hosted Windows runner, containerized pipeline; `tests.yml` (Psalm standard + taint, PHPUnit, Vitest, Playwright) on every push to `main`, plus `security.yml` (nmap/Nikto/ZAP) weekly and on-demand |
 
 ---
 
@@ -66,7 +66,9 @@ Role is derived at login from account state — not stored as an editable field 
 - The `api/v1` JSON API (React SPA backend) reuses the same session auth; the `parent/*` endpoints apply family scoping with a whitelist serializer so admin-only columns never leave the server, the `instructor/*` endpoints are gated to instructor/admin (existing belt-test editing admin-only), the `admin/*` endpoints are admin-only, and every mutation requires the CSRF token in an `X-CSRF-Token` header
 - Full audit log of logins, edits, deletions, and payments, with time-based retention
 - Verified with nmap, Nikto, OWASP ZAP, sqlmap, and Burp Suite — nmap/Nikto/ZAP run as `docker compose` scanner services against the containerized app, executed weekly and on-demand by a dedicated GitHub Actions workflow (`security.yml`) with the ZAP baseline as the gating scan
-- Psalm static + taint analysis (level 3) on every push, catching type and injection issues before merge
+- Psalm static analysis (level 3) and taint analysis on every push as two gating CI steps, catching type and injection issues before merge; the baseline acts as a ratchet, so any newly-introduced error fails the build
+- Dependabot watching all four lockfiles plus the Actions pins; the five advisories from its first sweep were triaged and cleared in V4.4
+- Session cookies carry `HttpOnly`, `SameSite=Lax`, and `Secure`, the last derived fail-safe so it stays on behind the production TLS-terminating proxy
 - Backup/restore process documented and drilled end-to-end (see [`tests/RESTORE_RUNBOOK.md`](tests/RESTORE_RUNBOOK.md))
 
 ---
@@ -105,15 +107,26 @@ module.exports = {
 # 3. Build and start. The schema auto-imports into a fresh db volume on first
 #    start; composer install + npm install happen at image-build time.
 docker compose build
-docker compose up -d db app     # set APP_PORT=8080 first if host port 80 is taken
+docker compose up -d db app     # set APP_PORT to something else if port 80 is taken
+
+# 4. Map the app's hostname so redirects work in a browser. Add to
+#    C:\Windows\System32\drivers\etc\hosts (needs Administrator), placed AFTER
+#    Docker Desktop's "# End of section" marker so Docker doesn't overwrite it:
+#      127.0.0.1  app
 ```
 
-Site: `http://localhost/karate/portal` (login: `admin` / `ChangeMe123!` on a fresh DB)
+Site: `http://app/karate/portal` (login: `admin` / `ChangeMe123!` on a fresh DB)
+
+The `app` hostname is not cosmetic. The container sets `SITE_URL=http://app/karate/portal` so the `ci`
+container can reach it over Compose DNS, and every server-side redirect (login, logout, auth guards)
+emits that absolute URL. The hosts entry makes the same name resolve from the host, so one `SITE_URL`
+serves both your browser and Playwright — without it you can load pages but die on the first redirect.
 
 ```bash
 # Run the checks — all inside the ci container, same as CI does:
 docker compose run --rm ci npm run typecheck
-docker compose run --rm ci sh -c "cd portal && vendor/bin/psalm --taint-analysis"
+docker compose run --rm ci sh -c "cd portal && vendor/bin/psalm"                  # standard, level 3
+docker compose run --rm ci sh -c "cd portal && vendor/bin/psalm --taint-analysis" # taint
 docker compose run --rm ci sh -c "cd portal && vendor/bin/phpunit"
 docker compose run --rm ci sh -c "cd frontend && npm run typecheck && npm test"
 docker compose run --rm ci npx playwright test      # writes tests/report/
@@ -130,9 +143,11 @@ run it. For a hot-reload dev loop against the running app:
 ```bash
 cd frontend
 npm install
-npm run dev     # Vite on :5173, proxies /karate/portal to localhost
-# Log in at http://localhost/karate/portal first — the session cookie is
-# host-scoped, so it flows to the :5173 dev server automatically.
+npm run dev     # Vite on :5173, proxies /karate/portal to http://app
+# Log in at http://app/karate/portal first, then open http://app:5173 (not
+# localhost:5173) — the session cookie is host-scoped, so it only flows to the
+# dev server if you reach both through the same `app` hostname. Cookies ignore
+# the port, so :5173 and :80 share it.
 ```
 
 > **Note:** `karate_schema.sql` seeds only the default `admin` account. The

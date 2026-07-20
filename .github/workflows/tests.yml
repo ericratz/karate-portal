@@ -91,7 +91,16 @@ jobs:
         if: failure()
         run: docker compose logs app db
 
-      - name: Run Psalm static + taint analysis
+      # Two dedicated passes: the standard run enforces errorLevel 3 against
+      # psalm-baseline.xml (a ratchet — pre-existing issues are baselined, any
+      # NEW error fails the build), the taint run tracks source-to-sink data
+      # flow. They do not overlap: taint mode does not perform the type checks.
+      # The standard pass was dropped in 24d6c64 ("speed up psalm") and restored
+      # in V4.4; on the containerized runner it costs roughly a minute.
+      - name: Run Psalm standard analysis
+        run: docker compose run --rm ci sh -c "cd portal && vendor/bin/psalm"
+
+      - name: Run Psalm taint analysis
         run: docker compose run --rm ci sh -c "cd portal && vendor/bin/psalm --taint-analysis"
 
       - name: Run PHPUnit tests

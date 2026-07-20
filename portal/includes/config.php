@@ -27,6 +27,41 @@ if (file_exists($_env_file)) {
 define('SITE_NAME', 'Shotokan Karate Portal');
 if (!defined('SITE_URL')) define('SITE_URL', 'http://localhost/karate/portal');
 
+// ── HTTPS detection ───────────────────────────────────────────────────────
+// Production runs on shared hosting (Midphase/StackCP) behind a TLS-terminating
+// load balancer, which does not reliably set $_SERVER['HTTPS'] — trusting that
+// alone silently drops the Secure flag from the session cookie on live. The
+// X-Forwarded-Proto header would say so, but it is client-supplied and we do
+// not control the proxy, so spoofing it would be trivial.
+//
+// Instead this fails safe: HTTPS is assumed unless SITE_URL names a known local
+// dev host (native XAMPP "localhost", Docker Compose "app"). A misconfigured or
+// stale live SITE_URL therefore yields a Secure cookie, not an insecure one.
+function site_is_https(): bool {
+    if (!empty($_SERVER['HTTPS']) && strtolower((string)$_SERVER['HTTPS']) !== 'off') return true;
+    $parts = parse_url(SITE_URL) ?: [];
+    if (($parts['scheme'] ?? '') === 'https') return true;
+    $host = strtolower($parts['host'] ?? '');
+    return !in_array($host, ['localhost', '127.0.0.1', '::1', 'app'], true);
+}
+
+// ── Session ───────────────────────────────────────────────────────────────
+// Every entry point must start its session through here. checkin.php is public
+// and used to call a bare session_start(), so a visitor landing there first was
+// issued a PHPSESSID with PHP's ini defaults (no HttpOnly, no Secure, no
+// SameSite) — and that same cookie was then reused once they logged in.
+function start_secure_session(): void {
+    if (session_status() !== PHP_SESSION_NONE) return;
+    session_set_cookie_params([
+        'lifetime' => 0,
+        'path'     => '/',
+        'secure'   => site_is_https(),
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
+    session_start();
+}
+
 // ── Email ─────────────────────────────────────────────────────────────────
 if (!defined('DOJO_EMAIL'))  define('DOJO_EMAIL',  'noreply@noji.com');
 if (!defined('ADMIN_EMAIL')) define('ADMIN_EMAIL', 'admin@example.com');
