@@ -165,7 +165,7 @@ export default function ResolveLink() {
                       <table className="table table-sm table-hover mb-0" id="candidateTable">
                         <thead className="table-light sticky-top">
                           <tr>
-                            <th />
+                            <th className="col-action" />
                             <th>Name</th>
                             <th>DOB</th>
                             <th>Belt</th>

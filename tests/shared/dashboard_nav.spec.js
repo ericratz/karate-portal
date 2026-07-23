@@ -24,14 +24,19 @@ test.describe('Instructor dashboard navigation', () => {
     });
 
     test('Record New Class form, navigation links, and belt test badges', async ({ page }) => {
-        const formAction = await page.locator('button:has-text("Record New Class")').evaluate(el => el.closest('form')?.action ?? '');
-        expect(formAction).toContain('attendance.php');
+        // The Record New Class form navigates in-app on submit (no action=
+        // attendance.php stub), so filling the date and submitting lands on the
+        // attendance route rather than a server round-trip.
+        await page.locator('#newClassDate').fill('2026-07-07');
+        await page.locator('button:has-text("Record New Class")').click();
+        await expect(page).toHaveURL(/#\/instructor\/attendance\?date=2026-07-07/);
+        await page.goBack();
         // Navigation links are SPA hash routes now
         expect(await page.locator('a:has-text("View All Classes")').getAttribute('href')).toContain('classes');
         expect(await page.locator('a:has-text("View Student Roster")').getAttribute('href')).toContain('roster');
         expect(await page.locator('a:has-text("View Tests")').getAttribute('href')).toContain('belt-tests');
-        // Recent session links keep the legacy stub href (if any)
-        const link = page.locator('td a[href*="attendance.php?date="]').first();
+        // Recent session links are in-app hash routes now
+        const link = page.locator('td a[href*="/instructor/attendance?date="]').first();
         if (await link.count() > 0) {
             await link.click();
             await page.waitForLoadState('domcontentloaded');
@@ -103,13 +108,14 @@ test.describe('Admin dashboard navigation', () => {
 test.describe('Admin students page links', () => {
     test.use({ storageState: AUTH.admin });
 
-    test('student name links from roster go to student_profile.php', async ({ page }) => {
+    test('student name links from roster go to the student profile route', async ({ page }) => {
         await page.goto(BASE + '/admin/students.php');
         const link = page.locator('tbody a.text-decoration-none').first();
         // The test DB has 9 students — the roster is never empty.
         await expect(link).toHaveCount(1);
         const href = await link.getAttribute('href');
-        expect(href).toContain('student_profile.php');
+        // In-app hash route now (#/instructor/student/N), not the .php stub.
+        expect(href).toContain('/instructor/student/');
     });
 
     test('clicking a student name navigates to their profile', async ({ page }) => {

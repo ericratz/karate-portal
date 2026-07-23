@@ -13,6 +13,7 @@ class FindMatchesTest extends TestCase
     private const DOB   = '2000-01-01';
     private const EMAIL = 'phpunit_findmatch@test.invalid';
 
+    #[\Override]
     protected function setUp(): void
     {
         db()->prepare(
@@ -21,6 +22,7 @@ class FindMatchesTest extends TestCase
         )->execute([self::FIRST, self::LAST, self::DOB, self::EMAIL]);
     }
 
+    #[\Override]
     protected function tearDown(): void
     {
         db()->prepare('DELETE FROM students WHERE email = ?')->execute([self::EMAIL]);

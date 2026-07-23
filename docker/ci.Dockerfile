@@ -55,4 +55,4 @@ COPY tests/ ./tests/
 COPY frontend/ ./frontend/
 
 # Reach the app service by its Compose DNS name from inside this container.
-ENV TEST_BASE_URL=http://app/karate/portal
+ENV TEST_BASE_URL=http://karate.test/karate/portal

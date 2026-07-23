@@ -10,6 +10,7 @@ import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useSession } from '../SessionContext';
 import { ExtIcon } from './shared';
+import Footer from './Footer';
 
 const roleTips: Record<string, string> = {
   student: 'Registration fee paid',
@@ -177,6 +178,7 @@ export default function Layout({ children }: { children: ReactNode }) {
         </div>
       </nav>
       <div className="container-fluid py-4 px-4">{children}</div>
+      <Footer />
     </>
   );
 }

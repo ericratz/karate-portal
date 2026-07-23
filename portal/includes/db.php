@@ -11,7 +11,7 @@ foreach (['DB_HOST', 'DB_NAME', 'DB_USER', 'DB_PASS', 'DB_CHARSET'] as $_k) {
 
 $_env_file = dirname(__DIR__, 2) . '/.env';
 if (file_exists($_env_file)) {
-    foreach (file($_env_file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $_line) {
+    foreach ((file($_env_file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: []) as $_line) {
         if (strncmp(trim($_line), '#', 1) === 0) continue;
         if (strpos($_line, '=') === false) continue;
         $_parts = explode('=', $_line, 2);

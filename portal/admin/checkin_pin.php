@@ -51,7 +51,7 @@ include __DIR__ . '/../includes/header.php';
                         <button type="button" id="togglePinBtn" class="btn btn-sm btn-outline-secondary">View</button>
                     </div>
                     <?php if ($updated_at): ?>
-                    <div class="text-muted small">Last changed <?= htmlspecialchars(date('j M Y g:i a', strtotime($updated_at))) ?></div>
+                    <div class="text-muted small">Last changed <?= htmlspecialchars(date('j M Y g:i a', (int) strtotime($updated_at))) ?></div>
                     <?php endif; ?>
                 </div>
                 <form method="post" class="d-flex gap-2 align-items-end">

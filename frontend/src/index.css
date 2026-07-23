@@ -46,8 +46,89 @@
     letter-spacing: .05em;
 }
 
-body { background: #f8f9fa; }
+/* padding-bottom reserves space for the fixed footer bar so it never overlaps
+   page content (and so the page isn't left with a phantom scrollbar from the
+   footer sitting under content). Ported from includes/header.php. */
+body { background: #f8f9fa; padding-bottom: 57px; }
 [data-bs-theme="dark"] body { background: #212529; }
+
+/* Equal-width columns on every table: with table-layout:fixed and no explicit
+   column widths, the browser splits the table width evenly across all columns,
+   so the gap between any two adjacent columns is the same — within a table and
+   consistently across attendance / roster / payments / everywhere. Bootstrap's
+   default (table-layout:auto) sizes columns to their content, which is what
+   made the spacing uneven. Long cell content now wraps instead of widening its
+   column. */
+.table { table-layout: fixed; }
+
+/* Action / utility columns keep a fixed narrow width so they don't take an
+   equal share — the DATA columns split the remaining width evenly. Icon columns
+   (single edit/delete button, revealed in edit mode) are the narrowest; the
+   .col-action class is for always-visible text-button columns (Edit toggle,
+   Certificate, Dismiss, a leading "+" prefill, etc.). Width in a fixed-layout
+   table is read from the header cell, so marking the <th> is enough. */
+.table th.delete-col, .table td.delete-col,
+.table th.edit-col, .table td.edit-col,
+.table th.rank-delete-col, .table td.rank-delete-col,
+.table th.pw-action-col, .table td.pw-action-col,
+.table th.pay-action-col, .table td.pay-action-col,
+.table th.guardian-delete-col, .table td.guardian-delete-col { width: 48px; }
+.table th.col-action, .table td.col-action { width: 92px; }
+
+/* ── Site footer (ported from includes/header.php + footer.php) ──────────── */
+#site-footer {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    z-index: 1030;
+    background: #6f42c1;
+    border-top: 1px solid #5a32a3;
+}
+[data-bs-theme="dark"] #site-footer {
+    background: #6f42c1;
+    border-top-color: #5a32a3;
+}
+#site-footer #footerCollapseBtn {
+    position: absolute; top: 0; right: 16px;
+    transform: translateY(-100%);
+    background: #6f42c1;
+    border: 1px solid rgba(255, 255, 255, .35); border-bottom: none;
+    border-radius: 6px 6px 0 0;
+    padding: 3px 11px; cursor: pointer;
+    color: #fff; line-height: 1;
+    display: flex; align-items: center;
+}
+#site-footer .footer-grid {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 12px;
+    padding: 0 12px;
+}
+#site-footer .footer-side-text {
+    color: #fff; font-size: .86rem; line-height: 1.5;
+    min-width: 0; overflow-wrap: break-word;
+}
+#site-footer .footer-card-wrap { flex-shrink: 0; width: clamp(220px, 40vw, 500px); }
+
+@media (max-width: 767px) {
+    /* Footer collapses to just the chevron tab — tapping it reveals the whole
+       bar (contact card + trademark/copyright text). */
+    #site-footer .footer-grid { display: none !important; }
+    #site-footer.footer-open .footer-grid {
+        display: grid !important;
+        grid-template-columns: 1fr !important;
+        padding: 10px 12px;
+        max-height: 70vh;
+        overflow-y: auto;
+    }
+    #site-footer.footer-open .footer-grid > div { width: auto !important; }
+    #site-footer .footer-side-text { display: none; }
+    #site-footer.footer-open .footer-side-text {
+        display: block;
+        text-align: center !important;
+    }
+    body { padding-bottom: 34px; } /* only the chevron tab needs room */
+}
 
 .form-check-input { border: 2px solid #555; width: 1.15em; height: 1.15em; }
 .form-check-input:checked { background-color: #6f42c1; border-color: #6f42c1; }
@@ -238,8 +319,32 @@ table.editing .delete-col { display: table-cell; }
   --bs-btn-active-color: #fff;
 }
 
-/* Admin navbar dropdown (React-controlled, no bootstrap JS) */
-.navbar .dropdown-menu { z-index: 1080; }
+/* Admin navbar dropdown (React-controlled, no bootstrap JS).
+   The purple treatment below is ported from includes/header.php — the SPA
+   migration carried over only the z-index, so the menu rendered in Bootstrap's
+   default white instead of matching the purple navbar. */
+.navbar .dropdown-menu {
+    z-index: 1080;
+    background-color: #6f42c1;
+    border-color: #5a32a3;
+}
+.navbar .dropdown-menu .dropdown-item {
+    color: rgba(255, 255, 255, .9) !important;
+}
+.navbar .dropdown-menu .dropdown-item:hover,
+.navbar .dropdown-menu .dropdown-item:focus {
+    background-color: rgba(255, 255, 255, .15);
+    color: #fff !important;
+}
+.navbar .dropdown-menu .dropdown-header {
+    color: rgba(255, 255, 255, .55) !important;
+    font-size: .7rem;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+}
+.navbar .dropdown-menu .dropdown-divider {
+    border-color: rgba(255, 255, 255, .15);
+}
 
 /* Compare & Link account tables (ported from compare_account.php) */
 .compare-table td:first-child { width: 38%; color: #6c757d; font-size: .85rem; }

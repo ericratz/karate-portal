@@ -41,10 +41,31 @@ services:
       # Server-side redirects (logout, post-login, auth guards) must point back
       # at the app on the Compose network, not localhost, so Playwright in the
       # ci container isn't bounced to its own (empty) localhost.
-      SITE_URL: http://app/karate/portal
+      #
+      # The host is karate.test, NOT the `app` service name: `.app` is a real
+      # gTLD on the HSTS preload list, so browsers force https:// for a bare
+      # `app` hostname and refuse plain HTTP before the request is even sent —
+      # unfixable from our side, since preloaded HSTS entries can't be clicked
+      # through. `.test` is reserved by RFC 2606 and will never be preloaded.
+      # The network alias below makes karate.test resolve inside Compose too.
+      SITE_URL: http://karate.test/karate/portal
       # The test client (ci container) isn't localhost, so it can't use the
       # built-in localhost rate-limit exemption. Dev/CI container only.
       RATELIMIT_DISABLED: "1"
+      # Declares this a development environment, which is the ONLY way to opt
+      # out of the Secure session-cookie flag (see site_is_https() in
+      # includes/config.php). Set here rather than in .env on purpose: .env is
+      # deployed to the live host, and a stray APP_ENV=dev there would silently
+      # ship insecure cookies. Production runs without Docker, never sets this,
+      # and is secure by omission. NEVER set APP_ENV=dev on the live server.
+      APP_ENV: dev
+    networks:
+      default:
+        # Reachable as both `app` (service name) and `karate.test` inside the
+        # Compose network, so the ci container and the host browser use the
+        # identical URL — one SITE_URL, no environment fork.
+        aliases:
+          - karate.test
     volumes:
       # DB creds mounted (not baked) so the image carries no secrets and the
       # same image works against any DB.
@@ -67,7 +88,7 @@ services:
       db:
         condition: service_healthy
     environment:
-      TEST_BASE_URL: http://app/karate/portal
+      TEST_BASE_URL: http://karate.test/karate/portal
       DB_HOST: db      # snapshot/restore + PHPUnit reach the db service
       # Containerized runs share host resources — fewer workers + retries keeps
       # the suite stable (native runs keep 6 workers / 0 retries by default).
@@ -94,7 +115,7 @@ services:
     depends_on: [app]
     # -ask=no: never prompt to submit unknown server strings to CIRT.net — that
     # prompt blocks on stdin and hangs a non-interactive CI run indefinitely.
-    command: ["-h", "http://app/karate/portal/login.php", "-ask", "no"]
+    command: ["-h", "http://karate.test/karate/portal/login.php", "-ask", "no"]
 
   zap:
     image: ghcr.io/zaproxy/zaproxy:stable
@@ -103,7 +124,7 @@ services:
     volumes:
       - ./docker/zap:/zap/wrk:rw
     command: >
-      zap-baseline.py -t http://app/karate/portal/login.php
+      zap-baseline.py -t http://karate.test/karate/portal/login.php
       -c zap-baseline.conf -I
 
 volumes:

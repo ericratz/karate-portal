@@ -2,7 +2,7 @@
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/db.php';
 require_role('instructor', 'admin');
-function fmt_phone(string $p): string { $d = preg_replace('/\D/', '', $p); return strlen($d) === 10 ? substr($d,0,3).'-'.substr($d,3,3).'-'.substr($d,6) : $p; }
+function fmt_phone(string $p): string { $d = (string) preg_replace('/\D/', '', $p); return strlen($d) === 10 ? substr($d,0,3).'-'.substr($d,3,3).'-'.substr($d,6) : $p; }
 
 $student_id = get_int('student_id') ?: post_int('student_id');
 if (!$student_id) { header('Location: students.php'); exit; }
@@ -134,7 +134,7 @@ include __DIR__ . '/../includes/header.php';
 <div class="d-flex align-items-center gap-3 mb-4">
     <h4 class="mb-0">Waiver — <?= hn($student['first_name'] . ' ' . $student['last_name']) ?></h4>
     <?php if ($student['injury_waiver']): ?>
-        <span class="badge bg-success">Signed <?= $student['injury_waiver_date'] ? date('d M Y', strtotime($student['injury_waiver_date'])) : '' ?></span>
+        <span class="badge bg-success">Signed <?= $student['injury_waiver_date'] ? date('d M Y', (int) strtotime($student['injury_waiver_date'])) : '' ?></span>
     <?php endif; ?>
     <?php if ($has_submission && $submission['ip_address'] === 'admin-entry'): ?>
         <span class="badge bg-secondary">Admin entry</span>
@@ -233,7 +233,7 @@ include __DIR__ . '/../includes/header.php';
                     <input type="date" name="signed_date" class="w-input"
                            value="<?= htmlspecialchars(!empty($d['signed_date']) ? $d['signed_date'] : ($student['injury_waiver_date'] ?? date('Y-m-d'))) ?>" required>
                 <?php else: ?>
-                    <div class="w-static"><?= !empty($d['signed_date']) ? date('d M Y', strtotime($d['signed_date'])) : ($student['injury_waiver_date'] ? date('d M Y', strtotime($student['injury_waiver_date'])) : '') ?></div>
+                    <div class="w-static"><?= !empty($d['signed_date']) ? date('d M Y', (int) strtotime($d['signed_date'])) : ($student['injury_waiver_date'] ? date('d M Y', (int) strtotime($student['injury_waiver_date'])) : '') ?></div>
                 <?php endif; ?>
             </div>
         </div>
@@ -252,7 +252,7 @@ include __DIR__ . '/../includes/header.php';
                     <input type="date" name="guardian_signed_date" class="w-input"
                            value="<?= htmlspecialchars($d['guardian_signed_date'] ?? '') ?>">
                 <?php else: ?>
-                    <div class="w-static"><?= !empty($d['guardian_signed_date']) ? date('d M Y', strtotime($d['guardian_signed_date'])) : '' ?></div>
+                    <div class="w-static"><?= !empty($d['guardian_signed_date']) ? date('d M Y', (int) strtotime($d['guardian_signed_date'])) : '' ?></div>
                 <?php endif; ?>
             </div>
         </div>
@@ -263,7 +263,7 @@ include __DIR__ . '/../includes/header.php';
             <input type="date" name="date_of_birth" class="w-input" style="max-width:220px"
                    value="<?= htmlspecialchars($d['date_of_birth'] ?? ($s['date_of_birth'] ?? '')) ?>">
         <?php else: ?>
-            <div class="w-static" style="max-width:220px"><?= !empty($d['date_of_birth']) ? date('d M Y', strtotime($d['date_of_birth'])) : '' ?></div>
+            <div class="w-static" style="max-width:220px"><?= !empty($d['date_of_birth']) ? date('d M Y', (int) strtotime($d['date_of_birth'])) : '' ?></div>
         <?php endif; ?>
 
         <!-- Cell Phone -->

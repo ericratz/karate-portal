@@ -77,7 +77,7 @@ export default function BeltTestsAll() {
     <>
       <div className="d-flex align-items-center gap-3 mb-4">
         <h4 className="mb-0">All Belt Tests</h4>
-        <a href="belt_test_edit.php" className="btn btn-success btn-sm ms-auto">+ New Test</a>
+        <Link to="/instructor/belt-test-edit" className="btn btn-success btn-sm ms-auto">+ New Test</Link>
       </div>
 
       <div className="card border-0 shadow-sm mb-3">
@@ -194,7 +194,7 @@ export default function BeltTestsAll() {
                     <th className="text-center">Fee Paid</th>
                     <th className="text-center">Test Passed</th>
                     <th>Notes</th>
-                    <th></th>
+                    <th className="col-action"></th>
                     <th className="delete-col"></th>
                   </tr>
                 </thead>
@@ -203,7 +203,7 @@ export default function BeltTestsAll() {
                     <tr key={t.id}>
                       <td className="text-nowrap">{fmtDate(t.test_date)}</td>
                       <td>
-                        <a href={`student_profile.php?id=${t.student_id}`}>{personName(t.student)}</a>
+                        <Link to={`/instructor/student/${t.student_id}`}>{personName(t.student)}</Link>
                       </td>
                       <td>{t.kyu_dan}</td>
                       <td>
@@ -230,12 +230,12 @@ export default function BeltTestsAll() {
                       <td className="text-muted small">{t.notes ?? ''}</td>
                       <td>
                         {data.is_admin && (
-                          <a
-                            href={`belt_test_edit.php?id=${t.id}&ref_pid=${t.student_id}`}
+                          <Link
+                            to={`/instructor/belt-test-edit?id=${t.id}&ref_pid=${t.student_id}`}
                             className="btn btn-sm btn-outline-primary"
                           >
                             Edit
-                          </a>
+                          </Link>
                         )}
                       </td>
                       <td className="delete-col">

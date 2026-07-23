@@ -22,9 +22,9 @@ async function deleteStudentsBySelector(page, rowLocator) {
         await page.waitForLoadState('domcontentloaded');
         const row = rowLocator(page);
         if (await row.count() === 0) { found = false; break; }
-        const profileHref = await row.locator('a[href*="student_profile.php"]').first().getAttribute('href');
+        const profileHref = await row.locator('a[href*="/instructor/student/"]').first().getAttribute('href');
         if (!profileHref) { found = false; break; }
-        const match = profileHref.match(/[?&]id=(\d+)/);
+        const match = profileHref.match(/\/instructor\/student\/(\d+)/);
         if (!match) { found = false; break; }
         await page.goto(BASE + '/admin/student_edit.php?id=' + match[1]);
         await page.waitForLoadState('domcontentloaded');

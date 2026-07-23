@@ -367,7 +367,7 @@ if ($step === 'confirm' && ($sel['type'] ?? '') === 'claim') {
         <div class="d-flex flex-column gap-2 mb-3" id="matchList">
 
             <?php foreach ($matches as $m):
-                $dob_fmt = $m['date_of_birth'] ? date('d M', strtotime($m['date_of_birth'])) : null;
+                $dob_fmt = $m['date_of_birth'] ? date('d M', (int) strtotime($m['date_of_birth'])) : null;
                 $masked  = $m['email'] ? mask_email($m['email']) : null;
             ?>
             <div class="option-card match-card select-match-card p-3"
@@ -451,7 +451,7 @@ if ($step === 'confirm' && ($sel['type'] ?? '') === 'claim') {
                     <?php if ($confirm_student['date_of_birth']): ?>
                     <div class="col-6">
                         <div class="c-label">Date of Birth</div>
-                        <div class="c-value"><?= date('d M', strtotime($confirm_student['date_of_birth'])) ?></div>
+                        <div class="c-value"><?= date('d M', (int) strtotime($confirm_student['date_of_birth'])) ?></div>
                     </div>
                     <?php endif; ?>
                     <?php if ($confirm_student['city_state_zip']): ?>
@@ -499,7 +499,7 @@ if ($step === 'confirm' && ($sel['type'] ?? '') === 'claim') {
                     </div>
                     <div class="col-6">
                         <div class="c-label">Date of Birth</div>
-                        <div class="c-value"><?= $reg_data['date_of_birth'] ? date('d M', strtotime($reg_data['date_of_birth'])) : '—' ?></div>
+                        <div class="c-value"><?= $reg_data['date_of_birth'] ? date('d M', (int) strtotime($reg_data['date_of_birth'])) : '—' ?></div>
                     </div>
                     <div class="col-12">
                         <div class="c-label">Email</div>
@@ -544,7 +544,7 @@ if ($step === 'confirm' && ($sel['type'] ?? '') === 'claim') {
                     </div>
                     <div class="col-6">
                         <div class="c-label">Date of Birth</div>
-                        <div class="c-value"><?= $reg_data['date_of_birth'] ? date('d M', strtotime($reg_data['date_of_birth'])) : '—' ?></div>
+                        <div class="c-value"><?= $reg_data['date_of_birth'] ? date('d M', (int) strtotime($reg_data['date_of_birth'])) : '—' ?></div>
                     </div>
                     <div class="col-12">
                         <div class="c-label">Email</div>

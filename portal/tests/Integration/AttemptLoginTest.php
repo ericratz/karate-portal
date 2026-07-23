@@ -12,6 +12,7 @@ class AttemptLoginTest extends TestCase
     private const USER = 'phpunit_test_user';
     private const PASS = 'PHPUnit_Test_Pass_123!';
 
+    #[\Override]
     public static function setUpBeforeClass(): void
     {
         self::cleanup(); // remove any leftover from a previous crashed run
@@ -28,6 +29,7 @@ class AttemptLoginTest extends TestCase
         )->execute([$uid, 'PHPUnit', 'Test', 'phpunit_student@localhost.invalid', 'student']);
     }
 
+    #[\Override]
     public static function tearDownAfterClass(): void
     {
         self::cleanup();
@@ -45,6 +47,7 @@ class AttemptLoginTest extends TestCase
         db()->prepare('DELETE FROM login_attempts WHERE identifier = ?')->execute([self::USER]);
     }
 
+    #[\Override]
     protected function setUp(): void
     {
         $_SESSION = [];

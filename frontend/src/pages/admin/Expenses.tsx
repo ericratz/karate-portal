@@ -244,7 +244,7 @@ export default function Expenses() {
                       <th>Date</th>
                       <th>Type</th>
                       <th>Description</th>
-                      <th className="text-end">Amount</th>
+                      <th>Amount</th>
                       <th>Recorded By</th>
                       <th className="delete-col" />
                     </tr>
@@ -255,7 +255,7 @@ export default function Expenses() {
                         <td>{fmtDate(e.expense_date)}</td>
                         <td>{ucfirst(e.expense_type)}</td>
                         <td>{e.description ?? '—'}</td>
-                        <td className="text-end">${e.amount.toFixed(2)}</td>
+                        <td>${e.amount.toFixed(2)}</td>
                         <td>{e.recorded_by ?? '—'}</td>
                         <td className="delete-col">
                           <button

@@ -66,16 +66,10 @@ function RosterTable({
     <div className="table-responsive">
       <table
         className="table table-sm table-hover mb-0"
-        style={{ tableLayout: 'fixed', width: '100%', minWidth: 640 }}
+        style={{ width: '100%', minWidth: 640 }}
       >
-        <colgroup>
-          <col style={{ width: '26%' }} />
-          <col style={{ width: '18%' }} />
-          <col style={{ width: '10%' }} />
-          <col style={{ width: '10%' }} />
-          <col style={{ width: '20%' }} />
-          <col style={{ width: '16%' }} />
-        </colgroup>
+        {/* No colgroup: the global .table table-layout:fixed rule splits the
+            width equally across all six columns, so the gaps are uniform. */}
         <thead className="table-light">
           <tr>
             <th>Name</th><th>Rank</th><th>Waiver</th><th>Registration</th>
@@ -103,7 +97,7 @@ function RosterTable({
               >
                 <td className="fw-semibold">
                   <a
-                    href={`../instructor/student_profile.php?id=${s.id}`}
+                    href={`#/instructor/student/${s.id}`}
                     className="text-decoration-none"
                   >
                     {displayName}
@@ -200,7 +194,7 @@ export default function AdminRoster() {
     <>
       <div className="d-flex align-items-center justify-content-between mb-3">
         <h3 className="mb-0">Roster</h3>
-        <a href="student_edit.php" className="btn btn-success btn-sm">+ New Participant</a>
+        <a href="#/admin/student-edit" className="btn btn-success btn-sm">+ New Participant</a>
       </div>
       <div className="d-flex gap-2 align-items-center mb-4 flex-wrap">
         <span className="text-muted small">Sort:</span>

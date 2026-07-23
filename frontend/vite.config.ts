@@ -25,10 +25,10 @@ export default defineConfig(({ command }) => ({
   server: {
     proxy: {
       // Must match the host you log in on: the session cookie is host-scoped,
-      // so a cookie set for `app` is not sent to `localhost:5173`. Open the dev
-      // server at http://app:5173 (cookies ignore port) — see README.
+      // so a cookie set for `karate.test` is not sent to `localhost:5173`. Open
+      // the dev server at http://karate.test:5173 (cookies ignore port).
       '/karate/portal': {
-        target: 'http://app',
+        target: 'http://karate.test',
         changeOrigin: false,
       },
     },

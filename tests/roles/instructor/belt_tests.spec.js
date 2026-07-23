@@ -119,8 +119,9 @@ test('instructor dashboard shows Recent Belt Tests and links to the belt tests l
 
 test('belt_tests_all.php loads, shows count, and edit toggle works', async ({ page }) => {
     await visit(page, '/instructor/belt_tests_all.php', 'all belt tests');
-    // Header shows count
-    expect(await page.locator('.card-header').first().textContent()).toMatch(/\d+\s*test/i);
+    // Header shows count — scope to the results card (the footer, always
+    // present, also has a .card-header, so a bare .first() can race to it).
+    expect(await page.locator('#belt-tests-results .card-header').textContent()).toMatch(/\d+\s*test/i);
     // Unauthenticated user cannot access — clear cookies instead of logging in as guest
     await page.context().clearCookies();
     await page.goto(BASE + '/instructor/belt_tests_all.php');

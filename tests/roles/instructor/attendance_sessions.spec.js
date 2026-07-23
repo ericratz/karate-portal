@@ -20,12 +20,12 @@ test.describe('Attendance sessions page', () => {
 
     // ── NEW SESSION BUTTON ──────────────────────────────────────────────
 
-    test('+ Record New Class link exists and points to attendance.php with a date', async ({ page }) => {
+    test('+ Record New Class link exists and points to the attendance route with a date', async ({ page }) => {
         await page.goto(BASE + '/instructor/attendance_sessions.php');
         const link = page.locator('#newSessionBtn');
         await expect(link).toBeVisible();
         const href = await link.getAttribute('href');
-        expect(href).toMatch(/attendance\.php\?date=\d{4}-\d{2}-\d{2}/);
+        expect(href).toMatch(/\/instructor\/attendance\?date=\d{4}-\d{2}-\d{2}/);
     });
 
     test('changing date input updates the + Record New Class href', async ({ page }) => {
@@ -99,13 +99,15 @@ test.describe('Attendance sessions page', () => {
 
     // ── DATE LINK IN SESSION ROW ────────────────────────────────────────
 
-    test('session date links navigate to attendance.php?date=', async ({ page }) => {
+    test('session date links navigate to the attendance route', async ({ page }) => {
         await page.goto(BASE + '/instructor/attendance_sessions.php');
-        const link = page.locator('tbody a[href*="attendance.php?date="]').first();
+        // Links are now in-app hash routes (#/instructor/attendance?date=…),
+        // not the legacy attendance.php stub.
+        const link = page.locator('tbody a[href*="/instructor/attendance?date="]').first();
         // The test DB has 10+ class sessions and the default view is unfiltered — always present.
         await expect(link).toHaveCount(1);
         const href = await link.getAttribute('href');
-        expect(href).toMatch(/attendance\.php\?date=\d{4}-\d{2}-\d{2}/);
+        expect(href).toMatch(/\/instructor\/attendance\?date=\d{4}-\d{2}-\d{2}/);
     });
 
     // ── ACCORDION TOGGLE ────────────────────────────────────────────────

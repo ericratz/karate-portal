@@ -19,6 +19,9 @@ function paypal_base_url(): string {
  */
 function paypal_request(string $path, string $post_body, array $headers, array $extra_curl_opts = []): array {
     $ch = curl_init(paypal_base_url() . $path);
+    if ($ch === false) {
+        throw new RuntimeException('PayPal request failed: could not initialize cURL');
+    }
     curl_setopt_array($ch, $extra_curl_opts + [
         CURLOPT_POST           => true,
         CURLOPT_POSTFIELDS     => $post_body,
@@ -33,7 +36,7 @@ function paypal_request(string $path, string $post_body, array $headers, array $
     $status = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
     curl_close($ch);
 
-    if ($resp === false || $errno !== 0) {
+    if (!is_string($resp) || $errno !== 0) {
         log_event('error', 'payment', 'PayPal request failed (network)', [
             'path' => $path, 'curl_errno' => $errno, 'curl_error' => $error,
         ]);
@@ -53,7 +56,7 @@ function paypal_request(string $path, string $post_body, array $headers, array $
     }
 
     /** @var array<string, mixed> $data */
-    return ['status' => $status, 'data' => $data, 'raw' => (string)$resp];
+    return ['status' => $status, 'data' => $data, 'raw' => $resp];
 }
 
 // Fetch a short-lived access token using client credentials — throws on failure
@@ -82,7 +85,7 @@ function paypal_json_headers(string $token): array {
 // Returns the PayPal order ID on success, or throws
 function paypal_create_order(float $amount, string $description): string {
     $token = paypal_get_token();
-    $body  = json_encode([
+    $body  = (string) json_encode([
         'intent'         => 'CAPTURE',
         'purchase_units' => [[
             'amount'      => [
@@ -119,7 +122,7 @@ function paypal_captured_amount(array $capture_response): float {
 // Create a PayPal subscription and return ['id' => ..., 'approve_url' => ...]
 function paypal_create_subscription(string $first_name, string $last_name, string $email): array {
     $token = paypal_get_token();
-    $body  = json_encode([
+    $body  = (string) json_encode([
         'plan_id'             => PAYPAL_PLAN_ID,
         'subscriber'          => [
             'name'          => ['given_name' => $first_name, 'surname' => $last_name],
@@ -151,7 +154,7 @@ function paypal_create_subscription(string $first_name, string $last_name, strin
 function paypal_cancel_subscription(string $subscription_id): void {
     $token  = paypal_get_token();
     $result = paypal_request('/v1/billing/subscriptions/' . $subscription_id . '/cancel',
-        json_encode(['reason' => 'Cancelled by subscriber']),
+        (string) json_encode(['reason' => 'Cancelled by subscriber']),
         paypal_json_headers($token));
 
     if ($result['status'] !== 204) {
@@ -167,7 +170,7 @@ function paypal_cancel_subscription(string $subscription_id): void {
 function paypal_verify_webhook(string $webhook_id, array $headers, string $body): bool {
     try {
         $token   = paypal_get_token();
-        $payload = json_encode([
+        $payload = (string) json_encode([
             'auth_algo'         => $headers['PAYPAL-AUTH-ALGO'] ?? '',
             'cert_url'          => $headers['PAYPAL-CERT-URL'] ?? '',
             'transmission_id'   => $headers['PAYPAL-TRANSMISSION-ID'] ?? '',

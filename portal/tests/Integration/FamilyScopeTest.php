@@ -20,6 +20,7 @@ class FamilyScopeTest extends TestCase
     private int $child_sid        = 0;
     private int $unrelated_sid    = 0;
 
+    #[\Override]
     protected function setUp(): void
     {
         $db = db();
@@ -47,6 +48,7 @@ class FamilyScopeTest extends TestCase
            ->execute([$this->parent_sid, $this->child_sid]);
     }
 
+    #[\Override]
     protected function tearDown(): void
     {
         $db = db();

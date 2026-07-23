@@ -66,15 +66,10 @@ function RosterTable({
     <div className="table-responsive">
       <table
         className="table table-sm table-hover mb-0"
-        style={{ tableLayout: 'fixed', width: '100%', minWidth: 560 }}
+        style={{ width: '100%', minWidth: 560 }}
       >
-        <colgroup>
-          <col style={{ width: '28%' }} />
-          <col style={{ width: '20%' }} />
-          <col style={{ width: '14%' }} />
-          <col style={{ width: '22%' }} />
-          <col style={{ width: '16%' }} />
-        </colgroup>
+        {/* No colgroup: the global .table table-layout:fixed rule splits the
+            width equally across all five columns, so the gaps are uniform. */}
         <thead className="table-light">
           <tr>
             <th>Name</th><th>Rank</th><th>Waiver</th><th>Last Attended</th><th>Status</th>
@@ -93,9 +88,9 @@ function RosterTable({
                 style={{ display: rowMatches(s, filters) ? '' : 'none' }}
               >
                 <td className="fw-semibold">
-                  <a href={`student_profile.php?id=${s.id}`} className="text-decoration-none">
+                  <Link to={`/instructor/student/${s.id}`} className="text-decoration-none">
                     {displayName}
-                  </a>
+                  </Link>
                   {s.medical_note && (
                     <span className="text-danger" style={{ fontSize: '.85em' }} title={s.medical_note}>
                       {' '}⚕

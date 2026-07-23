@@ -4,6 +4,7 @@ use PHPUnit\Framework\TestCase;
 
 class CsrfTest extends TestCase
 {
+    #[\Override]
     protected function setUp(): void
     {
         $_SESSION   = [];

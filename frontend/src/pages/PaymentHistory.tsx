@@ -99,7 +99,7 @@ export default function PaymentHistory() {
                 <thead className="table-light">
                   <tr>
                     <th>#</th><th>Date</th><th>Type</th><th>Month</th><th>Method</th>
-                    <th className="text-end">Amount</th>
+                    <th>Amount</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -114,7 +114,7 @@ export default function PaymentHistory() {
                           : '—'}
                       </td>
                       <td>{p.payment_method.charAt(0).toUpperCase() + p.payment_method.slice(1)}</td>
-                      <td className="text-end">{money(p.amount)}</td>
+                      <td>{money(p.amount)}</td>
                     </tr>
                   ))}
                 </tbody>

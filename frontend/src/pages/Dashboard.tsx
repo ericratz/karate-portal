@@ -311,14 +311,14 @@ export default function Dashboard() {
                     <div className="table-responsive">
                       <table className="table table-sm table-hover mb-0">
                         <thead className="table-light">
-                          <tr><th>Date</th><th>Type</th><th className="text-end">Amount</th></tr>
+                          <tr><th>Date</th><th>Type</th><th>Amount</th></tr>
                         </thead>
                         <tbody>
                           {data.recent_payments.map((p, i) => (
                             <tr key={`${p.payment_date}-${i}`}>
                               <td>{fmtDate(p.payment_date)}</td>
                               <td>{paymentType(p.payment_type)}</td>
-                              <td className="text-end">{money(Number(p.amount))}</td>
+                              <td>{money(Number(p.amount))}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -382,11 +382,11 @@ export default function Dashboard() {
                     <div className="table-responsive">
                       <table className="table table-sm mb-0">
                         <thead className="table-light">
-                          <tr><th>Rank</th><th>Date Achieved</th><th /></tr>
+                          <tr><th>Rank</th><th>Date Achieved</th><th className="col-action" /></tr>
                         </thead>
                         <tbody>
                           {data.rank_history.map((rh, i) => (
-                            <tr key={`${rh.kyu_dan}-${i}`} className={i === 0 ? 'table-purple' : ''}>
+                            <tr key={`${rh.kyu_dan}-${i}`}>
                               <td>{rh.kyu_dan}</td>
                               <td>{rh.achieved_date ? fmtMonth(rh.achieved_date) : '—'}</td>
                               <td>

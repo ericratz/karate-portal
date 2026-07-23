@@ -224,7 +224,7 @@ function logout(): void {
     $_SESSION = [];
     if (ini_get('session.use_cookies')) {
         $p = session_get_cookie_params();
-        setcookie(session_name(), '', time() - 3600,
+        setcookie((string) session_name(), '', time() - 3600,
             (string)$p['path'], (string)$p['domain'], (bool)$p['secure'], (bool)$p['httponly']);
     }
     session_destroy();

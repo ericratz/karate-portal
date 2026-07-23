@@ -24,21 +24,20 @@ test.describe('Student Edit Cards', () => {
 
     // ── ATTENDANCE DATE LINKS ────────────────────────────────────────────────────
 
-    test('attendance date links contain attendance.php?date=', async ({ page }) => {
-        const link = page.locator('a[href*="attendance.php?date="]').first();
+    test('attendance date links point to the attendance route', async ({ page }) => {
+        // In-app hash route now (#/instructor/attendance?date=…), not the .php stub.
+        const link = page.locator('a[href*="/instructor/attendance?date="]').first();
         await expect(link).toHaveCount(1); // student 2 has attendance history in the test DB
         const href = await link.getAttribute('href');
-        expect(href).toContain('attendance.php?date=');
+        expect(href).toContain('/instructor/attendance?date=');
     });
 
     test('clicking an attendance date link navigates to the attendance page', async ({ page }) => {
-        const link = page.locator('a[href*="attendance.php?date="]').first();
+        const link = page.locator('a[href*="/instructor/attendance?date="]').first();
         await expect(link).toHaveCount(1);
         await link.click();
-        await page.waitForLoadState('domcontentloaded');
-        // attendance.php is a redirect stub into the SPA route now
-        expect(page.url()).toContain('attendance');
-        expect(page.url()).toContain('date=');
+        // Client-side hash navigation (stays on the admin shell).
+        await expect(page).toHaveURL(/#\/instructor\/attendance\?date=/);
     });
 
     // ── BELT TEST HISTORY CARD ───────────────────────────────────────────────────
@@ -47,19 +46,19 @@ test.describe('Student Edit Cards', () => {
         await expect(page.locator('.card-header').filter({ hasText: 'Belt Test History' })).toBeVisible();
     });
 
-    test('+ New Test link is visible and points to belt_test_edit.php', async ({ page }) => {
+    test('+ New Test link is visible and points to the belt-test editor route', async ({ page }) => {
         const link = page.locator('a:has-text("+ New Test")');
         await expect(link).toBeVisible();
         const href = await link.getAttribute('href');
-        expect(href).toContain('belt_test_edit.php');
+        expect(href).toContain('/instructor/belt-test-edit');
         expect(href).toContain(`student_id=${STUDENT_ID}`);
     });
 
-    test('existing belt test row links to belt_test_edit.php for editing', async ({ page }) => {
-        const link = page.locator('#btList a[href*="belt_test_edit.php"]').first();
+    test('existing belt test row links to the belt-test editor route', async ({ page }) => {
+        const link = page.locator('#btList a[href*="/instructor/belt-test-edit"]').first();
         await expect(link).toHaveCount(1); // student 2 has belt test history in the test DB
         const href = await link.getAttribute('href');
-        expect(href).toContain('belt_test_edit.php?id=');
+        expect(href).toContain('/instructor/belt-test-edit?id=');
     });
 
     // ── EXEMPT CARD (formerly Payment Waivers) ───────────────────────────────────

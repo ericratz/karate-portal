@@ -237,10 +237,22 @@ export default function TakeAttendance() {
                   <p className="p-3 text-muted">No {label.toLowerCase()}.</p>
                 ) : (
                   <div className="table-responsive">
+                    {/* Only the checkbox column gets an explicit (narrow) width
+                        so it sits flush left. With the global table-layout:fixed
+                        rule, the three unspecified columns (Name / Last Attended
+                        / Waiver) split the remaining width equally, so their
+                        gaps are uniform and Waiver ends flush right — identically
+                        across all four role tables. */}
                     <table className="table table-sm table-hover mb-0">
+                      <colgroup>
+                        <col style={{ width: 44 }} />
+                        <col />
+                        <col />
+                        <col />
+                      </colgroup>
                       <thead className="table-light">
                         <tr>
-                          <th style={{ width: 44 }} className="text-center" aria-label="Present">✓</th>
+                          <th className="text-center" aria-label="Present">✓</th>
                           <th>Name</th>
                           <th>Last Attended</th>
                           <th>Waiver</th>

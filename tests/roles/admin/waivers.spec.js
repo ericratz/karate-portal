@@ -44,7 +44,8 @@ test('waiver_type select contains all expected exemption types', async ({ page }
     expect(lower).toContain('monthly tuition');
     expect(lower).toContain('registration fee');
     expect(lower).toContain('belt test fee');
-    expect(lower).toContain('all fees');
+    // 'all fees' was removed as a selectable option (redundant with "All Types").
+    expect(lower).not.toContain('all fees');
 });
 
 test('submitting grant form without student shows validation error', async ({ page }) => {

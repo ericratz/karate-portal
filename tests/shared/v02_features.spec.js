@@ -194,7 +194,7 @@ test.describe('Compare & Link page', () => {
             const link = page.locator('a:has-text("+ Create New Student Record")');
             await expect(link).toBeVisible();
             const href = await link.getAttribute('href');
-            expect(href).toContain('student_edit.php');
+            expect(href).toContain('/admin/student-edit');
         }
     });
 
@@ -407,14 +407,15 @@ test.describe('Student profile family tabs', () => {
         // Just verify the page loads without errors (functional check above)
     });
 
-    test('student_profile.php tab links point to student_profile.php', async ({ page }) => {
+    test('student profile family tab links point to the student profile route', async ({ page }) => {
         await page.goto(BASE + '/instructor/student_profile.php?id=2');
         const tabs = page.locator('.nav-tabs .nav-link');
         const count = await tabs.count();
         if (count > 0) {
             for (let i = 0; i < count; i++) {
                 const href = await tabs.nth(i).getAttribute('href');
-                expect(href).toContain('student_profile.php');
+                // In-app hash routes now (#/instructor/student/N).
+                expect(href).toContain('/instructor/student/');
             }
         }
     });

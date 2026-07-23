@@ -8,11 +8,11 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { apiGet, apiPost, ApiError } from '../../api/client';
 import type { InstructorProfileSaved, InstructorStudent, InstructorStudentProfile } from '../../api/types';
 import { PageState } from '../../components/shared';
-import { fmtDate, fmtPhone, money, paymentType, personName } from '../../format';
+import { fmtDate, fmtDateWeekday, fmtPhone, money, paymentType, personName } from '../../format';
 
 const typeBadges: Record<string, [string, string]> = {
   admin: ['bg-danger', 'Admin'],
@@ -29,13 +29,6 @@ const acctTips: Record<string, string> = {
   instructor: 'Teaches or assists with classes',
   admin: 'Full administrative access',
 };
-
-/** "2099-01-15" → "Thu 15 Jan 2099" */
-function fmtDateShortDay(iso: string): string {
-  const d = new Date(iso.slice(0, 10) + 'T00:00:00');
-  if (Number.isNaN(d.getTime())) return iso;
-  return `${d.toLocaleString('en-US', { weekday: 'short' })} ${fmtDate(iso)}`;
-}
 
 /** "2026-07-01" → "Jul 2026" */
 function fmtMonthYear(iso: string | null): string {
@@ -126,14 +119,14 @@ export default function StudentProfilePage() {
         <ul className="nav nav-tabs mb-4">
           {data.family_tabs.map((tab) => (
             <li className="nav-item" key={tab.id}>
-              <a className={`nav-link ${tab.id === s.id ? 'active' : ''}`} href={`student_profile.php?id=${tab.id}`}>
+              <Link className={`nav-link ${tab.id === s.id ? 'active' : ''}`} to={`/instructor/student/${tab.id}`}>
                 {personName(tab.name)}
                 {tab.role === 'parent' && (
                   <span className="badge bg-info text-dark ms-1" style={{ fontSize: '.6rem', verticalAlign: 'middle' }}>
                     Parent
                   </span>
                 )}
-              </a>
+              </Link>
             </li>
           ))}
         </ul>
@@ -155,7 +148,7 @@ export default function StudentProfilePage() {
                 <div className="table-responsive">
                   <table className="table table-sm table-hover mb-0">
                     <thead className="table-light">
-                      <tr><th>Date</th><th>Type</th><th>Method</th><th className="text-end">Amount</th></tr>
+                      <tr><th>Date</th><th>Type</th><th>Method</th><th>Amount</th></tr>
                     </thead>
                     <tbody>
                       {data.payments.map((p, i) => (
@@ -163,7 +156,7 @@ export default function StudentProfilePage() {
                           <td>{fmtDate(p.payment_date)}</td>
                           <td>{paymentType(p.payment_type)}</td>
                           <td>{p.payment_method.charAt(0).toUpperCase() + p.payment_method.slice(1)}</td>
-                          <td className="text-end">{money(p.amount)}</td>
+                          <td>{money(p.amount)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -185,8 +178,8 @@ export default function StudentProfilePage() {
                       <tr><th>Rank</th><th>Date Achieved</th><th></th></tr>
                     </thead>
                     <tbody>
-                      {data.ranks.map((r, i) => (
-                        <tr key={r.rank_id} className={i === 0 ? 'table-purple' : ''}>
+                      {data.ranks.map((r) => (
+                        <tr key={r.rank_id}>
                           <td>{r.kyu_dan}</td>
                           <td>{fmtMonthYear(r.achieved_date)}</td>
                           <td>
@@ -230,12 +223,12 @@ export default function StudentProfilePage() {
                           <td className="text-nowrap">{fmtDate(bt.test_date)}</td>
                           <td>
                             {data.is_admin ? (
-                              <a
-                                href={`belt_test_edit.php?id=${bt.id}&ref_pid=${s.id}`}
+                              <Link
+                                to={`/instructor/belt-test-edit?id=${bt.id}&ref_pid=${s.id}`}
                                 className="text-primary text-decoration-none"
                               >
                                 {bt.kyu_dan}
-                              </a>
+                              </Link>
                             ) : (
                               bt.kyu_dan
                             )}
@@ -280,7 +273,7 @@ export default function StudentProfilePage() {
                       {related.map((rel) => (
                         <tr key={rel.id}>
                           <td>
-                            <a href={`student_profile.php?id=${rel.id}`}>{personName(rel.name)}</a>
+                            <Link to={`/instructor/student/${rel.id}`}>{personName(rel.name)}</Link>
                             {rel.role === 'parent' && (
                               <span className="badge bg-info text-dark ms-2" style={{ fontSize: '.7rem' }}>Parent</span>
                             )}
@@ -585,9 +578,9 @@ function AttendanceCard({
                 {data.attended_sessions.map((a) => (
                   <tr key={a.session_id}>
                     <td>
-                      <a href={`attendance.php?date=${a.session_date}`} className="text-primary text-decoration-none">
-                        {fmtDateShortDay(a.session_date)}
-                      </a>
+                      <Link to={`/instructor/attendance?date=${a.session_date}`} className="text-primary text-decoration-none">
+                        {fmtDateWeekday(a.session_date)}
+                      </Link>
                     </td>
                     {editing && (
                       <td>

@@ -34,19 +34,20 @@ test.describe('Admin roster filters', () => {
         await expect(page.locator('#filterWaiver, select[id*="waiver"]')).toBeVisible();
     });
 
-    test('+ New Participant button links to student_edit.php', async ({ page }) => {
+    test('+ New Participant button links to the student editor route', async ({ page }) => {
         const btn = page.locator('a:has-text("+ New Participant")');
         await expect(btn).toBeVisible();
         const href = await btn.getAttribute('href');
-        expect(href).toContain('student_edit.php');
+        expect(href).toContain('/admin/student-edit');
     });
 
-    test('student name links in table go to student_profile.php', async ({ page }) => {
+    test('student name links in table go to the student profile route', async ({ page }) => {
         const link = page.locator('tbody a.text-decoration-none').first();
         // The test DB has 9 students — the roster is never empty.
         await expect(link).toHaveCount(1);
         const href = await link.getAttribute('href');
-        expect(href).toContain('student_profile.php');
+        // In-app hash route now (#/instructor/student/N), not the .php stub.
+        expect(href).toContain('/instructor/student/');
     });
 
     test('typing in search box hides non-matching rows', async ({ page }) => {
@@ -269,11 +270,12 @@ test.describe('Instructor roster filters', () => {
         await expect(page.locator('.card-header').filter({ hasText: 'Guests' })).toBeVisible();
     });
 
-    test('student name link points to student_profile.php', async ({ page }) => {
+    test('student name link points to the instructor student route', async ({ page }) => {
         const link = page.locator('tbody a.text-decoration-none').first();
         // The test DB has 9 students — the roster is never empty.
         await expect(link).toHaveCount(1);
         const href = await link.getAttribute('href');
-        expect(href).toContain('student_profile.php');
+        // In-app hash route now (#/instructor/student/N), not the .php stub.
+        expect(href).toContain('/instructor/student/');
     });
 });

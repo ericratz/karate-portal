@@ -64,7 +64,7 @@ $badge_style = "--belt-bg:$text_bg;"
              . "background:$bg;color:$fg;border:3px solid $border;";
 
 $member_since = $student['registration_date']
-    ? date('M Y', strtotime($student['registration_date']))
+    ? date('M Y', (int) strtotime($student['registration_date']))
     : 'N/A';
 
 $role_label = in_array($student['student_type'], ['instructor', 'admin']) ? 'Instructor' : 'Student';

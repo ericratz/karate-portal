@@ -126,9 +126,8 @@ test.describe('instructor smoke', () => {
         // Date input defaults to today
         const val = await page.inputValue('input[name="date"]');
         expect(val).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-        // Record New Class button form action
-        const formAction = await page.locator('button:has-text("Record New Class")').evaluate(el => el.closest('form')?.action ?? '');
-        expect(formAction).toContain('attendance.php');
+        // Record New Class submits in-app (no action= stub); the button is present.
+        await expect(page.locator('button:has-text("Record New Class")')).toBeVisible();
     });
 });
 

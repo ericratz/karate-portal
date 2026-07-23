@@ -86,7 +86,7 @@ export default function AdminDashboard() {
             <th>{variant === 'claimed' ? 'Login' : 'User'}</th>
             {variant === 'claimed' && <th>Linked To</th>}
             <th>Date</th>
-            <th />
+            <th className="col-action" />
           </tr>
         </thead>
         <tbody>
@@ -99,7 +99,7 @@ export default function AdminDashboard() {
               {variant === 'claimed' && (
                 <td className="small">
                   {a.student_id !== null && a.student_name ? (
-                    <a href={`../instructor/student_profile.php?id=${a.student_id}`}>{a.student_name}</a>
+                    <a href={`#/instructor/student/${a.student_id}`}>{a.student_name}</a>
                   ) : (
                     '—'
                   )}
@@ -139,7 +139,7 @@ export default function AdminDashboard() {
         <WarningBanner>
           <span className="fw-semibold">⚠ Attendance not recorded</span> — No class session found for{' '}
           {fmtDate(data.attendance_alert.date)}.
-          <a href={`../instructor/attendance.php?date=${data.attendance_alert.date}`} className="alert-link ms-1">
+          <a href={`#/instructor/attendance?date=${data.attendance_alert.date}`} className="alert-link ms-1">
             Record now →
           </a>
         </WarningBanner>
@@ -193,7 +193,7 @@ export default function AdminDashboard() {
                       {data.unpaid.map((s) => (
                         <tr key={s.id}>
                           <td>
-                            <a href={`../instructor/student_profile.php?id=${s.id}`}>{personName(s.name)}</a>
+                            <a href={`#/instructor/student/${s.id}`}>{personName(s.name)}</a>
                           </td>
                           <td>
                             <a
@@ -228,7 +228,7 @@ export default function AdminDashboard() {
                       {data.no_waiver.map((s) => (
                         <tr key={s.id}>
                           <td>
-                            <a href={`student_edit.php?id=${s.id}`}>{personName(s.name)}</a>
+                            <a href={`#/admin/student-edit?id=${s.id}`}>{personName(s.name)}</a>
                           </td>
                         </tr>
                       ))}
@@ -283,7 +283,7 @@ export default function AdminDashboard() {
                 <div className="table-responsive">
                   <table className="table table-sm table-hover mb-0">
                     <thead className="table-light">
-                      <tr><th>User</th><th>Type</th><th>Notes</th><th>Date</th><th /></tr>
+                      <tr><th>User</th><th>Type</th><th>Notes</th><th>Date</th><th className="col-action" /></tr>
                     </thead>
                     <tbody>
                       {data.link_requests.map((lr) => {
@@ -334,7 +334,7 @@ export default function AdminDashboard() {
                 <div className="table-responsive">
                   <table className="table table-sm table-hover mb-0">
                     <thead className="table-light">
-                      <tr><th>Login</th><th>Matches Roster</th><th /></tr>
+                      <tr><th>Login</th><th>Matches Roster</th><th className="col-action" /></tr>
                     </thead>
                     <tbody>
                       {data.possible_links.map((m) => (
@@ -344,7 +344,7 @@ export default function AdminDashboard() {
                             <small className="text-muted">{m.user_name}</small>
                           </td>
                           <td>
-                            <a href={`../instructor/student_profile.php?id=${m.student_id}`}>{m.student_name}</a>
+                            <a href={`#/instructor/student/${m.student_id}`}>{m.student_name}</a>
                             <br />
                             <small className="text-muted">{m.email_match ? 'email match' : 'name match'}</small>
                           </td>
@@ -386,7 +386,7 @@ export default function AdminDashboard() {
                         <th>Date</th>
                         <th>Student</th>
                         <th>Type</th>
-                        <th className="text-end">Amount</th>
+                        <th>Amount</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -395,7 +395,7 @@ export default function AdminDashboard() {
                           <td>{fmtDate(p.payment_date)}</td>
                           <td>{personName(p.name)}</td>
                           <td>{paymentType(p.payment_type)}</td>
-                          <td className="text-end">${p.amount.toFixed(2)}</td>
+                          <td>${p.amount.toFixed(2)}</td>
                         </tr>
                       ))}
                     </tbody>

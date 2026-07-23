@@ -19,11 +19,13 @@ class CheckinPinTest extends TestCase
     private const OTHER_IP   = '10.99.88.99'; // different IP — must not bleed across
     private const LIKE_PARAM = 'pin:10.99.88.77:%';
 
+    #[\Override]
     public static function setUpBeforeClass(): void
     {
         self::cleanup();
     }
 
+    #[\Override]
     public static function tearDownAfterClass(): void
     {
         self::cleanup();
@@ -36,6 +38,7 @@ class CheckinPinTest extends TestCase
         );
     }
 
+    #[\Override]
     protected function setUp(): void
     {
         self::cleanup(); // fresh slate for each test

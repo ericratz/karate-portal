@@ -14,11 +14,18 @@ if (!in_array($tab, ['activity', 'error', 'mail'], true)) $tab = 'activity';
 
 $timeframe = get_str('timeframe', 'week');
 if (!in_array($timeframe, ['day', 'week', 'month', 'year', 'all'], true)) $timeframe = 'week';
+// Rolling windows counting back from now, not calendar boundaries. The old
+// calendar version meant "This Day" showed nothing just after midnight and
+// "This Week" showed only Monday's rows on a Monday morning — the times you are
+// most likely to be checking logs after something happened overnight.
+// time()-arithmetic (not strtotime) keeps the second date() arg strictly int,
+// so Psalm's PossiblyFalseArgument check stays clean without a baseline entry.
+$now = time();
 $timeframe_since = [
-    'day'   => date('Y-m-d 00:00:00'),
-    'week'  => date('Y-m-d 00:00:00', strtotime('monday this week')),
-    'month' => date('Y-m-01 00:00:00'),
-    'year'  => date('Y-01-01 00:00:00'),
+    'day'   => date('Y-m-d H:i:s', $now - 86400),
+    'week'  => date('Y-m-d H:i:s', $now - 7 * 86400),
+    'month' => date('Y-m-d H:i:s', $now - 30 * 86400),
+    'year'  => date('Y-m-d H:i:s', $now - 365 * 86400),
     'all'   => null,
 ][$timeframe];
 

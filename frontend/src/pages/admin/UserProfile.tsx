@@ -280,7 +280,7 @@ export default function UserProfile() {
                     </div>
                   </div>
                   <div className="d-flex gap-2">
-                    <a href={`student_edit.php?id=${u.student_id}`} className="btn btn-sm btn-outline-primary">
+                    <a href={`#/admin/student-edit?id=${u.student_id}`} className="btn btn-sm btn-outline-primary">
                       Edit Roster Entry
                     </a>
                     <button

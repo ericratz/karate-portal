@@ -39,7 +39,7 @@ if (!$rank) { header('Location: ../instructor/student_profile.php'); exit; }
 
 $student_name = ucwords(strtolower($student['first_name'] . ' ' . $student['last_name']));
 $kyu_dan      = (string)$rank['kyu_dan'];
-$achieved     = date('j M Y', strtotime($rank['achieved_date']));
+$achieved     = date('j M Y', (int) strtotime($rank['achieved_date']));
 $cert_number  = $rank['cert_number'] ?? '';
 $pdf_filename = 'Certificate_' . preg_replace('/[^A-Za-z0-9_]/', '_', $student_name) . '_' . preg_replace('/[^A-Za-z0-9_]/', '_', $kyu_dan) . '.pdf';
 

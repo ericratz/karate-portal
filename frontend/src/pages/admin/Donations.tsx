@@ -291,7 +291,7 @@ export default function Donations() {
                       <th>Method</th>
                       <th>Notes</th>
                       <th>By</th>
-                      <th className="text-end">Amount</th>
+                      <th>Amount</th>
                       <th className="delete-col" />
                     </tr>
                   </thead>
@@ -301,7 +301,7 @@ export default function Donations() {
                         <td className="text-nowrap">{fmtDate(d.payment_date)}</td>
                         <td>
                           {d.student_id ? (
-                            <a href={`student_edit.php?id=${d.student_id}`} className="text-decoration-none">
+                            <a href={`#/admin/student-edit?id=${d.student_id}`} className="text-decoration-none">
                               {personName(d.donor_name || d.student_name || '')}
                             </a>
                           ) : (
@@ -311,7 +311,7 @@ export default function Donations() {
                         <td>{METHOD_LABELS[d.payment_method] ?? d.payment_method}</td>
                         <td className="text-muted small">{d.notes ?? ''}</td>
                         <td className="text-muted small">{d.recorded_by_name ?? '—'}</td>
-                        <td className="text-end fw-semibold">${d.amount.toFixed(2)}</td>
+                        <td className="fw-semibold">${d.amount.toFixed(2)}</td>
                         <td className="delete-col">
                           <button
                             type="button"

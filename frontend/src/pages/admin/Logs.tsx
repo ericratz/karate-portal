@@ -10,11 +10,13 @@ import type { ActivityLogData, ErrorLogData, MailLogData } from '../../api/types
 import { PageState } from '../../components/shared';
 import { fmtDateTime, paymentType } from '../../format';
 
+// Rolling windows back from now (see api/v1/admin/logs.php), so the labels say
+// so — "This Day" read as a calendar day and was misleading just after midnight.
 const TIMEFRAMES: [string, string][] = [
-  ['day', 'This Day'],
-  ['week', 'This Week'],
-  ['month', 'This Month'],
-  ['year', 'This Year'],
+  ['day', 'Last 24 Hours'],
+  ['week', 'Last 7 Days'],
+  ['month', 'Last 30 Days'],
+  ['year', 'Last 365 Days'],
   ['all', 'All Time'],
 ];
 
@@ -251,14 +253,14 @@ export default function Logs() {
                 <p className="p-3 text-muted">No entries match the filter.</p>
               ) : (
                 <div style={{ overflowX: 'auto' }}>
-                  <table className="table table-sm table-hover mb-0" style={{ fontSize: '.85rem' }}>
+                  <table className="table table-sm table-hover mb-0">
                     <thead className="table-light">
                       <tr>
                         <th>Date / Time</th>
-                        <th style={{ width: 80 }}>Level</th>
-                        <th style={{ width: 80 }}>Channel</th>
+                        <th>Level</th>
+                        <th>Channel</th>
                         <th>Message</th>
-                        <th style={{ width: 60 }}>User</th>
+                        <th>User</th>
                         <th>Context</th>
                       </tr>
                     </thead>

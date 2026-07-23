@@ -100,8 +100,9 @@ test.afterAll(async ({ browser }) => {
     await page.locator('#rosterSearch').waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
     const row = page.locator('tr').filter({ hasText: `User${TS}` });
     if (await row.count() > 0) {
-        const profileHref = await row.locator('a[href*="student_profile.php"]').first().getAttribute('href');
-        const match = profileHref?.match(/[?&]id=(\d+)/);
+        // Student links are in-app hash routes now (#/instructor/student/N).
+        const profileHref = await row.locator('a[href*="/instructor/student/"]').first().getAttribute('href');
+        const match = profileHref?.match(/\/instructor\/student\/(\d+)/);
         if (match) {
             await page.goto(BASE + '/admin/student_edit.php?id=' + match[1]);
             await page.waitForLoadState('domcontentloaded');

@@ -28,6 +28,7 @@ class UpdateProfileAuthTest extends TestCase
     private static int $inst_uid;
     private static int $inst_sid;
 
+    #[\Override]
     public static function setUpBeforeClass(): void
     {
         self::cleanup();
@@ -81,6 +82,7 @@ class UpdateProfileAuthTest extends TestCase
         self::$inst_sid = (int)db()->lastInsertId();
     }
 
+    #[\Override]
     public static function tearDownAfterClass(): void
     {
         self::cleanup();

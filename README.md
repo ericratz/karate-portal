@@ -1,4 +1,4 @@
-# Shotokan Karate Portal — V4.4
+# Shotokan Karate Portal — V4.5
 
 A full-stack membership management platform for a martial arts dojo — role-based dashboards, attendance tracking, belt test progression, payments (PayPal + manual), digital waivers, and self-service check-in. Built with PHP and MySQL behind a React 19 + TypeScript SPA: all four portals (admin, instructor, parent, student) were incrementally migrated from server-rendered pages to a single code-split bundle over a versioned JSON API, with every old page URL preserved as a redirect stub. Fully containerized with Docker (app + database + CI toolchain) and verified by a 500+ test Playwright + PHPUnit + Vitest suite and Psalm static + taint analysis running on every push via GitHub Actions.
 
@@ -112,15 +112,24 @@ docker compose up -d db app     # set APP_PORT to something else if port 80 is t
 # 4. Map the app's hostname so redirects work in a browser. Add to
 #    C:\Windows\System32\drivers\etc\hosts (needs Administrator), placed AFTER
 #    Docker Desktop's "# End of section" marker so Docker doesn't overwrite it:
-#      127.0.0.1  app
+#      127.0.0.1  karate.test
 ```
 
-Site: `http://app/karate/portal` (login: `admin` / `ChangeMe123!` on a fresh DB)
+Site: `http://karate.test/karate/portal` (login: `admin` / `ChangeMe123!` on a fresh DB)
 
-The `app` hostname is not cosmetic. The container sets `SITE_URL=http://app/karate/portal` so the `ci`
-container can reach it over Compose DNS, and every server-side redirect (login, logout, auth guards)
-emits that absolute URL. The hosts entry makes the same name resolve from the host, so one `SITE_URL`
-serves both your browser and Playwright — without it you can load pages but die on the first redirect.
+The hostname is not cosmetic. The container sets `SITE_URL=http://karate.test/karate/portal` and is
+reachable at that name inside the Compose network via a network alias, so the `ci` container and your
+browser use the identical URL. Every server-side redirect (login, logout, auth guards) emits that
+absolute URL — without the hosts entry you can load pages but die on the first redirect.
+
+Do **not** use the `app` service name as the browsable hostname: `.app` is a real gTLD on the HSTS
+preload list, so browsers force `https://` for a bare `app` host and refuse plain HTTP before the
+request is sent. Preloaded HSTS entries cannot be clicked through or cleared, so this is unfixable from
+the app's side. `.test` is reserved by RFC 2606 and will never be preloaded.
+
+New dev hostnames need no code change: the session cookie's `Secure` flag is driven by `APP_ENV=dev`
+(set in `docker-compose.yml`, never in `.env`), not by a hostname allowlist. Production sets nothing and
+is secure by omission — see `site_is_https()` in `portal/includes/config.php`.
 
 ```bash
 # Run the checks — all inside the ci container, same as CI does:
@@ -143,11 +152,11 @@ run it. For a hot-reload dev loop against the running app:
 ```bash
 cd frontend
 npm install
-npm run dev     # Vite on :5173, proxies /karate/portal to http://app
-# Log in at http://app/karate/portal first, then open http://app:5173 (not
-# localhost:5173) — the session cookie is host-scoped, so it only flows to the
-# dev server if you reach both through the same `app` hostname. Cookies ignore
-# the port, so :5173 and :80 share it.
+npm run dev     # Vite on :5173, proxies /karate/portal to http://karate.test
+# Log in at http://karate.test/karate/portal first, then open
+# http://karate.test:5173 (not localhost:5173) — the session cookie is
+# host-scoped, so it only flows to the dev server if you reach both through the
+# same hostname. Cookies ignore the port, so :5173 and :80 share it.
 ```
 
 > **Note:** `karate_schema.sql` seeds only the default `admin` account. The

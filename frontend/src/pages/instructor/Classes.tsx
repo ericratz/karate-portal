@@ -1,7 +1,8 @@
 // Classes — React port of instructor/attendance_sessions.php: session list
 // with type/year filters (pushed into the route query like the old
 // hx-push-url) and single-open accordion detail rows (#det-N / #tog-N).
-// Date links keep their legacy attendance.php?date= hrefs (redirect stubs).
+// Date links use in-app hash routes (#/instructor/attendance?date=…) so they
+// work under any shell; a relative attendance.php would 404 under …/admin/.
 
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -76,9 +77,9 @@ export default function Classes() {
             value={newDate}
             onChange={(e) => setNewDate(e.target.value)}
           />
-          <a id="newSessionBtn" href={`attendance.php?date=${newDate}`} className="btn btn-success btn-sm">
+          <Link id="newSessionBtn" to={`/instructor/attendance?date=${newDate}`} className="btn btn-success btn-sm">
             + Record New Class
-          </a>
+          </Link>
         </div>
       </div>
 
@@ -186,15 +187,15 @@ function SessionRows({
         }}
       >
         <td className="fw-medium">
-          <a href={`attendance.php?date=${sess.session_date}`} className="text-decoration-none session-link">
+          <Link to={`/instructor/attendance?date=${sess.session_date}`} className="text-decoration-none session-link">
             {fmtDateShortDay(sess.session_date)}
-          </a>
+          </Link>
         </td>
         <td className="text-muted small">
           {classTypeLabels[sess.class_type] ?? sess.class_type}
         </td>
         <td><span className="badge bg-primary">{sess.present_count}</span></td>
-        <td className="text-end text-muted" id={`tog-${idx}`}>{open ? '▲' : '▼'}</td>
+        <td className="text-muted" id={`tog-${idx}`}>{open ? '▲' : '▼'}</td>
       </tr>
       <tr id={`det-${idx}`} style={{ display: open ? '' : 'none' }}>
         <td colSpan={4} className="px-4 py-3">

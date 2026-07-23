@@ -1,11 +1,12 @@
 // Instructor dashboard — React port of instructor/index.php: take-attendance
 // date picker, recent classes, roster link, recent belt tests, plus the
 // personal profile/pay buttons when the instructor has a linked student row.
-// The "Record New Class" form keeps its real action="attendance.php" (the
-// redirect stub) so the old deep-link behavior and specs stay intact.
+// The "Record New Class" form navigates in-app to the attendance route on
+// submit (a native action="attendance.php" resolves against the current shell,
+// e.g. …/admin/, and 404s), so it works under any shell.
 
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { apiGet, ApiError } from '../../api/client';
 import type { InstructorDashboardData } from '../../api/types';
 import { ExtIcon, PageState } from '../../components/shared';
@@ -28,6 +29,7 @@ export default function InstructorDashboard() {
   const [data, setData] = useState<InstructorDashboardData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [newDate, setNewDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const navigate = useNavigate();
 
   useEffect(() => {
     apiGet<InstructorDashboardData>('/instructor/dashboard.php')
@@ -53,9 +55,9 @@ export default function InstructorDashboard() {
           {data.has_children ? (
             <Link to="/" className="btn btn-outline-secondary">View Profile</Link>
           ) : (
-            <a href={`student_profile.php?id=${data.own_student_id}`} className="btn btn-outline-secondary">
+            <Link to={`/instructor/student/${data.own_student_id}`} className="btn btn-outline-secondary">
               View Profile
-            </a>
+            </Link>
           )}
           <Link
             to={data.has_children ? `/pay/${data.own_student_id}` : '/pay'}
@@ -71,8 +73,10 @@ export default function InstructorDashboard() {
           <div className="card border-0 shadow-sm">
             <div className="card-header bg-white fw-semibold">Take Attendance</div>
             <div className="card-body">
-              {/* Real GET to the stub keeps deep links + specs working */}
-              <form method="get" action="attendance.php">
+              {/* Navigate in-app to the attendance route; a native GET to
+                  attendance.php resolves against the current shell (…/admin/)
+                  and 404s. */}
+              <form onSubmit={(e) => { e.preventDefault(); navigate(`/instructor/attendance?date=${newDate}`); }}>
                 <div className="mb-3">
                   <label className="form-label" htmlFor="newClassDate">Class Date</label>
                   <input
@@ -110,9 +114,9 @@ export default function InstructorDashboard() {
                       {data.recent_sessions.map((s) => (
                         <tr key={s.id}>
                           <td>
-                            <a href={`attendance.php?date=${s.session_date}`} className="text-decoration-none">
+                            <Link to={`/instructor/attendance?date=${s.session_date}`} className="text-decoration-none">
                               {fmtDateShortDay(s.session_date)}
-                            </a>
+                            </Link>
                           </td>
                           <td>{s.class_type.charAt(0).toUpperCase() + s.class_type.slice(1)}</td>
                         </tr>
@@ -152,9 +156,9 @@ export default function InstructorDashboard() {
                         <tr key={t.id}>
                           <td className="text-nowrap">{fmtDate(t.test_date)}</td>
                           <td>
-                            <a href={`student_profile.php?id=${t.student_id}`} className="text-decoration-none">
+                            <Link to={`/instructor/student/${t.student_id}`} className="text-decoration-none">
                               {personName(t.student)}
-                            </a>
+                            </Link>
                           </td>
                           <td>{t.kyu_dan}</td>
                           <td><ResultBadge result={t.result} /></td>

@@ -322,12 +322,12 @@ function CombinedView() {
             <div className="card-body p-0">
               <div className="table-responsive">
                 <table className="table table-sm table-hover mb-0" style={{ tableLayout: 'fixed', width: '100%', minWidth: 560 }}>
+                  {/* Only the trailing action (View) column gets a fixed
+                      width; the four data columns split the rest equally via
+                      the global table-layout:fixed rule, so their gaps match. */}
                   <colgroup>
-                    <col style={{ width: '28%' }} />
-                    <col style={{ width: '22%' }} />
-                    <col style={{ width: '16%' }} />
-                    <col style={{ width: '14%' }} />
-                    <col style={{ width: '20%' }} />
+                    <col /><col /><col /><col />
+                    <col style={{ width: 80 }} />
                   </colgroup>
                   <thead className="table-light">
                     <tr>

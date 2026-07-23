@@ -116,7 +116,7 @@ foreach ($rm_q->fetchAll() as $row) {
 
 $chart = [];
 for ($i = 11; $i >= 0; $i--) {
-    $ts = strtotime("-$i months");
+    $ts = (int) strtotime("-$i months");
     $key = date('Y-m', $ts);
     $chart[] = [
         'month' => $key,

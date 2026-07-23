@@ -13,7 +13,7 @@ jobs:
     env:
       # The runner box also runs XAMPP on port 80, so don't bind it. "0" tells
       # Docker to publish the app on a random free host port; the tests reach
-      # the app over the Compose network (http://app), not via the host port.
+      # the app over the Compose network (http://karate.test), not via the host port.
       APP_PORT: "0"
     # The runner service runs as LocalSystem, where `shell: bash` resolves to
     # WSL — which refuses to run as LocalSystem. Use PowerShell for all steps.

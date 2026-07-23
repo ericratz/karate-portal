@@ -119,11 +119,11 @@ $possible_links = db()->query(
 // Attendance alert — was last Saturday's class recorded?
 $check_saturday = (date('N') == 6)
     ? date('Y-m-d')
-    : date('Y-m-d', strtotime('last saturday'));
+    : date('Y-m-d', (int) strtotime('last saturday'));
 $att_stmt = db()->prepare('SELECT id FROM class_sessions WHERE session_date = ?');
 $att_stmt->execute([$check_saturday]);
 $attendance_missing = !$att_stmt->fetch();
-$days_since_saturday = (int)floor((time() - strtotime($check_saturday)) / 86400);
+$days_since_saturday = (int)floor((time() - (int) strtotime($check_saturday)) / 86400);
 $show_attendance_alert = $attendance_missing && $days_since_saturday <= 6;
 
 // Rent reminder — show all month until recorded
@@ -183,7 +183,7 @@ $don_rows = db()->query(
 
 $chart_months = [];
 for ($i = 11; $i >= 0; $i--) {
-    $chart_months[] = date('Y-m', strtotime("-$i months"));
+    $chart_months[] = date('Y-m', (int) strtotime("-$i months"));
 }
 
 $named_types = ['monthly_tuition', 'registration', 'belt_test', 'slc_training', 'seminar'];
@@ -217,7 +217,7 @@ foreach ($chart_months as $m) {
     foreach ($named_types as $t) {
         $chart_data[$t][] = $rev_map[$m][$t] ?? 0;
     }
-    $other = 0;
+    $other = 0.0;
     foreach ($rev_map[$m] ?? [] as $type => $amt) {
         if (!in_array($type, $named_types)) $other += $amt;
     }
@@ -228,12 +228,12 @@ foreach ($chart_months as $m) {
     }
 
     $exp_total = $exp_map[$m] ?? 0;
-    $chart_data['revenue'][]  = array_sum($rev_map[$m] ?? []) + ($don_map[$m] ?? 0);
+    $chart_data['revenue'][]  = (float) array_sum($rev_map[$m] ?? []) + (float) ($don_map[$m] ?? 0);
     $chart_data['expenses'][] = -$exp_total;
     $chart_data['exp_abs'][]  = $exp_total;
 }
 
-$chart_labels = array_map(fn($m) => date('M Y', strtotime($m . '-01')), $chart_months);
+$chart_labels = array_map(fn($m) => date('M Y', (int) strtotime($m . '-01')), $chart_months);
 
 $alert_row = fn($a) => [
     'id'           => (int)$a['id'],

@@ -14,6 +14,7 @@ class DbWriteTest extends TestCase
     private const AUDIT_ACT = 'phpunit_test_audit';
     private const LOG_CHAN  = 'phpunit';
 
+    #[\Override]
     protected function setUp(): void
     {
         $_SESSION = [
@@ -23,6 +24,7 @@ class DbWriteTest extends TestCase
         $_SERVER['REMOTE_ADDR'] = '127.0.0.1';
     }
 
+    #[\Override]
     protected function tearDown(): void
     {
         db()->prepare('DELETE FROM login_attempts WHERE identifier IN (?,?)')

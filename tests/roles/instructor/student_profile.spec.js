@@ -44,7 +44,8 @@ test.describe('Student profile — instructor', () => {
         await page.goto(BASE + `/instructor/student_profile.php?id=${STUDENT_ID}`);
         const card = page.locator('.card').filter({ has: page.locator('.card-header:has-text("Linked Family")') });
         await expect(card).toBeVisible();
-        const link = card.locator('a[href*="student_profile.php?id=3"]');
+        // Family links are now in-app hash routes (#/instructor/student/3).
+        const link = card.locator('a[href*="/instructor/student/3"]');
         await expect(link).toBeVisible();
         await expect(link).toContainText('Mike');
     });
@@ -96,16 +97,20 @@ test.describe('Student profile — instructor own-profile edit', () => {
 
     test('own profile page shows inline Edit button', async ({ page }) => {
         await page.goto(BASE + '/instructor/');
-        const href = await page.locator('a:has-text("View Profile")').getAttribute('href');
-        await page.goto(BASE + '/instructor/' + href);
+        // "View Profile" is an in-app hash-route Link now; click it rather than
+        // reconstruct a URL from its href.
+        await page.locator('a:has-text("View Profile")').click();
+        await page.waitForLoadState('domcontentloaded');
         await assertNoPhpErrors(page, 'instructor own profile');
         await expect(page.locator('#profileEditBtn')).toBeVisible();
     });
 
     test('Edit toggles to form, Cancel restores view', async ({ page }) => {
         await page.goto(BASE + '/instructor/');
-        const href = await page.locator('a:has-text("View Profile")').getAttribute('href');
-        await page.goto(BASE + '/instructor/' + href);
+        // "View Profile" is an in-app hash-route Link now; click it rather than
+        // reconstruct a URL from its href.
+        await page.locator('a:has-text("View Profile")').click();
+        await page.waitForLoadState('domcontentloaded');
 
         await expect(page.locator('#profile-edit')).toBeHidden();
         await page.click('#profileEditBtn');
@@ -119,8 +124,10 @@ test.describe('Student profile — instructor own-profile edit', () => {
 
     test('Save updates own profile via HTMX without page reload', async ({ page }) => {
         await page.goto(BASE + '/instructor/');
-        const href = await page.locator('a:has-text("View Profile")').getAttribute('href');
-        await page.goto(BASE + '/instructor/' + href);
+        // "View Profile" is an in-app hash-route Link now; click it rather than
+        // reconstruct a URL from its href.
+        await page.locator('a:has-text("View Profile")').click();
+        await page.waitForLoadState('domcontentloaded');
 
         // Record original phone value from view section
         await page.click('#profileEditBtn');
@@ -147,8 +154,10 @@ test.describe('Student profile — instructor own-profile edit', () => {
     test('instructor cannot update another student profile via API', async ({ page }) => {
         // Load own profile page to get a valid CSRF token
         await page.goto(BASE + '/instructor/');
-        const href = await page.locator('a:has-text("View Profile")').getAttribute('href');
-        await page.goto(BASE + '/instructor/' + href);
+        // "View Profile" is an in-app hash-route Link now; click it rather than
+        // reconstruct a URL from its href.
+        await page.locator('a:has-text("View Profile")').click();
+        await page.waitForLoadState('domcontentloaded');
 
         // Extract own student ID from URL
         const ownId = new URL(page.url()).searchParams.get('id');

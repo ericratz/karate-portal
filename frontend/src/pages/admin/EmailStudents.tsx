@@ -278,7 +278,7 @@ export default function EmailStudents() {
               <table className="table table-sm table-hover mb-0" id="recipientTable">
                 <thead className="table-light">
                   <tr>
-                    <th style={{ width: 36 }} />
+                    <th style={{ width: 36 }} className="text-center" aria-label="Selected">✓</th>
                     <th>Name</th>
                     <th>Type</th>
                     <th>Email</th>

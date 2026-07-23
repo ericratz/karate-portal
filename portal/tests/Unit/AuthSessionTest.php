@@ -4,6 +4,7 @@ use PHPUnit\Framework\TestCase;
 
 class AuthSessionTest extends TestCase
 {
+    #[\Override]
     protected function setUp(): void
     {
         $_SESSION = [];

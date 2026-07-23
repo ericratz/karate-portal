@@ -9,7 +9,7 @@ define('HW_INDEX_YOUTH', 'https://noji.com/karate/class/homework/youth_homework.
 
 function hw_index_url(?string $date_of_birth): string {
     if ($date_of_birth) {
-        $age = (int)(new DateTime($date_of_birth))->diff(new DateTime())->y;
+        $age = (new DateTime($date_of_birth))->diff(new DateTime())->y;
         if ($age < 16) return HW_INDEX_YOUTH;
     }
     return HW_INDEX_ADULT;
@@ -87,7 +87,7 @@ function belt_next_rank(?string $current_kyu_dan, ?string $date_of_birth): ?arra
 
     $is_youth = false;
     if ($date_of_birth) {
-        $age = (int)(new DateTime($date_of_birth))->diff(new DateTime())->y;
+        $age = (new DateTime($date_of_birth))->diff(new DateTime())->y;
         $is_youth = ($age < 16);
     }
 

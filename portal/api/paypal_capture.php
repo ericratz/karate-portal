@@ -24,7 +24,7 @@ if (!isset($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $cs
     exit;
 }
 
-$input    = json_decode(file_get_contents('php://input'), true);
+$input    = json_decode((string) file_get_contents('php://input'), true);
 $order_id = $input['orderID'] ?? '';
 
 // Validate against session — prevents a user from submitting a foreign order ID

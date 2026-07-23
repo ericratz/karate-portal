@@ -1,6 +1,6 @@
 <?php
 // Real environment variables (set by docker-compose) win over the .env file.
-// Lets the container point SITE_URL at http://app/... so server-side redirects
+// Lets the container point SITE_URL at http://karate.test/... so server-side redirects
 // (logout, post-login, auth guards) stay on the Compose network, while native
 // XAMPP keeps localhost. Mirrors the same precedence in db.php.
 foreach (['SITE_URL', 'DOJO_EMAIL', 'ADMIN_EMAIL',
@@ -14,7 +14,7 @@ foreach (['SITE_URL', 'DOJO_EMAIL', 'ADMIN_EMAIL',
 // ── Load .env (two levels up from portal/includes/) ───────────────────────
 $_env_file = dirname(__DIR__, 2) . '/.env';
 if (file_exists($_env_file)) {
-    foreach (file($_env_file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $_line) {
+    foreach ((file($_env_file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: []) as $_line) {
         if (strncmp(trim($_line), '#', 1) === 0) continue;
         if (strpos($_line, '=') === false) continue;
         $_parts = explode('=', $_line, 2);
@@ -34,15 +34,35 @@ if (!defined('SITE_URL')) define('SITE_URL', 'http://localhost/karate/portal');
 // X-Forwarded-Proto header would say so, but it is client-supplied and we do
 // not control the proxy, so spoofing it would be trivial.
 //
-// Instead this fails safe: HTTPS is assumed unless SITE_URL names a known local
-// dev host (native XAMPP "localhost", Docker Compose "app"). A misconfigured or
-// stale live SITE_URL therefore yields a Secure cookie, not an insecure one.
+// Instead this fails safe: HTTPS is assumed unless the environment explicitly
+// declares itself a development one. Production is therefore secure by default
+// and by omission — nothing has to be configured correctly on the live host for
+// the Secure flag to be set.
+//
+// APP_ENV is read only as a REAL environment variable (getenv), set in
+// docker-compose.yml. It is deliberately not read from the .env file, which is
+// deployed to the live host: a stray APP_ENV=dev there would silently drop the
+// Secure flag in production. No Docker, no APP_ENV, no opt-out.
+//
+// This replaced a hostname allowlist (localhost/app/karate.test). Inferring the
+// environment from a hostname meant every new dev hostname had to be added or
+// the cookie got Secure over plain HTTP — which browsers silently discard, so
+// the symptom was a login that appeared to succeed and then bounced straight
+// back to the login page, with no error logged anywhere.
+function app_is_dev(): bool {
+    $env = strtolower((string)getenv('APP_ENV'));
+    return $env === 'dev' || $env === 'development' || $env === 'local';
+}
+
 function site_is_https(): bool {
-    if (!empty($_SERVER['HTTPS']) && strtolower((string)$_SERVER['HTTPS']) !== 'off') return true;
-    $parts = parse_url(SITE_URL) ?: [];
-    if (($parts['scheme'] ?? '') === 'https') return true;
-    $host = strtolower($parts['host'] ?? '');
-    return !in_array($host, ['localhost', '127.0.0.1', '::1', 'app'], true);
+    // Real TLS on this request always wins.
+    if (!empty($_SERVER['HTTPS']) && strtolower($_SERVER['HTTPS']) !== 'off') return true;
+    // An https:// SITE_URL is an explicit statement of intent.
+    if (($parts = parse_url(SITE_URL)) && ($parts['scheme'] ?? '') === 'https') return true;
+    // Only an explicitly-declared dev environment may opt out.
+    if (app_is_dev()) return false;
+    // Default: assume HTTPS. Production reaches here and gets a Secure cookie.
+    return true;
 }
 
 // ── Session ───────────────────────────────────────────────────────────────

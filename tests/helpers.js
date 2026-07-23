@@ -3,7 +3,7 @@
 const path = require('path');
 
 // Env-driven so Playwright can run either natively (default localhost) or
-// inside the ci container against the app service (TEST_BASE_URL=http://app/...).
+// inside the ci container against the app service (TEST_BASE_URL=http://karate.test/...).
 const BASE = process.env.TEST_BASE_URL || 'http://localhost/karate/portal';
 
 const AUTH = {
@@ -109,13 +109,14 @@ async function deleteTestStudent(page, nameFragment, adminUser, adminPass) {
     // The roster is a React SPA route now — wait for it to render before
     // counting rows (a bare count() right after goto would race the fetch).
     await page.locator('#rosterSearch').waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
-    // students.php has no Edit link in rows — only a student_profile.php link.
-    // Extract the student ID from the profile link href, then go to student_edit.php.
+    // The roster rows have only a student-profile link (an in-app hash route,
+    // #/instructor/student/N). Extract the student ID from it, then go to the
+    // student editor stub to delete.
     const row = page.locator('tr').filter({ hasText: nameFragment });
     if (await row.count() === 0) return; // already gone
-    const profileHref = await row.locator('a[href*="student_profile.php"]').first().getAttribute('href');
+    const profileHref = await row.locator('a[href*="/instructor/student/"]').first().getAttribute('href');
     if (!profileHref) return;
-    const match = profileHref.match(/[?&]id=(\d+)/);
+    const match = profileHref.match(/\/instructor\/student\/(\d+)/);
     if (!match) return;
     await page.goto(BASE + '/admin/student_edit.php?id=' + match[1]);
     await page.waitForLoadState('domcontentloaded');

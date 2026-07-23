@@ -113,7 +113,7 @@ export default function CompareAccount() {
     [
       'Currently Linked To',
       data.existing_link ? (
-        <a href={`../instructor/student_profile.php?id=${data.existing_link.id}`}>
+        <a href={`#/instructor/student/${data.existing_link.id}`}>
           {personName(data.existing_link.name)}
         </a>
       ) : (
@@ -206,7 +206,7 @@ export default function CompareAccount() {
               </select>
             </div>
             <a
-              href={`student_edit.php?prefill_first=${encodeURIComponent(u.first_name ?? '')}&prefill_last=${encodeURIComponent(u.last_name ?? '')}&prefill_email=${encodeURIComponent(u.email ?? '')}`}
+              href="#/admin/student-edit"
               className="btn btn-outline-secondary btn-sm"
             >
               + Create New Student Record
@@ -245,7 +245,7 @@ export default function CompareAccount() {
             <div className="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
               <span>Student Record</span>
               {s && (
-                <a href={`../instructor/student_profile.php?id=${s.id}`} className="btn btn-sm btn-outline-secondary">
+                <a href={`#/instructor/student/${s.id}`} className="btn btn-sm btn-outline-secondary">
                   View
                 </a>
               )}

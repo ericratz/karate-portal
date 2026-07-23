@@ -329,7 +329,7 @@ export default function Payments() {
       <div className="d-flex align-items-center justify-content-between mb-4">
         <h3 className="mb-0">Payments</h3>
         <div className="d-flex gap-2">
-          <a href="student_edit.php" className="btn btn-success btn-sm">+ New Participant</a>
+          <a href="#/admin/student-edit" className="btn btn-success btn-sm">+ New Participant</a>
           <button className="btn btn-success btn-sm" onClick={() => setFormOpen((v) => !v)}>
             + Record Payment
           </button>
@@ -593,7 +593,7 @@ export default function Payments() {
                 <table id="paymentsTable" className={`table table-sm table-hover mb-0${editing ? ' editing' : ''}`}>
                   <thead className="table-light">
                     <tr>
-                      <th />
+                      <th className="col-action" />
                       <th>Date</th>
                       <th>Student</th>
                       <th>Type</th>
@@ -601,7 +601,7 @@ export default function Payments() {
                       <th>Transaction ID</th>
                       <th>Notes</th>
                       <th>By</th>
-                      <th className="text-end">Amount</th>
+                      <th>Amount</th>
                       <th className="edit-col" />
                       <th className="delete-col" />
                     </tr>
@@ -661,7 +661,7 @@ function PaymentRows({
         </td>
         <td className="text-nowrap">{fmtDate(p.payment_date)}</td>
         <td>
-          <a href={`../instructor/student_profile.php?id=${p.student_id}`} className="text-decoration-none">
+          <a href={`#/instructor/student/${p.student_id}`} className="text-decoration-none">
             {personName(p.student_name)}
           </a>
           {p.payer_name && <div className="text-muted small">paid by {p.payer_name}</div>}
@@ -674,7 +674,7 @@ function PaymentRows({
           {p.payer_note && <div className="fst-italic text-muted small">{p.payer_note}</div>}
         </td>
         <td>{p.recorded_by_name ?? '—'}</td>
-        <td className="text-end fw-semibold">${p.amount.toFixed(2)}</td>
+        <td className="fw-semibold">${p.amount.toFixed(2)}</td>
         <td className="edit-col">
           <button
             type="button"

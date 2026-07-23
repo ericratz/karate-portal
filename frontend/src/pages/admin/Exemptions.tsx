@@ -13,6 +13,9 @@ import StudentPicker from '../../components/StudentPicker';
 import type { StudentPickerHandle } from '../../components/StudentPicker';
 import { fmtDate, personName } from '../../format';
 
+// Display labels for every value the payment_waivers.waiver_type enum can hold,
+// including 'all' — kept so a legacy row still renders a label instead of the
+// raw enum value, even though 'all' is no longer offered as a choice.
 const TYPE_LABELS: Record<string, string> = {
   monthly_tuition: 'Monthly Tuition',
   registration: 'Registration Fee',
@@ -21,6 +24,11 @@ const TYPE_LABELS: Record<string, string> = {
   seminar: 'Seminar',
   all: 'All Fees',
 };
+
+// Selectable types. 'all' is omitted: in the filter it read as a second "All
+// Types" entry, and as a grant option it was never used (0 rows). The DB enum
+// and the server-side validation still accept it, so this is UI-only.
+const SELECTABLE_TYPES = Object.entries(TYPE_LABELS).filter(([v]) => v !== 'all');
 
 export default function Exemptions() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -144,7 +152,7 @@ export default function Exemptions() {
                     value={waiverType}
                     onChange={(e) => setWaiverType(e.target.value)}
                   >
-                    {Object.entries(TYPE_LABELS).map(([v, l]) => (
+                    {SELECTABLE_TYPES.map(([v, l]) => (
                       <option key={v} value={v}>{l}</option>
                     ))}
                   </select>
@@ -209,7 +217,7 @@ export default function Exemptions() {
                       onChange={(e) => setFilter('type', e.target.value)}
                     >
                       <option value="">All Types</option>
-                      {Object.entries(TYPE_LABELS).map(([v, l]) => (
+                      {SELECTABLE_TYPES.map(([v, l]) => (
                         <option key={v} value={v}>{l}</option>
                       ))}
                     </select>
@@ -275,7 +283,7 @@ export default function Exemptions() {
                         {data.waivers.map((w) => (
                           <tr key={w.id}>
                             <td>
-                              <a href={`student_edit.php?id=${w.student_id}`} className="text-decoration-none">
+                              <a href={`#/admin/student-edit?id=${w.student_id}`} className="text-decoration-none">
                                 {personName(w.student_name)}
                               </a>
                             </td>

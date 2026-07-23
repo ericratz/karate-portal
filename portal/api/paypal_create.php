@@ -22,7 +22,7 @@ if (!isset($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $cs
     exit;
 }
 
-$input = json_decode(file_get_contents('php://input'), true);
+$input = json_decode((string) file_get_contents('php://input'), true);
 $items = $input['items'] ?? [];
 $total = (float)($input['total'] ?? 0);
 $note  = $input['note'] ?? '';
@@ -61,7 +61,7 @@ if (empty($items) || $total <= 0) {
 // Validate total server-side — client cannot manipulate amounts
 $valid_types       = ['monthly_tuition','registration','belt_test','slc_training','seminar','other','donation'];
 $user_priced_types = ['other', 'donation'];
-$server_total = 0;
+$server_total = 0.0;
 foreach ($items as $item) {
     if (!in_array($item['type'], $valid_types, true)) {
         http_response_code(400);

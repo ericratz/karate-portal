@@ -318,7 +318,7 @@ export default function Pay() {
                               />
                             </td>
                             <td>{ctx.fees[key].label}</td>
-                            <td className="text-end fw-semibold">{money(ctx.fees[key].amount)}</td>
+                            <td className="fw-semibold">{money(ctx.fees[key].amount)}</td>
                           </tr>
                           {key === 'monthly_tuition' && tuitionChecked && (
                             <>
@@ -393,7 +393,7 @@ export default function Pay() {
                         />
                       </td>
                       <td>Donation</td>
-                      <td className="text-end fw-semibold text-muted">
+                      <td className="fw-semibold text-muted">
                         {donationAmt > 0 ? money(donationAmt) : '—'}
                       </td>
                     </tr>

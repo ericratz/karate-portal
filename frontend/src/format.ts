@@ -23,6 +23,13 @@ export function fmtDateLong(iso: string): string {
   return `${d.toLocaleString('en-US', { weekday: 'long' })} ${fmtDate(iso)}`;
 }
 
+/** "2026-07-04" → "Sat 04 Jul 2026" (recent-attendance lists) */
+export function fmtDateWeekday(iso: string): string {
+  const d = new Date(iso.slice(0, 10) + 'T00:00:00');
+  if (Number.isNaN(d.getTime())) return iso;
+  return `${d.toLocaleString('en-US', { weekday: 'short' })} ${fmtDate(iso)}`;
+}
+
 /** "2026-07-01" → "Jul 2026" (tuition month_covered) */
 export function fmtMonth(iso: string): string {
   const d = new Date(iso.slice(0, 10) + 'T00:00:00');

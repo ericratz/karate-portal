@@ -7,11 +7,11 @@
 // after any mutation — the job htmx out-of-band swaps used to do.
 
 import { useCallback, useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { apiGet, apiPost, ApiError } from '../../api/client';
 import type { StudentEditData } from '../../api/types';
 import { PageState } from '../../components/shared';
-import { fmtDate, fmtDateLong, fmtDateTime, fmtPhone, paymentType, personName } from '../../format';
+import { fmtDate, fmtDateTime, fmtDateWeekday, fmtPhone, paymentType, personName } from '../../format';
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -21,7 +21,8 @@ const WAIVER_TYPE_OPTIONS: [string, string][] = [
   ['belt_test', 'Belt Test Fee'],
   ['slc_training', 'SLC Training'],
   ['seminar', 'Seminar'],
-  ['all', 'All Fees'],
+  // 'all' ("All Fees") intentionally not offered — see Exemptions.tsx. The DB
+  // enum and server validation still accept it; this is a UI-only removal.
 ];
 
 const PAY_TYPE_OPTIONS: [string, string][] = [
@@ -324,7 +325,7 @@ export default function StudentEdit() {
     setActionError('');
     try {
       await apiPost('/admin/student_edit.php', { id, action: 'delete_profile' });
-      window.location.href = 'students.php';
+      navigate('/admin/roster');
     } catch (e: unknown) {
       setActionError(e instanceof ApiError ? e.message : 'Delete failed.');
     }
@@ -515,12 +516,12 @@ export default function StudentEdit() {
                       {(data.attendance ?? []).map((a) => (
                         <tr key={a.session_id}>
                           <td>
-                            <a
-                              href={`../instructor/attendance.php?date=${a.session_date}`}
+                            <Link
+                              to={`/instructor/attendance?date=${a.session_date}`}
                               className="text-primary text-decoration-none"
                             >
-                              {fmtDateLong(a.session_date)}
-                            </a>
+                              {fmtDateWeekday(a.session_date)}
+                            </Link>
                           </td>
                           <td>
                             {(attEditing ? attPresent.has(a.session_id) : a.present) && (
@@ -618,7 +619,7 @@ export default function StudentEdit() {
                         <th>Date</th>
                         <th>Type</th>
                         <th>Method</th>
-                        <th className="text-end">Amount</th>
+                        <th>Amount</th>
                         <th className="pay-action-col" />
                       </tr>
                     </thead>
@@ -702,8 +703,8 @@ export default function StudentEdit() {
                       <tr><th>Rank</th><th>Date Achieved</th><th className="rank-delete-col" /></tr>
                     </thead>
                     <tbody>
-                      {(data.ranks ?? []).map((r, i) => (
-                        <tr key={r.sr_id} className={i === 0 ? 'table-purple' : ''}>
+                      {(data.ranks ?? []).map((r) => (
+                        <tr key={r.sr_id}>
                           <td>
                             <span className="rank-view-cell" style={{ display: rankEditing ? 'none' : '' }}>
                               {r.kyu_dan} — {r.name}
@@ -780,12 +781,12 @@ export default function StudentEdit() {
                     {btEditing ? 'Done' : 'Edit'}
                   </button>
                 )}
-                <a
-                  href={`../instructor/belt_test_edit.php?student_id=${id}&ref_pid=${id}`}
+                <Link
+                  to={`/instructor/belt-test-edit?student_id=${id}&ref_pid=${id}`}
                   className="btn btn-sm btn-success"
                 >
                   + New Test
-                </a>
+                </Link>
               </div>
             </div>
             <div className="card-body p-0" style={{ maxHeight: 300, overflowY: 'auto' }}>
@@ -798,12 +799,12 @@ export default function StudentEdit() {
                       <div className={`bt-row-view-${bt.id} d-flex align-items-center gap-3 flex-wrap`}>
                         <span className="text-nowrap">{fmtDate(bt.test_date)}</span>
                         <span className="flex-grow-1">
-                          <a
-                            href={`../instructor/belt_test_edit.php?id=${bt.id}&ref_pid=${id}`}
+                          <Link
+                            to={`/instructor/belt-test-edit?id=${bt.id}&ref_pid=${id}`}
                             className="text-primary text-decoration-none"
                           >
                             {bt.kyu_dan}
-                          </a>
+                          </Link>
                         </span>
                         {bt.score !== null ? (
                           <span className={`badge ${bt.result === 'pass' ? 'bg-success' : 'bg-danger'}`}>{bt.score}%</span>
@@ -985,11 +986,11 @@ export default function StudentEdit() {
                       {(data.guardian_links ?? []).map((gl) => (
                         <tr key={gl.link_id}>
                           <td>
-                            <a href={`student_edit.php?id=${gl.student_id}`} className="text-decoration-none">
+                            <a href={`#/admin/student-edit?id=${gl.student_id}`} className="text-decoration-none">
                               {personName(gl.name)}
                             </a>
                           </td>
-                          <td className="guardian-delete-col text-end">
+                          <td className="guardian-delete-col">
                             <button
                               type="button"
                               className="btn btn-sm btn-outline-danger py-0"
@@ -1354,13 +1355,13 @@ function PayRows({
         <td>{fmtDate(p.payment_date)}</td>
         <td>{paymentType(p.payment_type)}</td>
         <td>{Object.fromEntries(METHOD_OPTIONS)[p.payment_method] ?? p.payment_method}</td>
-        <td className="text-end">${p.amount.toFixed(2)}</td>
+        <td>${p.amount.toFixed(2)}</td>
         {p.is_donation ? (
-          <td className="pay-action-col text-end text-nowrap">
+          <td className="pay-action-col text-nowrap">
             <a href="donations.php" className="btn btn-sm btn-outline-secondary py-0">Donations</a>
           </td>
         ) : (
-          <td className="pay-action-col text-end text-nowrap">
+          <td className="pay-action-col text-nowrap">
             <button type="button" className="btn btn-sm btn-outline-primary py-0 me-1 toggle-pay-row-btn" data-id={p.id} onClick={onToggle}>
               Edit
             </button>
@@ -1469,7 +1470,7 @@ function PwRows({
           {pw.reason && <div className="text-muted small">{pw.reason}</div>}
         </td>
         <td className="text-nowrap">{fmtDate(pw.granted_date)}</td>
-        <td className="pw-action-col text-end text-nowrap">
+        <td className="pw-action-col text-nowrap">
           <button type="button" className="btn btn-sm btn-outline-primary py-0 me-1 toggle-pw-row-btn" data-id={pw.id} onClick={onToggle}>
             Edit
           </button>

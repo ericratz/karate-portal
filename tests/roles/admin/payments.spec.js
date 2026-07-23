@@ -76,8 +76,9 @@ test.describe('student view', () => {
         if (await yearBtn.isVisible()) {
             const year = (await yearBtn.textContent())?.trim() ?? '';
             await yearBtn.click();
-            // Filtered rows re-render client-side; every date cell shows that year
-            await expect(page.locator('.card-header')).toContainText(year);
+            // Filtered rows re-render client-side; every date cell shows that year.
+            // Scope to the Payments card header — the footer adds its own .card-header.
+            await expect(page.locator('.card-header').filter({ hasText: 'Payments' })).toContainText(year);
             const dates = await page.locator('tbody td:nth-child(2)').allTextContents();
             dates.forEach(d => expect(d).toContain(year));
         }

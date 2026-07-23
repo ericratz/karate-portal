@@ -6,7 +6,7 @@ require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../includes/paypal.php';
 
-$body = file_get_contents('php://input');
+$body = (string) file_get_contents('php://input');
 
 $headers = [
     'PAYPAL-AUTH-ALGO'         => $_SERVER['HTTP_PAYPAL_AUTH_ALGO']         ?? '',
@@ -23,7 +23,10 @@ if (!paypal_verify_webhook(PAYPAL_WEBHOOK_ID, $headers, $body)) {
 }
 
 $event      = json_decode($body, true);
-$event_type = $event['event_type'] ?? '';
+// event_type must be a string — a malformed (but signature-valid) payload with
+// an array here would otherwise reach str_replace()/strtolower() and TypeError.
+$event_type_raw = $event['event_type'] ?? '';
+$event_type = is_string($event_type_raw) ? $event_type_raw : '';
 $resource   = $event['resource']   ?? [];
 $event_id   = $event['id']         ?? '';
 

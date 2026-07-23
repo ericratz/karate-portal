@@ -17,6 +17,7 @@ class WebhookIdempotencyTest extends TestCase
 {
     private const EVENT_ID = 'WH-PHPUNIT-REPLAY-TEST';
 
+    #[\Override]
     protected function tearDown(): void
     {
         db()->prepare('DELETE FROM webhook_events WHERE event_id = ?')

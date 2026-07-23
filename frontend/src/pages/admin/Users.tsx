@@ -65,7 +65,7 @@ function UserRow({
         <td>
           {u.student_id !== null && (
             <a
-              href={`../instructor/student_profile.php?id=${u.student_id}`}
+              href={`#/instructor/student/${u.student_id}`}
               className="text-decoration-none"
             >
               {personName(u.student_name ?? '')}
