@@ -87,7 +87,7 @@ function AdminMenu({ onNavigate }: { onNavigate: () => void }) {
         style={{ maxHeight: 'calc(100vh - 120px)', overflowY: 'auto', right: 0 }}
       >
         <li><h6 className="dropdown-header">Student Info</h6></li>
-        {spa('/instructor/attendance', 'Attendance')}
+        {spa('/instructor/classes', 'Attendance')}
         {spa('/instructor/belt-tests', 'Belt Tests')}
         {spa('/admin/notes', 'Class Notes')}
         {spa('/admin/email', 'Email Students')}
@@ -147,7 +147,7 @@ export default function Layout({ children }: { children: ReactNode }) {
                   </Link>
                 </li>
                 <li className="nav-item">
-                  <Link className="nav-link nav-link-lg" to="/instructor/attendance" onClick={() => setNavOpen(false)}>
+                  <Link className="nav-link nav-link-lg" to="/instructor/classes" onClick={() => setNavOpen(false)}>
                     Attendance
                   </Link>
                 </li>

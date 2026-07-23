@@ -153,6 +153,20 @@ CREATE TABLE IF NOT EXISTS attendance (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ------------------------------------------------------------
+-- CLASS SESSION INSTRUCTORS  (who taught a given class — many-to-many)
+-- One class can be taught/handed off to several instructors on the same day.
+-- The authoritative "taught by" set; class_sessions.instructor_id stays as the
+-- who-recorded-it stamp and is not used for this.
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS class_session_instructors (
+    session_id INT NOT NULL,
+    user_id    INT NOT NULL,
+    PRIMARY KEY (session_id, user_id),
+    FOREIGN KEY (session_id) REFERENCES class_sessions(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id)    REFERENCES users(id)          ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ------------------------------------------------------------
 -- BELT TESTS  (one row per student per test)
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS belt_tests (

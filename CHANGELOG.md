@@ -4,6 +4,19 @@ Full version history for the Shotokan Karate Portal. See `README.md` for the cur
 
 ---
 
+## V4.7
+
+Adds first-class tracking of who taught each class, with support for more than one instructor on the same
+day, and points the admin "Attendance" entry at the class list.
+
+- **Class instructor tracking, with multiple instructors per class** — `class_sessions` had carried a single `instructor_id` since the original schema, but it was dormant: silently set to whoever *saved* the attendance sheet and never displayed anywhere. It's now a deliberate, visible field. A new `class_session_instructors` join table records the taught-by set as a many-to-many, so a class can name several instructors — for a mid-class hand-off (one instructor leaves early and turns the class over) or team teaching. The Take Attendance page gained a **"Taught by"** multi-select (active admins + instructor-type users) that defaults a not-yet-recorded class to the primary admin — the founder account, usually Noji — since that's who teaches most days; the instructor can change it before saving. The Classes list gained an **Instructor** column showing the name(s). The save endpoint validates the submitted user IDs against the real instructor/admin set, so a tampered request can't attach arbitrary users to a session; when an empty class is dropped (nobody present), the join rows cascade away with it. The legacy `instructor_id` column is left in place as the who-recorded-it stamp and is no longer treated as the answer to who taught
+- **Admin "Attendance" nav now opens the class list** — both the admin top-navbar "Attendance" button and the matching Admin-dropdown item pointed at `/instructor/attendance`, which always opened a blank sheet for *today*; they now open `/instructor/classes` (the Classes list), from which any date — including today — is one click via the existing date picker + "Record New Class". Instructor navigation is unchanged
+- **Schema + migrations** — new `class_session_instructors` table added to `karate_schema.sql`. For an existing database, apply `add_class_session_instructors.sql` (creates the table), then `backfill_class_instructors_noji.sql` (attributes every pre-existing class that has no instructor to the primary admin, so the historical sessions didn't need hand-editing). Both use `IF NOT EXISTS` / `NOT EXISTS` guards and are safe to re-run
+- **Testability + coverage** — the instructor logic was pulled out of the endpoints into `includes/instructors.php` (mirroring `includes/family.php`), so the "instructor/admin only" rule, the picker default (primary admin), and the taught-by read/write live in one directly-testable place; the take-attendance endpoint dropped its inline validation SQL for `filter_instructor_ids()` / `set_session_instructors()`. A new `InstructorSessionTest` covers the validation (admins + active instructors kept; plain students, inactive instructors, unknown ids, and duplicates dropped), the primary-admin default, and the taught-by round-trip. On the front end, the Take Attendance page's pure helpers (`fmtHeading`, `sortStudents`) moved to `attendance-helpers.ts` with unit tests, and the Classes list's date formatter was deduped onto the existing `fmtDateWeekday`. Vitest coverage reporting was added (`@vitest/coverage-v8`, `npm run coverage`) to make the number visible
+- **Tests** — full suite green with no spec changes needed (the Classes list's specs don't pin an exact column set): 518 Playwright, 122 PHPUnit (191 assertions), 50 Vitest, Psalm standard + taint clean, strict TypeScript clean
+
+---
+
 ## V4.6
 
 Maintenance release: the remaining Dependabot upgrades, a Psalm target-version correction, and a set of

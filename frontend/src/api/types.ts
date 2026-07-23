@@ -309,10 +309,17 @@ export interface AttendanceStudent {
   last_attended: string | null;
 }
 
+export interface InstructorRef {
+  id: number;
+  name: string;
+}
+
 export interface AttendanceContext {
   date: string;
   session_exists: boolean;
   class_type: string;
+  instructors: InstructorRef[];            // selectable admins + instructors
+  selected_instructor_ids: number[];       // who taught (or the default for a new class)
   students: AttendanceStudent[];
 }
 
@@ -328,6 +335,7 @@ export interface ClassSession {
   class_type: string;
   present_count: number;
   attendees: { first_name: string; last_name: string }[];
+  instructors: InstructorRef[];
 }
 
 export interface SessionsData {

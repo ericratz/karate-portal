@@ -9,17 +9,10 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { apiGet, ApiError } from '../../api/client';
 import type { SessionsData } from '../../api/types';
 import { ExtIcon, PageState } from '../../components/shared';
-import { fmtDate, personName } from '../../format';
+import { fmtDateWeekday, personName } from '../../format';
 import { useSession } from '../../SessionContext';
 
 const classTypeLabels: Record<string, string> = { class: 'Class', seminar: 'Seminar', private: 'Private' };
-
-/** "2099-01-15" → "Thu 15 Jan 2099" */
-function fmtDateShortDay(iso: string): string {
-  const d = new Date(iso.slice(0, 10) + 'T00:00:00');
-  if (Number.isNaN(d.getTime())) return iso;
-  return `${d.toLocaleString('en-US', { weekday: 'short' })} ${fmtDate(iso)}`;
-}
 
 export default function Classes() {
   const { me } = useSession();
@@ -142,7 +135,7 @@ export default function Classes() {
             <div className="table-responsive">
               <table className="table table-hover mb-0">
                 <thead className="table-light">
-                  <tr><th>Date</th><th>Type</th><th>Present</th><th></th></tr>
+                  <tr><th>Date</th><th>Type</th><th>Instructor</th><th>Present</th><th></th></tr>
                 </thead>
                 <tbody>
                   {data.sessions.map((sess, i) => (
@@ -188,17 +181,22 @@ function SessionRows({
       >
         <td className="fw-medium">
           <Link to={`/instructor/attendance?date=${sess.session_date}`} className="text-decoration-none session-link">
-            {fmtDateShortDay(sess.session_date)}
+            {fmtDateWeekday(sess.session_date)}
           </Link>
         </td>
         <td className="text-muted small">
           {classTypeLabels[sess.class_type] ?? sess.class_type}
         </td>
+        <td className="small">
+          {sess.instructors.length === 0
+            ? <span className="text-muted">—</span>
+            : sess.instructors.map((i) => personName(i.name)).join(', ')}
+        </td>
         <td><span className="badge bg-primary">{sess.present_count}</span></td>
         <td className="text-muted" id={`tog-${idx}`}>{open ? '▲' : '▼'}</td>
       </tr>
       <tr id={`det-${idx}`} style={{ display: open ? '' : 'none' }}>
-        <td colSpan={4} className="px-4 py-3">
+        <td colSpan={5} className="px-4 py-3">
           {sess.attendees.length === 0 ? (
             <span className="text-muted small">No attendance recorded.</span>
           ) : (

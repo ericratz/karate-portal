@@ -11,6 +11,7 @@
 // Mirrors instructor/attendance.php exactly, including audit entries.
 
 require_once __DIR__ . '/../../../includes/api.php';
+require_once __DIR__ . '/../../../includes/instructors.php';
 
 api_require_role('instructor', 'admin');
 
@@ -53,6 +54,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         $present_raw = $input['present_ids'] ?? [];
         $present_ids = array_map('intval', is_array($present_raw) ? $present_raw : []);
 
+        // Who taught the class — keep only real instructor/admin accounts so a
+        // tampered body can't attach arbitrary users to the session.
+        $instr_raw = $input['instructor_ids'] ?? [];
+        $instr_ids = filter_instructor_ids(is_array($instr_raw) ? $instr_raw : []);
+
         $db = db();
         $db->prepare(
             'INSERT INTO class_sessions (session_date, class_type, instructor_id)
@@ -71,6 +77,10 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         foreach ($present_ids as $sid) {
             $ins->execute([$sid, $session_id, current_user_id()]);
         }
+
+        // Rewrite the taught-by set. If the session is dropped below (nobody
+        // present), the FK's ON DELETE CASCADE clears these rows with it.
+        set_session_instructors((int)$session_id, $instr_ids);
 
         if (empty($present_ids)) {
             // No one present — an empty class isn't worth keeping a record of
@@ -93,6 +103,15 @@ $session->execute([$date]);
 $session_row = $session->fetch();
 $session_id  = $session_row ? $session_row['id'] : false;
 
+// Selectable instructors, and the current taught-by set for this date. For a
+// not-yet-recorded class the picker defaults to the primary admin — the founder
+// account (usually Noji) — since that's who teaches most days; the instructor
+// can change it before saving.
+$instructors  = instructor_users();
+$selected_ids = $session_row
+    ? session_instructor_ids((int)$session_id)
+    : default_instructor_ids();
+
 $stmt = db()->prepare(
     'SELECT s.id, s.first_name, s.last_name, s.student_type, s.injury_waiver,
             COALESCE(a.present, 0) AS present,
@@ -110,6 +129,8 @@ api_respond([
     'date'           => $date,
     'session_exists' => (bool)$session_row,
     'class_type'     => $session_row['class_type'] ?? 'class',
+    'instructors'    => $instructors,
+    'selected_instructor_ids' => $selected_ids,
     'students'       => array_map(fn($s) => [
         'id'            => (int)$s['id'],
         'first_name'    => (string)$s['first_name'],

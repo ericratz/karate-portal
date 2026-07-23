@@ -11,32 +11,8 @@ import { apiGet, apiPost, ApiError } from '../../api/client';
 import type { AttendanceContext, AttendanceSaved, AttendanceStudent } from '../../api/types';
 import { PageState } from '../../components/shared';
 import { fmtDate, personName } from '../../format';
-
-type SortKey = 'first_name' | 'last_name' | 'last_attended';
-
-/** "2099-01-15" → "Thursday, 15 January 2099" (PHP date('l, j F Y')) */
-function fmtHeading(iso: string): string {
-  const d = new Date(iso.slice(0, 10) + 'T00:00:00');
-  if (Number.isNaN(d.getTime())) return iso;
-  return `${d.toLocaleString('en-US', { weekday: 'long' })}, ${d.getDate()} ${d.toLocaleString('en-US', { month: 'long' })} ${d.getFullYear()}`;
-}
-
-function sortStudents(list: AttendanceStudent[], sort: SortKey): AttendanceStudent[] {
-  const out = [...list];
-  if (sort === 'last_name') {
-    out.sort((a, b) =>
-      `${a.last_name} ${a.first_name}`.localeCompare(`${b.last_name} ${b.first_name}`, undefined, { sensitivity: 'base' }));
-  } else if (sort === 'last_attended') {
-    // Never-attended first, then oldest attendance first (matches the SQL)
-    out.sort((a, b) => {
-      if (a.last_attended === b.last_attended) return 0;
-      if (!a.last_attended) return -1;
-      if (!b.last_attended) return 1;
-      return a.last_attended.localeCompare(b.last_attended);
-    });
-  }
-  return out;
-}
+import { fmtHeading, sortStudents } from './attendance-helpers';
+import type { SortKey } from './attendance-helpers';
 
 export default function TakeAttendance() {
   const [searchParams] = useSearchParams();
@@ -50,6 +26,7 @@ export default function TakeAttendance() {
   const [ctx, setCtx] = useState<AttendanceContext | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [present, setPresent] = useState<Set<number>>(new Set());
+  const [instructorIds, setInstructorIds] = useState<Set<number>>(new Set());
   const [classType, setClassType] = useState('class');
   const [nameFilter, setNameFilter] = useState('');
   const [msg, setMsg] = useState<string | null>(null);
@@ -64,6 +41,7 @@ export default function TakeAttendance() {
       .then((data) => {
         setCtx(data);
         setClassType(data.class_type);
+        setInstructorIds(new Set(data.selected_instructor_ids));
         const ids = new Set(data.students.filter((s) => s.present).map((s) => s.id));
         // Arriving from a profile page pre-checks that student
         if (highlight && !highlightDone.current) ids.add(highlight);
@@ -97,6 +75,15 @@ export default function TakeAttendance() {
     });
   }
 
+  function toggleInstructor(id: number) {
+    setInstructorIds((p) => {
+      const next = new Set(p);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
   function gotoDate(d: string) {
     if (!d) return;
     navigate(`/instructor/attendance?date=${d}${sort !== 'first_name' ? `&sort=${sort}` : ''}`);
@@ -111,6 +98,7 @@ export default function TakeAttendance() {
         date,
         class_type: classType,
         present_ids: [...present],
+        instructor_ids: [...instructorIds],
       });
       setMsg(result.removed
         ? `No students were marked present, so the class for ${fmtDate(date)} was removed.`
@@ -118,6 +106,7 @@ export default function TakeAttendance() {
       const fresh = await apiGet<AttendanceContext>(`/instructor/attendance.php?date=${date}`);
       setCtx(fresh);
       setClassType(fresh.class_type);
+      setInstructorIds(new Set(fresh.selected_instructor_ids));
       setPresent(new Set(fresh.students.filter((s) => s.present).map((s) => s.id)));
       window.scrollTo(0, 0);
     } catch (err: unknown) {
@@ -218,6 +207,31 @@ export default function TakeAttendance() {
                   <option value="seminar">Seminar</option>
                   <option value="private">Private</option>
                 </select>
+              </div>
+              <div className="col-auto">
+                <label className="form-label small mb-1 d-block">Taught by</label>
+                <div className="d-flex flex-wrap gap-3 pt-1" id="instructorPicker">
+                  {ctx.instructors.length === 0 ? (
+                    <span className="text-muted small">No instructors on file.</span>
+                  ) : (
+                    ctx.instructors.map((ins) => (
+                      <div className="form-check mb-0" key={ins.id}>
+                        <input
+                          type="checkbox"
+                          className="form-check-input instructor-cb"
+                          name="instructor_ids[]"
+                          value={ins.id}
+                          id={`instr-${ins.id}`}
+                          checked={instructorIds.has(ins.id)}
+                          onChange={() => toggleInstructor(ins.id)}
+                        />
+                        <label className="form-check-label small" htmlFor={`instr-${ins.id}`}>
+                          {ins.name}
+                        </label>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
             </div>
           </div>
