@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { apiGet, apiPost, ApiError } from '../../api/client';
 import type { CompareAccountData } from '../../api/types';
-import { PageState } from '../../components/shared';
+import { PageState, TruncatedText } from '../../components/shared';
 import { fmtDate, fmtDateTime, personName } from '../../format';
 
 const TYPE_LABELS: Record<string, string> = {
@@ -172,7 +172,11 @@ export default function CompareAccount() {
             </span>
             <strong>{personName(`${u.first_name ?? ''} ${u.last_name ?? ''}`)}</strong> submitted a link request{' '}
             <span className="text-muted small">({fmtDateTime(lr.created_at)})</span>
-            {lr.notes && <div className="mt-1 small fst-italic">"{lr.notes}"</div>}
+            {lr.notes && (
+              <div className="mt-1 small fst-italic">
+                "<TruncatedText text={lr.notes} />"
+              </div>
+            )}
           </div>
           <div className="ms-3 flex-shrink-0" id="dismissLinkForm">
             <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => void dismiss()}>

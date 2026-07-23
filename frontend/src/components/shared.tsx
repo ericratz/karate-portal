@@ -1,6 +1,7 @@
 // Small shared pieces used across the parent pages.
 
 import type { ReactNode } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useSession } from '../SessionContext';
 import { personName } from '../format';
@@ -20,6 +21,40 @@ export function ExtIcon({ size = 13 }: { size?: number }) {
       <path fillRule="evenodd" d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5" />
       <path fillRule="evenodd" d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 1.707V5.5a.5.5 0 0 0 1 0z" />
     </svg>
+  );
+}
+
+/**
+ * Long free-text cell for tables (notes, reasons, descriptions). Shows the
+ * first `limit` characters with a "View all" toggle to expand/collapse the
+ * full text, so an arbitrarily long note can't blow out the row height.
+ */
+export function TruncatedText({
+  text,
+  limit = 50,
+  empty = '',
+}: {
+  text?: string | null;
+  limit?: number;
+  empty?: ReactNode;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const value = (text ?? '').trim();
+  if (value === '') return <>{empty}</>;
+  if (value.length <= limit) return <>{value}</>;
+  return (
+    <>
+      <span style={{ whiteSpace: expanded ? 'pre-wrap' : 'normal' }}>
+        {expanded ? value : `${value.slice(0, limit)}…`}
+      </span>{' '}
+      <button
+        type="button"
+        className="btn btn-link btn-sm p-0 align-baseline text-decoration-none"
+        onClick={() => setExpanded((e) => !e)}
+      >
+        {expanded ? 'Show less' : 'View all'}
+      </button>
+    </>
   );
 }
 

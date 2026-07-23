@@ -9,7 +9,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { apiGet, apiPost, ApiError } from '../../api/client';
 import type { AdminPayment, AdminPaymentsData, PaymentRecorded } from '../../api/types';
-import { PageState } from '../../components/shared';
+import { PageState, TruncatedText } from '../../components/shared';
 import StudentPicker from '../../components/StudentPicker';
 import type { StudentPickerHandle } from '../../components/StudentPicker';
 import { fmtDate, paymentType, personName } from '../../format';
@@ -670,8 +670,10 @@ function PaymentRows({
         <td>{METHOD_LABELS[p.payment_method] ?? p.payment_method}</td>
         <td>{p.transaction_id ?? '—'}</td>
         <td>
-          {p.notes ?? ''}
-          {p.payer_note && <div className="fst-italic text-muted small">{p.payer_note}</div>}
+          <TruncatedText text={p.notes} />
+          {p.payer_note && (
+            <div className="fst-italic text-muted small"><TruncatedText text={p.payer_note} /></div>
+          )}
         </td>
         <td>{p.recorded_by_name ?? '—'}</td>
         <td className="fw-semibold">${p.amount.toFixed(2)}</td>

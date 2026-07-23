@@ -145,7 +145,7 @@ function ChildSummary() {
                   <td>
                     {ch.next_rank?.hw_url && (
                       <a href={ch.next_rank.hw_url} target="_blank" rel="noreferrer" className="text-decoration-none small">
-                        {ch.next_rank.name} ↗
+                        {ch.next_rank.name}<ExtIcon />
                       </a>
                     )}
                   </td>

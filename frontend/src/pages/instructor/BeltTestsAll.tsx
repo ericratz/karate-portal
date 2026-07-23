@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { apiGet, apiPost, ApiError } from '../../api/client';
 import type { InstructorBeltTestsData } from '../../api/types';
-import { PageState } from '../../components/shared';
+import { PageState, TruncatedText } from '../../components/shared';
 import { fmtDate, personName } from '../../format';
 
 export default function BeltTestsAll() {
@@ -227,7 +227,7 @@ export default function BeltTestsAll() {
                           <span className="text-muted">—</span>
                         )}
                       </td>
-                      <td className="text-muted small">{t.notes ?? ''}</td>
+                      <td className="text-muted small"><TruncatedText text={t.notes} /></td>
                       <td>
                         {data.is_admin && (
                           <Link

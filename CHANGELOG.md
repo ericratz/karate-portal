@@ -4,6 +4,21 @@ Full version history for the Shotokan Karate Portal. See `README.md` for the cur
 
 ---
 
+## V4.6
+
+Maintenance release: the remaining Dependabot upgrades, a Psalm target-version correction, and a set of
+front-end refinements to the payment screen, long-text table cells, and the parent dashboard.
+
+- **Dependency upgrades** — TypeScript 5.9 → 7.0.2 and jsdom 28 → 29 in the React SPA, and `actions/checkout` and `actions/upload-artifact` 4 → 7 in both workflows. The TypeScript jump was the notable one: the SPA had deliberately stayed on 5.x (only the test toolchain moved to TS 7 in V4.3), and the two-major bump to the native compiler passed the strict typecheck, Vitest, production build, and the full Playwright suite with zero new type errors. These are the routine version bumps that were deferred in V4.4, when only the security-advisory bumps were taken. The two GitHub Actions upgrades can only be exercised on the self-hosted runner, so their first validation is this release's own CI run
+- **Psalm `phpVersion` corrected 8.2 → 8.4** — it had lagged the runtime since the XAMPP-to-Docker switch. Dev, CI, and live all run PHP 8.4.23, so Psalm now analyzes against the same language semantics; standard + taint both stay clean at the newer version. (The `composer.json` platform pin was already correct at 8.4.23.)
+- **Payment screen — a single-choice "Paying for" selector collapses to text** — when there is only one person to pay for (e.g. a student paying for their own record), the member dropdown was a pointless one-option control; it now renders the name as static text. Parents with multiple linked family members still get the dropdown, and the admin payment recorder (a type-to-filter over all students) is unchanged
+- **Payment screen — the in-person cash/check option is spelled out** — the "Other Payment Options" card only described mailing a check; it now also states that payment can be made in person with cash or check at class, above the existing mailing address
+- **Long free-text table cells truncate with a "View all" toggle** — notes, reasons, and descriptions that can run arbitrarily long were rendered in full inside their table cells, so a single long entry could blow out a row. A new shared `<TruncatedText>` shows the first 50 characters with a **View all** / **Show less** control, applied to belt-test notes, donation notes, exemption reasons, expense descriptions, and payment notes/payer notes. The admin-dashboard and compare-account link-request note columns — one of which previously hard-cut at 60 characters with no way to read the rest — were switched to the same component so every long-text cell behaves identically
+- **Parent dashboard — child-summary "Next Test HW" link uses the standard external-link icon** — its outbound cue was a bare angled arrow (`↗`) while every other outbound link on the dashboard used the box-with-arrow "opens in new window" icon; it now uses the same shared `ExtIcon`
+- **Tests** — 518 Playwright, 113 PHPUnit, 43 Vitest, Psalm standard + taint clean, strict TypeScript (now TS 7) clean
+
+---
+
 ## V4.5
 
 Began as a follow-up to V4.4's dev-environment switch — the hostname it introduced turned out to be

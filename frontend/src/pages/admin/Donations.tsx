@@ -7,7 +7,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { apiGet, apiPost, ApiError } from '../../api/client';
 import type { AdminDonationsData } from '../../api/types';
-import { PageState } from '../../components/shared';
+import { PageState, TruncatedText } from '../../components/shared';
 import StudentPicker from '../../components/StudentPicker';
 import { fmtDate, personName } from '../../format';
 
@@ -309,7 +309,7 @@ export default function Donations() {
                           )}
                         </td>
                         <td>{METHOD_LABELS[d.payment_method] ?? d.payment_method}</td>
-                        <td className="text-muted small">{d.notes ?? ''}</td>
+                        <td className="text-muted small"><TruncatedText text={d.notes} /></td>
                         <td className="text-muted small">{d.recorded_by_name ?? '—'}</td>
                         <td className="fw-semibold">${d.amount.toFixed(2)}</td>
                         <td className="delete-col">

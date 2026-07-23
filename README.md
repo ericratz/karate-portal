@@ -1,4 +1,4 @@
-# Shotokan Karate Portal — V4.5
+# Shotokan Karate Portal — V4.6
 
 A full-stack membership management platform for a martial arts dojo — role-based dashboards, attendance tracking, belt test progression, payments (PayPal + manual), digital waivers, and self-service check-in. Built with PHP and MySQL behind a React 19 + TypeScript SPA: all four portals (admin, instructor, parent, student) were incrementally migrated from server-rendered pages to a single code-split bundle over a versioned JSON API, with every old page URL preserved as a redirect stub. Fully containerized with Docker (app + database + CI toolchain) and verified by a 500+ test Playwright + PHPUnit + Vitest suite and Psalm static + taint analysis running on every push via GitHub Actions.
 

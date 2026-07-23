@@ -273,18 +273,26 @@ export default function Pay() {
                 <label className="form-label fw-semibold" htmlFor="studentSelect">
                   Paying for
                 </label>
-                <select
-                  id="studentSelect"
-                  className="form-select"
-                  value={selectedId}
-                  onChange={(e) => changeStudent(Number(e.target.value))}
-                >
-                  {ctx.family.map((f) => (
-                    <option key={f.id} value={f.id}>
-                      {personName(f.name)}
-                    </option>
-                  ))}
-                </select>
+                {ctx.family.length > 1 ? (
+                  <select
+                    id="studentSelect"
+                    className="form-select"
+                    value={selectedId}
+                    onChange={(e) => changeStudent(Number(e.target.value))}
+                  >
+                    {ctx.family.map((f) => (
+                      <option key={f.id} value={f.id}>
+                        {personName(f.name)}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  // Only one person to pay for (e.g. a student paying for their
+                  // own record) — no need for a dropdown; show the name as text.
+                  <div id="studentSelect" className="form-control-plaintext fw-semibold pt-0">
+                    {personName(ctx.family[0]?.name ?? '')}
+                  </div>
+                )}
               </div>
 
               {showFamilyWarning && (
@@ -605,8 +613,11 @@ export default function Pay() {
           <div className="card border-0 shadow-sm">
             <div className="card-header bg-white fw-semibold">Other Payment Options</div>
             <div className="card-body">
+              <p className="mb-2">
+                <strong>Pay in person</strong> with cash or check at class.
+              </p>
               <p className="mb-0">
-                <strong>Mail a check</strong> to:
+                <strong>Or mail a check</strong> to:
                 <br />
                 Shotokan Karate and Self-defense
                 <br />

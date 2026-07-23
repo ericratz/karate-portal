@@ -10,7 +10,7 @@ import { useSearchParams } from 'react-router-dom';
 import { apiGet, apiPost, ApiError } from '../../api/client';
 import type { AdminAlertRow, AdminDashboardData } from '../../api/types';
 import RevenueChart from '../../components/RevenueChart';
-import { PageState } from '../../components/shared';
+import { PageState, TruncatedText } from '../../components/shared';
 import { fmtDate, paymentType, personName } from '../../format';
 
 const LR_LABELS: Record<string, [string, string]> = {
@@ -291,11 +291,6 @@ export default function AdminDashboard() {
                           lr.request_type.charAt(0).toUpperCase() + lr.request_type.slice(1),
                           'bg-secondary',
                         ];
-                        const notes = lr.notes
-                          ? lr.notes.length > 60
-                            ? `${lr.notes.slice(0, 60)}…`
-                            : lr.notes
-                          : '—';
                         return (
                           <tr key={lr.id}>
                             <td>
@@ -303,7 +298,7 @@ export default function AdminDashboard() {
                               <div className="text-muted small">{lr.user_name}</div>
                             </td>
                             <td><span className={`badge ${cls}`}>{lbl}</span></td>
-                            <td className="small text-muted" style={{ maxWidth: 160 }}>{notes}</td>
+                            <td className="small text-muted" style={{ maxWidth: 160 }}><TruncatedText text={lr.notes} empty="—" /></td>
                             <td className="small text-muted text-nowrap">{fmtDate(lr.created_at)}</td>
                             <td>
                               <a

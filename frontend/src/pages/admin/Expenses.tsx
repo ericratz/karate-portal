@@ -6,7 +6,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { apiGet, apiPost, ApiError } from '../../api/client';
 import type { AdminExpensesData } from '../../api/types';
-import { PageState } from '../../components/shared';
+import { PageState, TruncatedText } from '../../components/shared';
 import { fmtDate } from '../../format';
 
 const EXPENSE_TYPES = ['rent', 'equipment', 'utilities', 'supplies', 'other'];
@@ -254,7 +254,7 @@ export default function Expenses() {
                       <tr key={e.id}>
                         <td>{fmtDate(e.expense_date)}</td>
                         <td>{ucfirst(e.expense_type)}</td>
-                        <td>{e.description ?? '—'}</td>
+                        <td><TruncatedText text={e.description} empty="—" /></td>
                         <td>${e.amount.toFixed(2)}</td>
                         <td>{e.recorded_by ?? '—'}</td>
                         <td className="delete-col">

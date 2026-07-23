@@ -24,9 +24,12 @@ test.describe('Pay page', () => {
         await expect(page.locator('#studentSelect')).toBeVisible();
     });
 
-    test('student selector shows exactly one option (own record)', async ({ page }) => {
+    test('single-member family shows the name as text, not a dropdown', async ({ page }) => {
         await gotoPay(page);
-        expect(await page.locator('#studentSelect option').count()).toBe(1);
+        // Only the student's own record to pay for — the "Paying for" selector
+        // collapses to plain text instead of a one-option dropdown.
+        await expect(page.locator('select#studentSelect')).toHaveCount(0);
+        await expect(page.locator('#studentSelect')).not.toBeEmpty();
     });
 
     test('total display starts at $0.00', async ({ page }) => {

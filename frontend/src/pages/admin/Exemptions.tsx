@@ -8,7 +8,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { apiGet, apiPost, ApiError } from '../../api/client';
 import type { AdminExemptionsData } from '../../api/types';
-import { PageState } from '../../components/shared';
+import { PageState, TruncatedText } from '../../components/shared';
 import StudentPicker from '../../components/StudentPicker';
 import type { StudentPickerHandle } from '../../components/StudentPicker';
 import { fmtDate, personName } from '../../format';
@@ -288,7 +288,7 @@ export default function Exemptions() {
                               </a>
                             </td>
                             <td>{TYPE_LABELS[w.waiver_type] ?? w.waiver_type}</td>
-                            <td>{w.reason ?? '—'}</td>
+                            <td><TruncatedText text={w.reason} empty="—" /></td>
                             <td>{fmtDate(w.granted_date)}</td>
                             <td className="delete-col">
                               <button
