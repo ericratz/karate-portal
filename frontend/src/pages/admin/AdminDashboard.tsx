@@ -6,7 +6,7 @@
 // every href the specs and muscle memory rely on.
 
 import { useCallback, useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { apiGet, apiPost, ApiError } from '../../api/client';
 import type { AdminAlertRow, AdminDashboardData } from '../../api/types';
 import RevenueChart from '../../components/RevenueChart';
@@ -108,10 +108,14 @@ export default function AdminDashboard() {
               <td className="small text-muted text-nowrap">{fmtDate(a.created_at)}</td>
               <td className="text-nowrap">
                 {variant === 'linking' && (
-                  <a href={`resolve_link.php?lr_id=${a.id}`} className="btn btn-sm btn-warning py-0">Resolve</a>
+                  // Purple: this navigates. It was also a document-relative href
+                  // ("resolve_link.php"), which resolves against whichever shell
+                  // is current — and resolve-link is a real SPA route, so this is
+                  // an in-app Link now rather than a full page load via the stub.
+                  <Link to={`/admin/resolve-link?lr_id=${a.id}`} className="btn btn-sm btn-nav py-0">Resolve</Link>
                 )}{' '}
                 <button
-                  className="btn btn-sm btn-outline-secondary py-0"
+                  className="btn btn-sm btn-action py-0"
                   onClick={() =>
                     void dismissAlert(
                       a.id,
@@ -198,7 +202,7 @@ export default function AdminDashboard() {
                           <td>
                             <a
                               href={`payments.php?action=add&student_id=${s.id}&type=monthly_tuition`}
-                              className="btn btn-success btn-sm py-0"
+                              className="btn btn-action btn-sm py-0"
                             >
                               Record Payment
                             </a>
@@ -303,7 +307,7 @@ export default function AdminDashboard() {
                             <td>
                               <a
                                 href={`compare_account.php?user_id=${lr.user_id}&link_request_id=${lr.id}`}
-                                className="btn btn-sm btn-outline-primary py-0"
+                                className="btn btn-sm btn-action py-0"
                               >
                                 Review
                               </a>
@@ -346,7 +350,7 @@ export default function AdminDashboard() {
                           <td>
                             <a
                               href={`compare_account.php?user_id=${m.user_id}&student_id=${m.student_id}`}
-                              className="btn btn-sm btn-primary py-0"
+                              className="btn btn-sm btn-action py-0"
                             >
                               Compare
                             </a>
@@ -367,7 +371,7 @@ export default function AdminDashboard() {
             <div className="card-header bg-white fw-semibold d-flex justify-content-between">
               <span>Recent Payments</span>
               {data.has_more_payments && (
-                <a href="payments.php" className="btn btn-sm btn-outline-primary">View All</a>
+                <a href="payments.php" className="btn btn-sm btn-action">View All</a>
               )}
             </div>
             <div className="card-body p-0">

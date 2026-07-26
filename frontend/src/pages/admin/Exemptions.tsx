@@ -178,7 +178,7 @@ export default function Exemptions() {
                     onChange={(e) => setGrantedDate(e.target.value)}
                   />
                 </div>
-                <button name="grant" className="btn btn-success w-100">Grant Exemption</button>
+                <button name="grant" className="btn btn-action w-100">Grant Exemption</button>
               </form>
             </div>
           </div>
@@ -257,7 +257,7 @@ export default function Exemptions() {
                 {data.waivers.length > 0 && (
                   <button
                     id="editToggle"
-                    className={editing ? 'btn btn-sm btn-danger' : 'btn btn-sm btn-outline-secondary'}
+                    className={editing ? 'btn btn-sm btn-danger' : 'btn btn-sm btn-action'}
                     onClick={() => setEditing((v) => !v)}
                   >
                     {editing ? 'Done' : 'Edit'}

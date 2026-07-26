@@ -77,7 +77,7 @@ export default function BeltTestsAll() {
     <>
       <div className="d-flex align-items-center gap-3 mb-4">
         <h4 className="mb-0">All Belt Tests</h4>
-        <Link to="/instructor/belt-test-edit" className="btn btn-success btn-sm ms-auto">+ New Test</Link>
+        <Link to="/instructor/belt-test-edit" className="btn btn-action btn-sm ms-auto">+ New Test</Link>
       </div>
 
       <div className="card border-0 shadow-sm mb-3">
@@ -172,7 +172,7 @@ export default function BeltTestsAll() {
           {data.tests.length > 0 && (
             <button
               id="editToggle"
-              className={editing ? 'btn btn-sm btn-danger' : 'btn btn-sm btn-outline-secondary'}
+              className={editing ? 'btn btn-sm btn-danger' : 'btn btn-sm btn-action'}
               onClick={() => setEditing(!editing)}
             >
               {editing ? 'Done' : 'Edit'}
@@ -232,7 +232,7 @@ export default function BeltTestsAll() {
                         {data.is_admin && (
                           <Link
                             to={`/instructor/belt-test-edit?id=${t.id}&ref_pid=${t.student_id}`}
-                            className="btn btn-sm btn-outline-primary"
+                            className="btn btn-sm btn-action"
                           >
                             Edit
                           </Link>

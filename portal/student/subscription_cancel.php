@@ -50,8 +50,7 @@ if ($row) {
     }
 }
 
-header('Location: ' . (has_role('parent')
-    ? SITE_URL . '/parent/pay.php?autopay=cancelled'
-    : 'profile_edit.php?autopay=cancelled'));
-exit;
+redirect(has_role('parent')
+    ? '/parent/pay.php?autopay=cancelled'
+    : '/student/profile_edit.php?autopay=cancelled');
 

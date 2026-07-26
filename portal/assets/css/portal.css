@@ -1,0 +1,175 @@
+/* ==========================================================================
+   Portal brand layer — the ONE stylesheet every page loads.
+   ==========================================================================
+
+   Loaded by the server-rendered pages (includes/header.php, login.php,
+   register.php, forgot_password.php, google-register.php) AND by the four SPA
+   shells (admin/instructor/parent/student app.php), so a class means the same
+   thing everywhere.
+
+   It exists because it didn't. The same brand rules were duplicated across
+   includes/header.php's inline <style>, frontend/src/index.css, and a separate
+   <style> block on each auth page — four copies that had already drifted. The
+   clearest symptom: .btn-primary is overridden to green in the SPA stylesheet,
+   but login.php never loads that file, so its "Log In" button rendered in
+   Bootstrap's default blue while every other primary button in the app was
+   green. Same class, two colours, decided by which stylesheet the page
+   happened to include.
+
+   Scope is deliberately narrow — brand tokens, the wordmark font, and the
+   button system. Layout rules (tables, cards, dark-mode fixes) are still
+   duplicated between header.php and index.css; that is a separate cleanup and
+   is not touched here.
+   ========================================================================== */
+
+:root {
+    --brand-purple:       #6f42c1;
+    --brand-purple-dark:  #5a32a3;
+    --brand-purple-light: #8a5cd6;
+    --brand-green:        #198754;
+    --brand-green-dark:   #157347;
+    --brand-blue:         #0d6efd;
+    --brand-blue-dark:    #0b5ed7;
+}
+
+/* ── Wordmark ─────────────────────────────────────────────────────────────
+   The dojo's name is set in Albertus Extra Bold, matching the printed rank
+   certificates and member cards (admin/certificate.php, admin/member_card.php
+   used to be the only two places this font appeared).
+
+   font-display:swap so the name is readable immediately and reflows when the
+   127 KB face arrives, rather than blocking paint. The CSP allows font-src
+   'self', so no policy change is needed for a self-hosted face. */
+@font-face {
+    font-family: 'Albertus Extra Bold';
+    src: url('../fonts/albertusextrabold_regular.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+/* Apply to the dojo's name wherever it is written out in full.
+ *
+ * The wordmark is ALWAYS black — that is the brand rule, and it matches the
+ * printed certificates and member cards. The colour is set here rather than
+ * left to inherit, so it survives on a coloured surface: on the brand purple
+ * (#6f42c1) black gives ~3.9:1, and at the 24px bold these headings use that
+ * clears WCAG AA's 3:1 threshold for large text. It would NOT be legible at
+ * body-copy size on purple, so keep the name large wherever it sits on the
+ * brand colour. */
+.brand-name {
+    font-family: 'Albertus Extra Bold', 'Albertus MT', 'Albertus', Optima, serif;
+    letter-spacing: .01em;
+    color: #000;
+}
+
+/* The line under the wordmark naming the page ("Student & Instructor Portal",
+   "Create an Account", "Forgot Password"). Shared so the three auth pages
+   cannot drift apart again. Sized up from the browser's <small> default and
+   left at full white — it was dimmed to .85 opacity and too small to read
+   comfortably against the purple. */
+.brand-subtitle {
+    font-size: 1.14em;
+    color: #fff;
+    opacity: 1;
+}
+
+/* ==========================================================================
+   Buttons — colour carries meaning
+   ==========================================================================
+
+   purple  (.btn-nav)      navigation, and affirmative data entry
+   green   (.btn-action)   act on something: add, edit, view, save
+   blue    (.btn-external) leaves the portal / opens a new tab — always with an
+                           icon, so the meaning survives for colour-blind users
+   grey    (.btn-filter)   an inactive filter or sort toggle; turns purple when
+                           active, because an applied filter is navigation
+   red     destructive — Bootstrap's own, already consistent. Prefer the OUTLINE
+           form (.btn-outline-danger): a red line that fills on hover, matching
+           the navbar's Log out button, so a destructive control reads as one
+           without shouting from every screen it appears on. Reserve solid
+           .btn-danger for a confirmation step that has already been chosen.
+
+   Bootstrap's .btn-primary is deliberately NOT redefined here. Overriding it
+   was the original mistake: it made .btn-primary, .btn-outline-primary,
+   .btn-outline-secondary and .btn-success render as four names for one green
+   button, so the class carried no meaning and authors picked between them at
+   random. Semantic names of our own leave Bootstrap's defaults intact. */
+
+.btn-action {
+    --bs-btn-bg: var(--brand-green);
+    --bs-btn-border-color: var(--brand-green);
+    --bs-btn-color: #fff;
+    --bs-btn-hover-bg: var(--brand-green-dark);
+    --bs-btn-hover-border-color: var(--brand-green-dark);
+    --bs-btn-hover-color: #fff;
+    --bs-btn-active-bg: var(--brand-green-dark);
+    --bs-btn-active-border-color: var(--brand-green-dark);
+    --bs-btn-active-color: #fff;
+    --bs-btn-disabled-bg: var(--brand-green);
+    --bs-btn-disabled-border-color: var(--brand-green);
+    --bs-btn-disabled-color: #fff;
+}
+
+.btn-nav {
+    --bs-btn-bg: var(--brand-purple);
+    --bs-btn-border-color: var(--brand-purple);
+    --bs-btn-color: #fff;
+    --bs-btn-hover-bg: var(--brand-purple-dark);
+    --bs-btn-hover-border-color: var(--brand-purple-dark);
+    --bs-btn-hover-color: #fff;
+    --bs-btn-active-bg: var(--brand-purple-dark);
+    --bs-btn-active-border-color: var(--brand-purple-dark);
+    --bs-btn-active-color: #fff;
+    --bs-btn-disabled-bg: var(--brand-purple);
+    --bs-btn-disabled-border-color: var(--brand-purple);
+    --bs-btn-disabled-color: #fff;
+}
+
+.btn-external {
+    --bs-btn-bg: var(--brand-blue);
+    --bs-btn-border-color: var(--brand-blue);
+    --bs-btn-color: #fff;
+    --bs-btn-hover-bg: var(--brand-blue-dark);
+    --bs-btn-hover-border-color: var(--brand-blue-dark);
+    --bs-btn-hover-color: #fff;
+    --bs-btn-active-bg: var(--brand-blue-dark);
+    --bs-btn-active-border-color: var(--brand-blue-dark);
+    --bs-btn-active-color: #fff;
+}
+
+/* Filter / sort toggles: neutral until applied, then purple. Defined here
+   rather than in the SPA stylesheet because admin/checkin_pin.php uses
+   .btn-filter too, and — never having loaded index.css — was rendering it
+   completely unstyled. */
+.btn-filter {
+    --bs-btn-bg: #e8e8e8;
+    --bs-btn-color: #333;
+    --bs-btn-border-color: #ccc;
+    --bs-btn-hover-bg: #d5d5d5;
+    --bs-btn-hover-color: #111;
+    --bs-btn-hover-border-color: #bbb;
+    --bs-btn-active-bg: #c8c8c8;
+    --bs-btn-active-color: #111;
+}
+.btn-filter.active {
+    background-color: var(--brand-purple) !important;
+    border-color: var(--brand-purple) !important;
+    color: #fff !important;
+    font-weight: 600;
+}
+
+[data-bs-theme="dark"] .btn-filter {
+    --bs-btn-bg: #3a3a3a;
+    --bs-btn-color: #ddd;
+    --bs-btn-border-color: #555;
+    --bs-btn-hover-bg: #4a4a4a;
+    --bs-btn-hover-color: #fff;
+    --bs-btn-active-bg: #555;
+    --bs-btn-active-color: #fff;
+}
+[data-bs-theme="dark"] .btn-filter.active {
+    background-color: var(--brand-purple-light) !important;
+    border-color: var(--brand-purple-light) !important;
+    color: #fff !important;
+}

@@ -56,7 +56,7 @@ function GeneralNoteEntry({
         <div className="d-flex gap-1 flex-shrink-0 ms-2">
           <button
             type="button"
-            className="btn btn-sm btn-outline-secondary py-0 note-edit-btn"
+            className="btn btn-sm btn-action py-0 note-edit-btn"
             onClick={() => setEditing(true)}
           >
             Edit
@@ -94,7 +94,7 @@ function GeneralNoteEntry({
           onChange={(e) => setContent(e.target.value)}
         />
         <div className="d-flex gap-2">
-          <button type="submit" className="btn btn-sm btn-primary">Save</button>
+          <button type="submit" className="btn btn-sm btn-action">Save</button>
           <button type="button" className="btn btn-sm btn-secondary note-cancel-btn" onClick={() => setEditing(false)}>
             Cancel
           </button>
@@ -137,7 +137,7 @@ function StudentNotesView({ studentId }: { studentId: number }) {
   return (
     <>
       <div className="d-flex align-items-center gap-3 mb-4">
-        <Link to="/admin/notes" className="btn btn-outline-secondary btn-sm">← Class Notes</Link>
+        <Link to="/admin/notes" className="btn btn-action btn-sm">← Class Notes</Link>
         <h4 className="mb-0">Notes — {personName(data.student.name)}</h4>
       </div>
 
@@ -173,7 +173,7 @@ function StudentNotesView({ studentId }: { studentId: number }) {
                     onChange={(e) => setContent(e.target.value)}
                   />
                 </div>
-                <button className="btn btn-primary">Save Note</button>
+                <button className="btn btn-action">Save Note</button>
               </form>
             </div>
           </div>
@@ -186,7 +186,7 @@ function StudentNotesView({ studentId }: { studentId: number }) {
               {data.notes.length > 0 && (
                 <button
                   id="editToggle"
-                  className={editing ? 'btn btn-sm btn-danger' : 'btn btn-sm btn-outline-secondary'}
+                  className={editing ? 'btn btn-sm btn-danger' : 'btn btn-sm btn-action'}
                   onClick={() => setEditing((v) => !v)}
                 >
                   {editing ? 'Done' : 'Edit'}
@@ -357,7 +357,7 @@ function CombinedView() {
                         </td>
                         <td>{st.note_count}</td>
                         <td>
-                          <Link to={`/admin/notes?student_id=${st.id}`} className="btn btn-sm btn-outline-primary">
+                          <Link to={`/admin/notes?student_id=${st.id}`} className="btn btn-sm btn-action">
                             View
                           </Link>
                         </td>
@@ -376,7 +376,7 @@ function CombinedView() {
       {/* General class notes */}
       <div className="d-flex align-items-center justify-content-between mb-3 mt-5">
         <h5 className="mb-0">General Class Notes</h5>
-        <button className="btn btn-success btn-sm" onClick={() => setAddOpen((v) => !v)}>
+        <button className="btn btn-action btn-sm" onClick={() => setAddOpen((v) => !v)}>
           + Add Entry
         </button>
       </div>
@@ -413,7 +413,7 @@ function CombinedView() {
                   onChange={(e) => setNewContent(e.target.value)}
                 />
               </div>
-              <button className="btn btn-primary">Save Entry</button>
+              <button className="btn btn-action">Save Entry</button>
             </form>
           </div>
         </div>
@@ -439,7 +439,7 @@ function CombinedView() {
             {data.class_notes.length > 0 && (
               <button
                 id="editToggle"
-                className={editing ? 'btn btn-sm btn-danger' : 'btn btn-sm btn-success'}
+                className={editing ? 'btn btn-sm btn-danger' : 'btn btn-sm btn-action'}
                 onClick={() => setEditing((v) => !v)}
               >
                 {editing ? 'Done' : 'Edit'}

@@ -1,6 +1,21 @@
 /// <reference types="vitest/config" />
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+
+// The version is owned by the PHP side (portal/includes/version.php) so there
+// is exactly one place to bump it at release time. Parsing it here compiles the
+// same number into the bundle, which is what lets a running SPA notice it is
+// talking to a different deploy than it was built against — the half-uploaded
+// deploy that blanked the attendance page. A build that cannot read the version
+// fails rather than shipping an "unknown" that would defeat the check.
+function appVersion(): string {
+  const file = fileURLToPath(new URL('../portal/includes/version.php', import.meta.url));
+  const match = /define\('APP_VERSION',\s*'([^']+)'\)/.exec(readFileSync(file, 'utf8'));
+  if (!match) throw new Error('APP_VERSION not found in portal/includes/version.php');
+  return match[1];
+}
 
 // Two modes:
 //
@@ -17,6 +32,7 @@ import react from '@vitejs/plugin-react';
 export default defineConfig(({ command }) => ({
   plugins: [react()],
   base: command === 'build' ? '/karate/portal/parent/dist/' : '/',
+  define: { __APP_VERSION__: JSON.stringify(appVersion()) },
   build: {
     outDir: '../portal/parent/dist',
     emptyOutDir: true,

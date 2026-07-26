@@ -6,8 +6,7 @@ require_once __DIR__ . '/vendor/autoload.php';
 
 if (!isset($_GET['code'])) {
     log_event('warning', 'auth', 'Google OAuth: no code in callback');
-    header('Location: ' . SITE_URL . '/login.php?error=google_failed');
-    exit;
+    redirect('/login.php?error=google_failed');
 }
 
 $client = new Google\Client();
@@ -19,8 +18,7 @@ $token = $client->fetchAccessTokenWithAuthCode(get_str('code'));
 
 if (isset($token['error'])) {
     log_event('warning', 'auth', 'Google OAuth: token exchange failed', ['error' => $token['error']]);
-    header('Location: ' . SITE_URL . '/login.php?error=google_failed');
-    exit;
+    redirect('/login.php?error=google_failed');
 }
 
 $client->setAccessToken($token);
@@ -33,8 +31,7 @@ $last   = $guser->familyName    ?? '';
 
 if ($email === '') {
     log_event('warning', 'auth', 'Google OAuth: no email returned from userinfo');
-    header('Location: ' . SITE_URL . '/login.php?error=google_failed');
-    exit;
+    redirect('/login.php?error=google_failed');
 }
 
 // ── Existing account — log in directly ───────────────────────
@@ -45,8 +42,7 @@ $user = $stmt->fetch();
 if ($user) {
     if (!$user['active']) {
         log_event('warning', 'auth', 'Google login on inactive account', ['email' => $email]);
-        header('Location: ' . SITE_URL . '/login.php?error=inactive');
-        exit;
+        redirect('/login.php?error=inactive');
     }
 
     session_regenerate_id(true);
@@ -72,6 +68,5 @@ $_SESSION['google_pending'] = [
     'last'  => $last,
 ];
 
-header('Location: ' . SITE_URL . '/google-register.php');
-exit;
+redirect('/google-register.php');
 

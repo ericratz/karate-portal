@@ -141,27 +141,18 @@ body { background: #f8f9fa; padding-bottom: 57px; }
 [data-bs-theme="dark"] .form-control,
 [data-bs-theme="dark"] .form-select { background-color: #2a2a2a; }
 
-/* Global green buttons (portal convention: primary = green, accent = purple) */
-.btn-primary {
-    --bs-btn-bg: #198754;
-    --bs-btn-border-color: #198754;
-    --bs-btn-hover-bg: #157347;
-    --bs-btn-hover-border-color: #146c43;
-    --bs-btn-active-bg: #146c43;
-    --bs-btn-color: #fff;
-    --bs-btn-hover-color: #fff;
-    --bs-btn-active-color: #fff;
-}
-.btn-outline-secondary, .btn-outline-primary {
-    --bs-btn-bg: #198754;
-    --bs-btn-color: #fff;
-    --bs-btn-border-color: #198754;
-    --bs-btn-hover-bg: #157347;
-    --bs-btn-hover-border-color: #146c43;
-    --bs-btn-hover-color: #fff;
-    --bs-btn-active-bg: #146c43;
-    --bs-btn-active-color: #fff;
-}
+/* The global button overrides that used to live here — .btn-primary and
+   .btn-outline-{primary,secondary} all forced to green — are gone. They made
+   four Bootstrap class names render as one identical green button, so the class
+   carried no meaning and the codebase picked between them at random (139 uses
+   across 38 files). They also could not reach login.php, which never loads this
+   stylesheet, so its .btn-primary rendered Bootstrap blue while every other
+   primary button was green.
+
+   Buttons are now semantic and live in portal/assets/css/portal.css, which
+   every page loads: .btn-action (green), .btn-nav (purple), .btn-external
+   (blue), .btn-filter (grey→purple). Bootstrap's own classes keep their own
+   meanings. */
 
 .btn-logout {
     color: #fff !important;
@@ -305,19 +296,10 @@ table.editing .delete-col { display: table-cell; }
   color: #fff !important;
 }
 
-/* .btn-primary is repurposed site-wide as green, so a genuinely blue
-   button (logs page backup download) needs its own class. */
-.btn-blue {
-  --bs-btn-bg: #0d6efd;
-  --bs-btn-border-color: #0d6efd;
-  --bs-btn-hover-bg: #0b5ed7;
-  --bs-btn-hover-border-color: #0a58ca;
-  --bs-btn-active-bg: #0a58ca;
-  --bs-btn-active-border-color: #0a53be;
-  --bs-btn-color: #fff;
-  --bs-btn-hover-color: #fff;
-  --bs-btn-active-color: #fff;
-}
+/* .btn-blue — this codebase's workaround for .btn-primary having been
+   repurposed as green, i.e. an ad-hoc name for "actually blue" — is gone. Its
+   single use (the logs page backup download) is now .btn-external in
+   portal.css, which names the meaning (leaves the portal) rather than a colour. */
 
 /* Admin navbar dropdown (React-controlled, no bootstrap JS).
    The purple treatment below is ported from includes/header.php — the SPA

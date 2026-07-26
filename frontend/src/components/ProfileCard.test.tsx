@@ -38,7 +38,7 @@ function jsonResponse(body: unknown, status = 200): Response {
 
 const meEnvelope = {
   ok: true,
-  data: { user_id: 6, username: 'test', role: 'parent', csrf_token: 'tok' },
+  data: { user_id: 6, username: 'test', role: 'parent', csrf_token: 'tok', app_version: __APP_VERSION__ },
 };
 
 function renderCard(onSaved = vi.fn()) {

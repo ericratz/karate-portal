@@ -5,8 +5,7 @@ require_once __DIR__ . '/includes/registration.php';
 
 // Must arrive here from Google callback
 if (empty($_SESSION['google_pending'])) {
-    header('Location: ' . SITE_URL . '/login.php');
-    exit;
+    redirect('/login.php');
 }
 
 // Already logged in
@@ -218,6 +217,7 @@ if ($step === 'confirm' && ($sel['type'] ?? '') === 'claim') {
           href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
           integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
           crossorigin="anonymous">
+    <link rel="stylesheet" href="<?= app_url('/assets/css/portal.css') ?>">
     <style nonce="<?= csp_nonce() ?>">
         body { background: #f0f0f0; }
         .register-card { max-width: 520px; margin: 48px auto 80px; }
@@ -268,8 +268,8 @@ if ($step === 'confirm' && ($sel['type'] ?? '') === 'claim') {
 
     <!-- ── Card header with step indicator ── -->
     <div class="card-header">
-        <h4>Shotokan Karate</h4>
-        <small>
+        <h4 class="brand-name">Shotokan Karate and <span class="text-nowrap">Self-defense</span></h4>
+        <small class="brand-subtitle">
             <?php if ($step === 'form')   echo 'Complete Your Registration';
             elseif ($step === 'match')    echo 'Find Your Record';
             else                          echo 'Confirm &amp; Create Account'; ?>
@@ -328,7 +328,7 @@ if ($step === 'confirm' && ($sel['type'] ?? '') === 'claim') {
                     <div class="form-text">Used for display within the portal.</div>
                 </div>
                 <div class="col-12">
-                    <button class="btn btn-primary w-100">Next &rarr;</button>
+                    <button class="btn btn-action w-100">Next &rarr;</button>
                 </div>
             </div>
         </form>
@@ -389,7 +389,7 @@ if ($step === 'confirm' && ($sel['type'] ?? '') === 'claim') {
             <input type="hidden" name="action"         value="select">
             <input type="hidden" name="selection_type" id="selType"      value="">
             <input type="hidden" name="student_id"     id="selStudentId" value="0">
-            <button type="submit" class="btn btn-primary w-100" id="continueBtn" disabled>
+            <button type="submit" class="btn btn-action w-100" id="continueBtn" disabled>
                 Continue &rarr;
             </button>
         </form>
@@ -450,7 +450,7 @@ if ($step === 'confirm' && ($sel['type'] ?? '') === 'claim') {
             <form method="post">
                 <?= csrf_input() ?>
                 <input type="hidden" name="action" value="confirm">
-                <button class="btn btn-primary w-100">Yes, this is me — Create Account</button>
+                <button class="btn btn-action w-100">Yes, this is me — Create Account</button>
             </form>
             <form method="post" class="text-center mt-2">
                 <input type="hidden" name="action" value="back2">
@@ -493,7 +493,7 @@ if ($step === 'confirm' && ($sel['type'] ?? '') === 'claim') {
             <form method="post">
                 <?= csrf_input() ?>
                 <input type="hidden" name="action" value="confirm">
-                <button class="btn btn-primary w-100">Create Account</button>
+                <button class="btn btn-action w-100">Create Account</button>
             </form>
             <form method="post" class="text-center mt-2">
                 <input type="hidden" name="action" value="back2">
@@ -534,7 +534,7 @@ if ($step === 'confirm' && ($sel['type'] ?? '') === 'claim') {
             <form method="post">
                 <?= csrf_input() ?>
                 <input type="hidden" name="action" value="confirm">
-                <button class="btn btn-primary w-100">Create Account</button>
+                <button class="btn btn-action w-100">Create Account</button>
             </form>
             <?php if (!empty($matches)): ?>
             <form method="post" class="text-center mt-2">
@@ -556,7 +556,7 @@ if ($step === 'confirm' && ($sel['type'] ?? '') === 'claim') {
 
     <div class="card-footer text-center text-muted small py-2">
         <?php if ($step === 'form'): ?>
-            Wrong account? <a href="<?= SITE_URL ?>/login.php">Go back</a>
+            Wrong account? <a href="<?= app_url() ?>/login.php">Go back</a>
         <?php else: ?>
             &nbsp;
         <?php endif; ?>

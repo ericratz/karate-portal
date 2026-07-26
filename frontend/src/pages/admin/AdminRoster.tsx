@@ -194,7 +194,7 @@ export default function AdminRoster() {
     <>
       <div className="d-flex align-items-center justify-content-between mb-3">
         <h3 className="mb-0">Roster</h3>
-        <a href="#/admin/student-edit" className="btn btn-success btn-sm">+ New Participant</a>
+        <a href="#/admin/student-edit" className="btn btn-action btn-sm">+ New Participant</a>
       </div>
       <div className="d-flex gap-2 align-items-center mb-4 flex-wrap">
         <span className="text-muted small">Sort:</span>

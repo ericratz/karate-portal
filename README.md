@@ -1,8 +1,10 @@
-# Shotokan Karate Portal — V4.7
+# Shotokan Karate Portal — V5.0
 
-A full-stack membership management platform for a martial arts dojo — role-based dashboards, attendance tracking, belt test progression, payments (PayPal + manual), digital waivers, and self-service check-in. Built with PHP and MySQL behind a React 19 + TypeScript SPA: all four portals (admin, instructor, parent, student) were incrementally migrated from server-rendered pages to a single code-split bundle over a versioned JSON API, with every old page URL preserved as a redirect stub. Fully containerized with Docker (app + database + CI toolchain) and verified by a 500+ test Playwright + PHPUnit + Vitest suite and Psalm static + taint analysis running on every push via GitHub Actions.
+A full-stack membership management platform for a martial arts dojo — role-based dashboards, attendance tracking, belt test progression, payments (PayPal + manual), digital waivers, and self-service check-in. Built with PHP and MySQL behind a React 19 + TypeScript SPA: all four portals (admin, instructor, parent, student) were incrementally migrated from server-rendered pages to a single code-split bundle over a versioned JSON API, with every old page URL preserved as a redirect stub. Fully containerized with Docker (app + database + CI toolchain) and verified by a 700+ test Playwright + PHPUnit + Vitest suite and Psalm static + taint analysis running on every push via GitHub Actions.
 
-See [`CHANGELOG.md`](CHANGELOG.md) for full version history.
+See [`CHANGELOG.md`](CHANGELOG.md) for full version history, and [`RELEASE.md`](RELEASE.md) for the
+deploy runbook — live is shared hosting with no build step, so the upload set is assembled by hand
+and the running version is stamped into the footer and the API.
 
 ---
 
@@ -14,9 +16,10 @@ See [`CHANGELOG.md`](CHANGELOG.md) for full version history.
 - **Defense-in-depth access control** — role checks on every protected page, plus per-record ownership scoping (a parent can only ever query their own linked children's data, verified server-side, not just hidden client-side)
 - **Digital workflows end-to-end** — self-service registration with duplicate-account detection, digital injury waivers, PayPal one-time + subscription payments, PDF rank certificates, PIN-gated self check-in
 - **Mobile-friendly** — layout and touch targets tuned for phone-width viewports, with a dedicated Playwright suite exercising core flows at mobile sizes
-- **518 Playwright tests + 122 PHPUnit tests + 50 Vitest component tests**, plus Psalm static analysis at level 3 and taint analysis, and strict TypeScript, run on every push via a self-hosted GitHub Actions CI pipeline
+- **535 Playwright tests + 150 PHPUnit tests + 50 Vitest component tests**, plus Psalm static analysis at level 3 and taint analysis, and strict TypeScript, run on every push via a self-hosted GitHub Actions CI pipeline
+- **Deployable by hand, verifiably** — live is shared hosting with no build step and no Composer, so the upload set is assembled by hand. The running version is stamped into the footer and the API, the SPA bundle compiles the same number in and shows a banner if the two ever disagree, and [`RELEASE.md`](RELEASE.md) carries the deploy order, verification and rollback. A partial upload used to present as a blank page with nothing in any log; it now announces itself
 - **Fully containerized** — app, database, and the entire CI toolchain (Psalm, PHPUnit, Playwright, plus opt-in nmap/Nikto/ZAP scanners) run in Docker via `docker compose`, so dev and CI share one reproducible stack — as of V4.4 the containers are also the local dev server, running the same PHP 8.4.23 as production instead of a machine-coupled XAMPP install
-- **21 shipped releases in 6+ weeks**, solo — from a bare attendance tracker to a full multi-role membership platform with payments, security hardening, static analysis, containerization, and CI (see [`CHANGELOG.md`](CHANGELOG.md))
+- **22 shipped releases in 7+ weeks**, solo — from a bare attendance tracker to a full multi-role membership platform with payments, security hardening, static analysis, containerization, and CI (see [`CHANGELOG.md`](CHANGELOG.md))
 - **Iterative data-model refinement** — guardian/family relationships and user-identity fields were each reworked once real usage patterns emerged, rather than over-designed upfront
 - **Security matured alongside features** — CSP hardening, an external verification pass (ZAP, sqlmap, Burp Suite, nmap, Nikto), a full test-suite audit for coverage gaps, and a documented/drilled backup-restore process.
 
@@ -30,8 +33,8 @@ See [`CHANGELOG.md`](CHANGELOG.md) for full version history.
 | Database | MySQL 8.0 — `karate_portal` |
 | Frontend | React 19 + TypeScript + Vite + react-router + Chart.js — one SPA for all four portals over `api/v1` JSON endpoints (admin routes lazy-loaded) · Bootstrap 5 + vanilla JS on the remaining server-rendered pages (auth, print/document views, profile edit) |
 | Payments | PayPal JS SDK (one-time + subscriptions), loaded on demand by the SPA pay route |
-| Auth | Username/password + Google OAuth |
-| Tests | Playwright 1.60 (518 tests) + PHPUnit 9.6 (122 tests) + Vitest/React Testing Library (50 tests) |
+| Auth | Username/password + Google OAuth, with optional TOTP two-factor on admin accounts (trusted-device, not per-login) |
+| Tests | Playwright 1.60 (535 tests) + PHPUnit 9.6 (150 tests) + Vitest/React Testing Library (50 tests) |
 | Static analysis | Psalm 6 (level 3 + taint analysis, both CI-gating) — PHP; TypeScript strict — SPA; `@ts-check` + JSDoc via `tsconfig.json` (`checkJs`) — test suite |
 | Containerization | Docker + docker-compose — `app` (php:8.4-apache), `db` (mysql:8.0), `ci` (Playwright + PHP + Composer) |
 | CI | GitHub Actions — self-hosted Windows runner, containerized pipeline; `tests.yml` (Psalm standard + taint, PHPUnit, Vitest, Playwright) on every push to `main`, plus `security.yml` (nmap/Nikto/ZAP) weekly and on-demand |
@@ -61,6 +64,7 @@ Role is derived at login from account state — not stored as an editable field 
 - CSRF tokens on every mutating form, with per-session token validation
 - Login and check-in PIN rate limiting (5 failures / 15 min)
 - Bcrypt password hashing; HttpOnly + SameSite session cookies (Secure on HTTPS), regenerated on login
+- Optional two-factor authentication on admin accounts (TOTP + single-use backup codes), prompted once per browser and then trusted for 180 days rather than at every login. The TOTP implementation is verified against the RFC 4226 / RFC 6238 test vectors; accepted codes are recorded so none can be replayed inside its own validity window, and trusted-device cookies use a split selector/validator token so a leaked table yields nothing usable
 - Content-Security-Policy with a nonce-only `script-src` — no inline event handlers anywhere in the codebase
 - Per-record ownership scoping on every parent/student-facing endpoint, independent of role checks — centralized in `includes/family.php` and covered by dedicated PHPUnit + Playwright regression tests
 - The `api/v1` JSON API (React SPA backend) reuses the same session auth; the `parent/*` endpoints apply family scoping with a whitelist serializer so admin-only columns never leave the server, the `instructor/*` endpoints are gated to instructor/admin (existing belt-test editing admin-only), the `admin/*` endpoints are admin-only, and every mutation requires the CSRF token in an `X-CSRF-Token` header
@@ -75,7 +79,7 @@ Role is derived at login from account state — not stored as an editable field 
 
 ## Testing
 
-518 Playwright tests across all four roles (dashboards, React SPA flows, access-control boundaries, security regressions, mobile viewport) plus 122 PHPUnit unit/integration tests and 50 Vitest + React Testing Library component tests, run automatically on every push via GitHub Actions alongside Psalm static and taint analysis and a strict-mode TypeScript check of the SPA — all inside Docker containers (app, database, and CI toolchain), so CI exercises the same reproducible stack used for local development. The Playwright/Node test files themselves are type-checked with `@ts-check` + JSDoc annotations (`tsconfig.json` with `checkJs`).
+535 Playwright tests across all four roles (dashboards, React SPA flows, access-control boundaries, security regressions, mobile viewport) plus 150 PHPUnit unit/integration tests and 50 Vitest + React Testing Library component tests, run automatically on every push via GitHub Actions alongside Psalm static and taint analysis and a strict-mode TypeScript check of the SPA — all inside Docker containers (app, database, and CI toolchain), so CI exercises the same reproducible stack used for local development. The Playwright/Node test files themselves are type-checked with `@ts-check` + JSDoc annotations (`tsconfig.json` with `checkJs`).
 
 Payment/OAuth callbacks, live email delivery, and scheduled cron jobs are validated through manual verification against the staging/production environment, since they depend on publicly reachable callback URLs and real third-party services.
 
@@ -197,7 +201,8 @@ karate/
 │   └── src/            #   typed api/v1 client, routes, components,
 │                       #   Vitest tests (admin routes code-split)
 ├── portal/
-│   ├── includes/       # Shared: auth, DB, config, family scoping, instructor helpers, API plumbing
+│   ├── includes/       # Shared: auth, DB, config, family scoping, instructor
+│   │                   #   helpers, TOTP + two-factor policy, API plumbing
 │   ├── api/v1/         # JSON API for the SPA (me + parent/* + instructor/*
 │   │                   #   + admin/*)
 │   ├── parent/         # app.php SPA shell (serves dist/) + redirect stubs;
@@ -206,12 +211,16 @@ karate/
 │   ├── instructor/     # app.php SPA shell + redirect stubs
 │   ├── admin/          # app.php SPA shell + redirect stubs; still PHP:
 │   │                   #   member cards, rank certificates, waiver view,
-│   │                   #   check-in PIN, database backup download
-│   └── cron/           # Scheduled jobs
-├── tests/              # Playwright test suite (518 tests, 40 spec files)
+│   │                   #   check-in PIN, two-factor setup, DB backup download
+│   ├── assets/         # Shared stylesheet + the brand wordmark font
+│   └── cron/           # Scheduled jobs (CLI-only guarded)
+├── tests/              # Playwright suite (535 tests, 42 spec files) +
+│                       #   visual/ capture harness (VISUAL=1, on demand)
 ├── docker/             # app.Dockerfile (builds the SPA in-image), ci.Dockerfile
 ├── docker-compose.yml  # app + db + ci + opt-in security scanners
-├── karate_schema.sql   # Fresh-install schema with seed data
+├── karate_schema.sql   # Fresh-install schema — the source of truth for shape
+├── migrations/         # One-time SQL, untracked; applied then discarded
+├── RELEASE.md          # Deploy runbook (live has no build step)
 ├── CHANGELOG.md        # Full version history
 └── README.md
 ```

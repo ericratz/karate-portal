@@ -39,6 +39,11 @@ if (isset($entry['css']) && is_array($entry['css'])) {
 <?php foreach ($css_files as $css): ?>
 <link rel="stylesheet" href="../parent/dist/<?= $css ?>">
 <?php endforeach; ?>
+<?php /* portal.css must come AFTER the bundle: the bundle contains Bootstrap,
+   whose .btn rule defines --bs-btn-bg:transparent at the same specificity as
+   our .btn-action, so whichever loads last wins. Loading it first silently
+   stripped the background off every button in the SPA. */ ?>
+<link rel="stylesheet" href="<?= app_url('/assets/css/portal.css') ?>">
 </head>
 <body>
 <div id="root"></div>

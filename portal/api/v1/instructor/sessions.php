@@ -69,19 +69,21 @@ if (!empty($sessions)) {
     $ids          = array_column($sessions, 'id');
     $placeholders = implode(',', array_fill(0, count($ids), '?'));
     $instr = db()->prepare(
-        "SELECT csi.session_id, u.id,
-                COALESCE(NULLIF(TRIM(CONCAT_WS(' ', u.first_name, u.last_name)), ''), u.username) AS name
+        "SELECT csi.session_id,
+                COALESCE(
+                    NULLIF(TRIM(CONCAT_WS(' ', s.first_name, s.last_name)), ''),
+                    NULLIF(TRIM(CONCAT_WS(' ', u.first_name, u.last_name)), ''),
+                    u.username
+                ) AS name
          FROM class_session_instructors csi
-         JOIN users u ON u.id = csi.user_id
+         LEFT JOIN students s ON s.id = csi.student_id
+         LEFT JOIN users u ON u.id = csi.user_id
          WHERE csi.session_id IN ($placeholders)
          ORDER BY name"
     );
     $instr->execute($ids);
     foreach ($instr->fetchAll() as $r) {
-        $instr_by_session[$r['session_id']][] = [
-            'id'   => (int)$r['id'],
-            'name' => (string)$r['name'],
-        ];
+        $instr_by_session[$r['session_id']][] = ['name' => (string)$r['name']];
     }
 }
 

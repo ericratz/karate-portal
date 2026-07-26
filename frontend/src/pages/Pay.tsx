@@ -258,7 +258,7 @@ export default function Pay() {
   return (
     <>
       <div className="d-flex align-items-center gap-3 mb-4">
-        <Link to={`/student/${selectedId}`} className="btn btn-sm btn-outline-secondary">
+        <Link to={`/student/${selectedId}`} className="btn btn-sm btn-action">
           ← Dashboard
         </Link>
         <h4 className="mb-0">Make a Payment</h4>
@@ -546,7 +546,7 @@ export default function Pay() {
                   <div className="text-muted small mt-1">
                     Transaction ID: <code>{receipt.txnId}</code>
                   </div>
-                  <Link to="/" className="btn btn-sm btn-success mt-2">
+                  <Link to="/" className="btn btn-sm btn-action mt-2">
                     Back to Dashboard
                   </Link>
                 </div>
@@ -597,7 +597,7 @@ export default function Pay() {
                     ) : (
                       <button
                         type="button"
-                        className="btn btn-sm btn-success"
+                        className="btn btn-sm btn-action"
                         disabled={autopayBusy}
                         onClick={() => void setupAutopay(f.id)}
                       >
@@ -619,7 +619,7 @@ export default function Pay() {
               <p className="mb-0">
                 <strong>Or mail a check</strong> to:
                 <br />
-                Shotokan Karate and Self-defense
+                <span className="brand-name">Shotokan Karate and Self-defense</span>
                 <br />
                 PO Box 1288, Orem, Utah 84059-1288
               </p>

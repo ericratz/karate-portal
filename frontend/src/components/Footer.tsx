@@ -89,7 +89,7 @@ export default function Footer() {
             <div className="card-header bg-white d-flex justify-content-between align-items-center">
               <span className="fw-semibold">Questions or Issues?</span>
               <button
-                className="btn btn-sm btn-warning"
+                className="btn btn-sm btn-action"
                 type="button"
                 onClick={() => setOpen((v) => !v)}
               >
@@ -115,7 +115,7 @@ export default function Footer() {
                           onChange={(e) => setMessage(e.target.value)}
                         />
                       </div>
-                      <button type="submit" className="btn btn-primary" disabled={status === 'sending'}>
+                      <button type="submit" className="btn btn-action" disabled={status === 'sending'}>
                         {status === 'sending' ? 'Sending…' : 'Send Message'}
                       </button>
                     </form>
@@ -125,7 +125,12 @@ export default function Footer() {
             )}
           </div>
         </div>
-        <div className="footer-side-text text-end">© 2026 Ratzlaff Family</div>
+        <div className="footer-side-text text-end">
+          © 2026 Ratzlaff Family
+          {/* Bundle's own version, not the server's — SessionContext warns when
+              the two disagree. Mirrors the stamp in includes/footer.php. */}
+          <span> · v{__APP_VERSION__}</span>
+        </div>
       </div>
     </footer>
   );

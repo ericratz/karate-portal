@@ -76,14 +76,14 @@ export default function PaymentHistory() {
                 <button
                   key={yr}
                   type="button"
-                  className={`btn btn-sm ${year === yr ? 'btn-primary' : 'btn-outline-secondary'}`}
+                  className={`btn btn-sm ${year === yr ? 'btn-action' : 'btn-action'}`}
                   onClick={() => setYear(yr)}
                 >
                   {yr}
                 </button>
               ))}
               {year !== null && (
-                <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => setYear(null)}>
+                <button type="button" className="btn btn-sm btn-action" onClick={() => setYear(null)}>
                   All
                 </button>
               )}

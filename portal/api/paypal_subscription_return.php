@@ -10,7 +10,7 @@ require_login();
 // Both roles land back on their pay page (now the SPA pay route) so the
 // success message shows next to the auto-pay list.
 $is_parent = has_role('parent');
-$pay_url   = SITE_URL . ($is_parent ? '/parent/pay.php' : '/student/pay.php');
+$pay_url   = app_url($is_parent ? '/parent/pay.php' : '/student/pay.php');
 $home_url  = $pay_url;
 
 $sub_id = get_str('subscription_id');

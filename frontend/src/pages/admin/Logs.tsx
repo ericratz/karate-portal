@@ -125,7 +125,10 @@ export default function Logs() {
     <>
       <div className="d-flex align-items-center justify-content-between mb-3">
         <h4 className="mb-0">Logs</h4>
-        <a href="db_backup.php" className="btn btn-blue btn-sm">⬇ Download Backup</a>
+        {/* Leaves the SPA for a server-rendered download, so it is .btn-external
+            (blue + symbol). Root-relative, not "db_backup.php": a document-
+            relative href resolves against whichever shell is current. */}
+        <a href="/karate/portal/admin/db_backup.php" className="btn btn-external btn-sm">⬇ Download Backup</a>
       </div>
 
       <ul className="nav nav-tabs mb-3">

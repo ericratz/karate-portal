@@ -236,7 +236,7 @@ export default function Dashboard() {
           >
             Member Card <ExtIcon size={12} />
           </a>
-          <Link to={`/pay/${studentId}`} className="btn btn-success">
+          <Link to={`/pay/${studentId}`} className="btn btn-action">
             Make a Payment
           </Link>
         </div>
@@ -271,7 +271,7 @@ export default function Dashboard() {
                 <div className="card-header bg-white fw-semibold border-bottom d-flex justify-content-between align-items-center">
                   <span>Recent Attendance</span>
                   {data.recent_attendance.length === 10 && (
-                    <Link to={`/attendance/${studentId}`} className="btn btn-sm btn-outline-secondary">Show All</Link>
+                    <Link to={`/attendance/${studentId}`} className="btn btn-sm btn-action">Show All</Link>
                   )}
                 </div>
                 <div className="card-body p-0" style={{ maxHeight: 300, overflowY: 'auto' }}>
@@ -301,7 +301,7 @@ export default function Dashboard() {
                 <div className="card-header bg-white fw-semibold border-bottom d-flex justify-content-between align-items-center">
                   <span>Recent Payments</span>
                   {data.recent_payments.length === 10 && (
-                    <Link to={`/payments/${studentId}`} className="btn btn-sm btn-outline-secondary">Show All</Link>
+                    <Link to={`/payments/${studentId}`} className="btn btn-sm btn-action">Show All</Link>
                   )}
                 </div>
                 <div className="card-body p-0" style={{ maxHeight: 300, overflowY: 'auto' }}>
@@ -332,7 +332,7 @@ export default function Dashboard() {
                 <div className="card-header bg-white fw-semibold border-bottom d-flex justify-content-between align-items-center">
                   <span>Belt Tests</span>
                   {data.recent_belt_tests.length === 10 && (
-                    <Link to={`/belt-tests/${studentId}`} className="btn btn-sm btn-outline-secondary">Show All</Link>
+                    <Link to={`/belt-tests/${studentId}`} className="btn btn-sm btn-action">Show All</Link>
                   )}
                 </div>
                 <div className="card-body p-0" style={{ maxHeight: 300, overflowY: 'auto' }}>
@@ -394,7 +394,7 @@ export default function Dashboard() {
                                   href={`../admin/certificate.php?student_id=${studentId}&rank_id=${rh.rank_id}`}
                                   target="_blank"
                                   rel="noreferrer"
-                                  className="btn btn-sm btn-outline-secondary py-0"
+                                  className="btn btn-sm btn-action py-0"
                                 >
                                   Certificate
                                 </a>

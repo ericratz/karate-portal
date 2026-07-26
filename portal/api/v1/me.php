@@ -15,4 +15,7 @@ api_respond([
     'username'   => (string)($_SESSION['username'] ?? ''),
     'role'       => (string)($_SESSION['role'] ?? ''),
     'csrf_token' => csrf_token(),
+    // What the PHP side is running. The bundle compares it against the version
+    // compiled into itself to catch a half-uploaded deploy — see version.php.
+    'app_version' => APP_VERSION,
 ]);

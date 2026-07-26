@@ -113,8 +113,11 @@ test('submitting without student and rank shows validation error', async ({ page
 test('instructor dashboard shows Recent Belt Tests and links to the belt tests list', async ({ page }) => {
     await page.goto(BASE + '/instructor/');
     await expect(page.locator('.card-header').filter({ hasText: 'Recent Belt Tests' })).toBeVisible();
-    // SPA route link (was a[href="belt_tests_all.php"])
-    await expect(page.locator('a[href*="belt-tests"]').first()).toBeVisible();
+    // SPA route link (was a[href="belt_tests_all.php"]). Excludes .dropdown-item:
+    // instructors now have a navbar Menu that also links belt-tests, and its
+    // items are hidden until the menu is opened, so a bare .first() would resolve
+    // to the collapsed menu entry rather than the dashboard card's link.
+    await expect(page.locator('a[href*="belt-tests"]:not(.dropdown-item)').first()).toBeVisible();
 });
 
 test('belt_tests_all.php loads, shows count, and edit toggle works', async ({ page }) => {

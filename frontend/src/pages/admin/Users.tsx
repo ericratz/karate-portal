@@ -92,7 +92,7 @@ function UserRow({
       </td>
       <td>{u.last_login ? fmtDate(u.last_login) : 'Never'}</td>
       <td>
-        <a href={`user_profile.php?id=${u.id}`} className="btn btn-sm btn-outline-secondary">View</a>
+        <a href={`user_profile.php?id=${u.id}`} className="btn btn-sm btn-action">View</a>
       </td>
     </tr>
   );

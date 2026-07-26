@@ -146,7 +146,7 @@ function EditRow({
             />
           </div>
           <div className="col-auto">
-            <button type="submit" className="btn btn-sm btn-success">Save</button>
+            <button type="submit" className="btn btn-sm btn-action">Save</button>
             <button type="button" className="btn btn-sm btn-secondary toggle-edit-row-btn" onClick={onCancel}>
               {' '}Cancel
             </button>
@@ -190,6 +190,8 @@ export default function Payments() {
   const formCard = useRef<HTMLDivElement>(null);
   // Tracks the last auto-filled amount so a hand-edited value is never clobbered
   const lastAutoValue = useRef('');
+  // Guards the one-shot ?action=add preselect below
+  const preselectDone = useRef(false);
 
   const load = useCallback(() => {
     const qs = new URLSearchParams();
@@ -205,30 +207,42 @@ export default function Payments() {
 
   useEffect(load, [load]);
 
-  // ?action=add&student_id=N — preselect the student once the list arrives
+  // ?action=add&student_id=N — preselect the student once the list arrives.
+  // "Once" is now an explicit ref rather than being implied by an incomplete
+  // dependency list: the old version omitted searchParams and payStudent to stop
+  // itself re-running, which is what the suppression comment was hiding.
   useEffect(() => {
-    if (!data || searchParams.get('action') !== 'add') return;
+    if (preselectDone.current || !data) return;
+    if (searchParams.get('action') !== 'add') return;
     const pre = Number(searchParams.get('student_id') ?? 0);
-    if (pre && !payStudent) {
-      const s = data.students.find((st) => st.id === pre);
-      if (s) setPayStudent({ id: s.id, label: `${s.first_name} ${s.last_name}` });
+    if (!pre) return;
+    const s = data.students.find((st) => st.id === pre);
+    if (s) {
+      setPayStudent({ id: s.id, label: `${s.first_name} ${s.last_name}` });
+      preselectDone.current = true;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data]);
+  }, [data, searchParams]);
 
   // Per-type auto-amount — same "only overwrite untouched values" rule as the
-  // old TYPE_FEES script
+  // old TYPE_FEES script.
+  //
+  // `amount` is read through the functional updater instead of the closure, so
+  // it is genuinely not a dependency. Listing it would have been actively wrong:
+  // the effect would then re-run as the user typed, and clearing the field would
+  // instantly refill it, fighting the person editing it.
   useEffect(() => {
     if (!data) return;
     const fee = data.fees[type];
-    const current = parseFloat(amount);
-    const isBlankOrZero = !amount || Number.isNaN(current) || current === 0;
-    const isUntouched = amount === lastAutoValue.current;
-    if ((isBlankOrZero || isUntouched) && fee !== undefined) {
-      setAmount(String(fee));
+    if (fee === undefined) return;
+    setAmount((prev) => {
+      const current = parseFloat(prev);
+      const isBlankOrZero = !prev || Number.isNaN(current) || current === 0;
+      const isUntouched = prev === lastAutoValue.current;
+      if (!isBlankOrZero && !isUntouched) return prev;   // hand-edited — leave it
+      // Idempotent, so React's StrictMode double-invoke is harmless here.
       lastAutoValue.current = String(fee);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+      return String(fee);
+    });
   }, [type, data]);
 
   const setFilter = (key: string, value: string) => {
@@ -329,8 +343,8 @@ export default function Payments() {
       <div className="d-flex align-items-center justify-content-between mb-4">
         <h3 className="mb-0">Payments</h3>
         <div className="d-flex gap-2">
-          <a href="#/admin/student-edit" className="btn btn-success btn-sm">+ New Participant</a>
-          <button className="btn btn-success btn-sm" onClick={() => setFormOpen((v) => !v)}>
+          <a href="#/admin/student-edit" className="btn btn-action btn-sm">+ New Participant</a>
+          <button className="btn btn-action btn-sm" onClick={() => setFormOpen((v) => !v)}>
             + Record Payment
           </button>
         </div>
@@ -473,7 +487,7 @@ export default function Payments() {
               </div>
 
               <div className="col-12">
-                <button type="submit" className="btn btn-success">Save Payment</button>
+                <button type="submit" className="btn btn-action">Save Payment</button>
               </div>
             </form>
           </div>
@@ -572,7 +586,7 @@ export default function Payments() {
               {data.payments.length > 0 && (
                 <button
                   id="editToggle"
-                  className={editing ? 'btn btn-sm btn-warning' : 'btn btn-sm btn-outline-secondary'}
+                  className={editing ? 'btn btn-sm btn-nav' : 'btn btn-sm btn-action'}
                   onClick={() => {
                     setEditing((v) => {
                       if (v) setOpenEditRows(new Set());
@@ -650,7 +664,7 @@ function PaymentRows({
         <td>
           <button
             type="button"
-            className="btn btn-sm btn-outline-success py-0 prefill-payment-btn"
+            className="btn btn-sm btn-action py-0 prefill-payment-btn"
             data-student-id={p.student_id}
             data-student-name={p.student_name}
             title="Add payment for this student"
@@ -680,7 +694,7 @@ function PaymentRows({
         <td className="edit-col">
           <button
             type="button"
-            className="btn btn-sm btn-outline-primary py-0 toggle-edit-row-btn"
+            className="btn btn-sm btn-action py-0 toggle-edit-row-btn"
             data-id={p.id}
             onClick={onToggleEdit}
           >

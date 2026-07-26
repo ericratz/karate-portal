@@ -59,7 +59,7 @@ export default function ResolveLink() {
   return (
     <>
       <div className="d-flex align-items-center gap-2 mb-4">
-        <a href="index.php" className="btn btn-sm btn-outline-secondary">← Dashboard</a>
+        <a href="index.php" className="btn btn-sm btn-action">← Dashboard</a>
         <h4 className="mb-0">Resolve Linking</h4>
       </div>
 
@@ -208,7 +208,9 @@ export default function ResolveLink() {
                       </table>
                     </div>
 
-                    <button type="submit" id="confirmBtn" className="btn btn-warning w-100 mt-3" disabled={!pickedId}>
+                    {/* Purple: confirms a choice already made, the same shape as
+                        the Edit→Done toggles. */}
+                    <button type="submit" id="confirmBtn" className="btn btn-nav w-100 mt-3" disabled={!pickedId}>
                       Link Account to Selected Record
                     </button>
                   </form>

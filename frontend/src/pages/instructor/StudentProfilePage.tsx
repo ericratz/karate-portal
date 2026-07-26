@@ -104,11 +104,11 @@ export default function StudentProfilePage() {
               href={`../admin/member_card.php?student_id=${s.id}`}
               target="_blank"
               rel="noreferrer"
-              className="btn btn-sm btn-outline-secondary"
+              className="btn btn-sm btn-action"
             >
               Member Card
             </a>
-            <a href={`../admin/student_edit.php?id=${s.id}&ref=profile`} className="btn btn-sm btn-success">
+            <a href={`../admin/student_edit.php?id=${s.id}&ref=profile`} className="btn btn-sm btn-action">
               Full Edit
             </a>
           </div>
@@ -187,7 +187,7 @@ export default function StudentProfilePage() {
                               href={`../admin/certificate.php?student_id=${s.id}&rank_id=${r.rank_id}`}
                               target="_blank"
                               rel="noreferrer"
-                              className="btn btn-sm btn-outline-secondary py-0"
+                              className="btn btn-sm btn-action py-0"
                             >
                               Certificate
                             </a>
@@ -383,7 +383,7 @@ function ProfileInfoCard({
             <button
               type="button"
               id="profileEditBtn"
-              className={`btn btn-sm ${editing ? 'btn-warning' : 'btn-success'}`}
+              className={`btn btn-sm ${editing ? 'btn-nav' : 'btn-action'}`}
               disabled={saving}
               onClick={() => {
                 if (editing) void save();
@@ -424,7 +424,7 @@ function ProfileInfoCard({
                 <>
                   <span className="text-success">✓</span>{' '}
                   {s.injury_waiver_date ? fmtDate(s.injury_waiver_date) : ''}
-                  <a href={`../admin/waiver_view.php?student_id=${s.id}`} className="btn btn-sm btn-outline-secondary ms-2">
+                  <a href={`../admin/waiver_view.php?student_id=${s.id}`} className="btn btn-sm btn-action ms-2">
                     View
                   </a>
                 </>
@@ -556,12 +556,12 @@ function AttendanceCard({
         <span>Sessions Attended</span>
         <div className="d-flex gap-2">
           {canEdit && !editing && (
-            <button type="button" id="attEditBtn" className="btn btn-sm btn-outline-secondary" onClick={startEdit}>
+            <button type="button" id="attEditBtn" className="btn btn-sm btn-action" onClick={startEdit}>
               Edit
             </button>
           )}
           {canEdit && editing && (
-            <button type="button" id="attConfirmBtn" className="btn btn-sm btn-success"
+            <button type="button" id="attConfirmBtn" className="btn btn-sm btn-action"
                     disabled={saving} onClick={() => void confirm()}>
               Confirm
             </button>
@@ -684,7 +684,7 @@ function NotesCard({ data, onAdded }: { data: InstructorStudentProfile; onAdded:
             value={content}
             onChange={(e) => setContent(e.target.value)}
           />
-          <button type="submit" className="btn btn-sm btn-primary" disabled={saving}>Save Note</button>
+          <button type="submit" className="btn btn-sm btn-action" disabled={saving}>Save Note</button>
         </form>
       </div>
     </div>

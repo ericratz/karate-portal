@@ -58,8 +58,7 @@ function verify_csrf(): void {
 // ── Role / login guards ──────────────────────────────────────
 function require_login(): void {
     if (empty($_SESSION['user_id'])) {
-        header('Location: ' . SITE_URL . '/login.php');
-        exit;
+        redirect('/login.php');
     }
 }
 
@@ -150,7 +149,36 @@ function audit(string $action, ?string $target_type = null, ?int $target_id = nu
 }
 
 // ── Login / logout ────────────────────────────────────────────
-// Returns 'ok' | 'invalid' | 'inactive' | 'rate_limited'
+
+/**
+ * Establish the logged-in session for a verified user.
+ *
+ * Split out of attempt_login() because there are now two ways to arrive here —
+ * straight from the password, or from two_factor.php once a code has been
+ * accepted — and both must set up the session identically. Session state is
+ * written in exactly one place.
+ */
+function establish_session(int $user_id, string $username, bool $is_admin): void {
+    db()->prepare('UPDATE users SET last_login = NOW() WHERE id = ?')->execute([$user_id]);
+
+    // @: session_regenerate_id() warns "headers already sent" under CLI/PHPUnit
+    // (no real HTTP header stream there) — harmless, never occurs on real requests.
+    @session_regenerate_id(true);
+    $_SESSION['user_id']  = $user_id;
+    $_SESSION['username'] = $username;
+
+    $stype = db()->prepare('SELECT student_type FROM students WHERE user_id = ? LIMIT 1');
+    $stype->execute([$user_id]);
+    $stype_val = $stype->fetchColumn() ?: 'student';
+    $_SESSION['role'] = $is_admin ? 'admin' : $stype_val;
+
+    // The half-finished login is over; make sure none of it survives.
+    unset($_SESSION['twofa_pending']);
+
+    audit('login_success');
+}
+
+// Returns 'ok' | 'twofa' | 'invalid' | 'inactive' | 'rate_limited'
 function attempt_login(string $username, string $password): string {
     $ip = $_SERVER['REMOTE_ADDR'] ?? '';
 
@@ -192,30 +220,49 @@ function attempt_login(string $username, string $password): string {
              ->execute([$new_hash, $user['id']]);
     }
 
-    db()->prepare('UPDATE users SET last_login = NOW() WHERE id = ?')
-         ->execute([$user['id']]);
+    // Second factor, if this account has one and this browser is not trusted.
+    // Nothing about the session is established yet: the pending marker below
+    // carries no privileges, and every guard checks $_SESSION['user_id'], which
+    // is still unset. A half-finished login can therefore reach nothing.
+    require_once __DIR__ . '/twofactor.php';
+    if (twofa_challenge_required((int)$user['id'], (bool)$user['is_admin'])) {
+        @session_regenerate_id(true);
+        $_SESSION['twofa_pending'] = [
+            'user_id'  => (int)$user['id'],
+            'username' => $username,
+            'is_admin' => (bool)$user['is_admin'],
+            // The challenge expires with the tab, not eventually: a pending
+            // login left open on a shared machine should not stay resumable.
+            'expires'  => time() + 600,
+        ];
+        audit('login_twofa_required', 'user', (int)$user['id']);
+        return 'twofa';
+    }
 
-    // @: session_regenerate_id() warns "headers already sent" under CLI/PHPUnit
-    // (no real HTTP header stream there) — harmless, never occurs on real requests.
-    @session_regenerate_id(true);
-    $_SESSION['user_id']  = $user['id'];
-    $_SESSION['username'] = $username;
-
-    $stype = db()->prepare('SELECT student_type FROM students WHERE user_id = ? LIMIT 1');
-    $stype->execute([$user['id']]);
-    $stype_val = $stype->fetchColumn() ?: 'student';
-    $_SESSION['role'] = $user['is_admin'] ? 'admin' : $stype_val;
-
-    audit('login_success');
+    establish_session((int)$user['id'], $username, (bool)$user['is_admin']);
     return 'ok';
+}
+
+/**
+ * The pending half-login, if one is live and unexpired. Returns null otherwise,
+ * clearing anything stale on the way out.
+ */
+function twofa_pending(): ?array {
+    $p = $_SESSION['twofa_pending'] ?? null;
+    if (!is_array($p) || !isset($p['user_id'], $p['expires'])) return null;
+    if (time() > (int)$p['expires']) {
+        unset($_SESSION['twofa_pending']);
+        return null;
+    }
+    return $p;
 }
 
 function dashboard_url(string $role): string {
     switch ($role) {
-        case 'admin':      return SITE_URL . '/admin/';
-        case 'instructor': return SITE_URL . '/instructor/';
-        case 'parent':     return SITE_URL . '/parent/';
-        default:           return SITE_URL . '/student/'; // student, guest
+        case 'admin':      return app_url('/admin/');
+        case 'instructor': return app_url('/instructor/');
+        case 'parent':     return app_url('/parent/');
+        default:           return app_url('/student/'); // student, guest
     }
 }
 
@@ -228,8 +275,7 @@ function logout(): void {
             (string)$p['path'], (string)$p['domain'], (bool)$p['secure'], (bool)$p['httponly']);
     }
     session_destroy();
-    header('Location: ' . SITE_URL . '/login.php');
-    exit;
+    redirect('/login.php');
 }
 
 /** Render a person's name with proper capitalisation and XSS escaping. */

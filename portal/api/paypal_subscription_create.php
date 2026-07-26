@@ -10,7 +10,10 @@ require_once __DIR__ . '/../includes/paypal.php';
 require_login();
 verify_csrf();
 
-$back = SITE_URL . (has_role('parent') ? '/parent/pay.php' : '/student/pay.php');
+// In-app landing page — root-relative, so it is not tied to the hostname in
+// SITE_URL. (The URLs PayPal itself calls back on must stay absolute; those
+// live in includes/paypal.php.)
+$back = app_url(has_role('parent') ? '/parent/pay.php' : '/student/pay.php');
 
 $own = db()->prepare(
     'SELECT s.id, s.first_name, s.last_name, s.email FROM students s WHERE s.user_id = ?'

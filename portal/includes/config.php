@@ -24,8 +24,50 @@ if (file_exists($_env_file)) {
 }
 
 // ── Site ──────────────────────────────────────────────────────────────────
+require_once __DIR__ . '/version.php';   // APP_VERSION — see RELEASE.md
 define('SITE_NAME', 'Shotokan Karate Portal');
 if (!defined('SITE_URL')) define('SITE_URL', 'http://localhost/karate/portal');
+
+// ── Internal links and redirects ──────────────────────────────────────────
+// SITE_URL is absolute and environment-specific, which is exactly wrong for
+// links that stay inside the app: it hardcodes the hostname into every internal
+// href and Location header, so the server only works under the one hostname the
+// live .env happens to name. A stale value there breaks every redirect at once.
+//
+// app_url() returns a ROOT-RELATIVE path instead ('/karate/portal/login.php'),
+// derived from SITE_URL's path component. That is hostname-independent, works
+// under any shell (admin/, instructor/, parent/, student/), and is unambiguous
+// in a way a document-relative path is not — a bare 'login.php' resolves
+// against whichever directory the current page lives in.
+//
+// SITE_URL is still correct — and still required — for links that LEAVE the
+// app: password-reset emails, the Google OAuth redirect_uri, and PayPal's
+// return/cancel URLs all have to name the host. Those deliberately keep it.
+//
+// RFC 7231 §7.1.2 has permitted relative Location headers since 2014, and every
+// browser supports them.
+function base_path(): string {
+    static $base = null;
+    if ($base === null) {
+        $path = parse_url(SITE_URL, PHP_URL_PATH);
+        $base = rtrim(is_string($path) ? $path : '', '/');
+    }
+    return $base;
+}
+
+/** Root-relative URL for an in-app path, e.g. app_url('/login.php'). */
+function app_url(string $path = ''): string {
+    if ($path !== '' && $path[0] !== '/') $path = '/' . $path;
+    // base_path() is '' when the app is served from the document root, in which
+    // case '/' alone is the right answer rather than the empty string.
+    return (base_path() . $path) ?: '/';
+}
+
+/** Redirect to an in-app path and stop. */
+function redirect(string $path): never {
+    header('Location: ' . app_url($path));
+    exit;
+}
 
 // ── HTTPS detection ───────────────────────────────────────────────────────
 // Production runs on shared hosting (Midphase/StackCP) behind a TLS-terminating
@@ -108,6 +150,9 @@ define('SEMINAR_FEE', 60.00);
 // ── Google OAuth ──────────────────────────────────────────────────────────
 if (!defined('GOOGLE_CLIENT_ID'))     define('GOOGLE_CLIENT_ID',     '');
 if (!defined('GOOGLE_CLIENT_SECRET')) define('GOOGLE_CLIENT_SECRET', '');
+// Absolute on purpose: Google redirects here from its own domain, and this
+// exact string must match the authorised redirect URI registered in the Google
+// Cloud console. Not app_url().
 define('GOOGLE_REDIRECT_URI', SITE_URL . '/google-callback.php');
 
 // ── PayPal ────────────────────────────────────────────────────────────────
@@ -136,6 +181,7 @@ function send_payment_receipt(string $to_email, string $to_name, array $items, f
           . "  Date:   " . date('d M Y') . "\n";
     if ($txn_id) $body .= "  Transaction ID: {$txn_id}\n";
     $body .= "\nView your full payment history:\n"
+           // Absolute on purpose — this is an email body. Not app_url().
            . SITE_URL . "/student/payment_history.php\n\n"
            . "Thank you,\n" . SITE_NAME;
 

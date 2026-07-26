@@ -81,16 +81,32 @@ async function visit(page, urlPath, label) {
  * @returns {Promise<void>}
  */
 async function logout(page) {
-    // Leaving an SPA page can race: an in-flight api/v1 fetch 401s once the
-    // session dies and the client redirects to login.php itself, aborting our
-    // navigation (net::ERR_ABORTED) even though both roads end at login.
-    // Tolerate the loser, then make sure the session is actually gone.
-    await page.goto(BASE + '/logout.php').catch(() => {});
-    await page.waitForLoadState('domcontentloaded');
-    if (!page.url().includes('login.php')) {
-        await page.goto(BASE + '/logout.php');
-        await page.waitForLoadState('domcontentloaded');
+    // Leaving an SPA page races with the app itself: an in-flight api/v1 fetch
+    // 401s the moment the session dies, and the client redirects to login.php
+    // on its own — interrupting our navigation to logout.php.
+    //
+    // Both roads end at login.php, and either one means the session is gone (the
+    // client's redirect only happens BECAUSE the server rejected it). So the
+    // question is not "did our navigation win" but "have we settled on login
+    // yet" — this waits for that rather than assuming it after a fixed step.
+    //
+    // The previous version tolerated the race on its first goto but retried with
+    // an unguarded one, so a retry issued while the interrupting navigation was
+    // still in flight threw "interrupted by another navigation" and failed the
+    // test. That was the suite's one recurring flake.
+    for (let attempt = 0; attempt < 3; attempt++) {
+        await page.goto(BASE + '/logout.php').catch(() => {});
+        try {
+            await page.waitForURL(/login\.php/, { waitUntil: 'domcontentloaded', timeout: 5000 });
+            return;
+        } catch {
+            // Not settled yet — go round again rather than guessing.
+        }
     }
+    // Deliberately not "navigate to login.php and call it done": that would make
+    // the URL assertion pass while leaving a live session, turning a real
+    // failure into a silent one.
+    throw new Error(`logout() never reached login.php — still at ${page.url()}`);
 }
 
 /**

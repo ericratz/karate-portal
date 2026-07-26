@@ -26,7 +26,7 @@ export default function TakeAttendance() {
   const [ctx, setCtx] = useState<AttendanceContext | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [present, setPresent] = useState<Set<number>>(new Set());
-  const [instructorIds, setInstructorIds] = useState<Set<number>>(new Set());
+  const [instructorKeys, setInstructorKeys] = useState<Set<string>>(new Set());
   const [classType, setClassType] = useState('class');
   const [nameFilter, setNameFilter] = useState('');
   const [msg, setMsg] = useState<string | null>(null);
@@ -41,7 +41,7 @@ export default function TakeAttendance() {
       .then((data) => {
         setCtx(data);
         setClassType(data.class_type);
-        setInstructorIds(new Set(data.selected_instructor_ids));
+        setInstructorKeys(new Set(data.selected_instructor_keys));
         const ids = new Set(data.students.filter((s) => s.present).map((s) => s.id));
         // Arriving from a profile page pre-checks that student
         if (highlight && !highlightDone.current) ids.add(highlight);
@@ -75,11 +75,11 @@ export default function TakeAttendance() {
     });
   }
 
-  function toggleInstructor(id: number) {
-    setInstructorIds((p) => {
+  function toggleInstructor(key: string) {
+    setInstructorKeys((p) => {
       const next = new Set(p);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
       return next;
     });
   }
@@ -98,7 +98,7 @@ export default function TakeAttendance() {
         date,
         class_type: classType,
         present_ids: [...present],
-        instructor_ids: [...instructorIds],
+        instructor_keys: [...instructorKeys],
       });
       setMsg(result.removed
         ? `No students were marked present, so the class for ${fmtDate(date)} was removed.`
@@ -106,7 +106,7 @@ export default function TakeAttendance() {
       const fresh = await apiGet<AttendanceContext>(`/instructor/attendance.php?date=${date}`);
       setCtx(fresh);
       setClassType(fresh.class_type);
-      setInstructorIds(new Set(fresh.selected_instructor_ids));
+      setInstructorKeys(new Set(fresh.selected_instructor_keys));
       setPresent(new Set(fresh.students.filter((s) => s.present).map((s) => s.id)));
       window.scrollTo(0, 0);
     } catch (err: unknown) {
@@ -214,22 +214,25 @@ export default function TakeAttendance() {
                   {ctx.instructors.length === 0 ? (
                     <span className="text-muted small">No instructors on file.</span>
                   ) : (
-                    ctx.instructors.map((ins) => (
-                      <div className="form-check mb-0" key={ins.id}>
-                        <input
-                          type="checkbox"
-                          className="form-check-input instructor-cb"
-                          name="instructor_ids[]"
-                          value={ins.id}
-                          id={`instr-${ins.id}`}
-                          checked={instructorIds.has(ins.id)}
-                          onChange={() => toggleInstructor(ins.id)}
-                        />
-                        <label className="form-check-label small" htmlFor={`instr-${ins.id}`}>
-                          {ins.name}
-                        </label>
-                      </div>
-                    ))
+                    ctx.instructors.map((ins) => {
+                      const domId = `instr-${ins.key.replace(':', '-')}`;
+                      return (
+                        <div className="form-check mb-0" key={ins.key}>
+                          <input
+                            type="checkbox"
+                            className="form-check-input instructor-cb"
+                            name="instructor_keys[]"
+                            value={ins.key}
+                            id={domId}
+                            checked={instructorKeys.has(ins.key)}
+                            onChange={() => toggleInstructor(ins.key)}
+                          />
+                          <label className="form-check-label small" htmlFor={domId}>
+                            {ins.name}
+                          </label>
+                        </div>
+                      );
+                    })
                   )}
                 </div>
               </div>
@@ -251,18 +254,27 @@ export default function TakeAttendance() {
                   <p className="p-3 text-muted">No {label.toLowerCase()}.</p>
                 ) : (
                   <div className="table-responsive">
-                    {/* Only the checkbox column gets an explicit (narrow) width
-                        so it sits flush left. With the global table-layout:fixed
-                        rule, the three unspecified columns (Name / Last Attended
-                        / Waiver) split the remaining width equally, so their
-                        gaps are uniform and Waiver ends flush right — identically
-                        across all four role tables. */}
+                    {/* The checkbox and Waiver columns get explicit widths; Name
+                        and Last Attended split what is left. Waiver holds only a
+                        ✓ or a short badge, so under the global table-layout:fixed
+                        rule an equal quarter-share left it marooned in the middle
+                        of a wide empty band. Constraining it gives the two text
+                        columns the room instead.
+
+                        Last Attended is a fixed-format date, so it is pinned too
+                        and Name — the only column whose content actually varies
+                        in length — takes everything remaining.
+
+                        Widths are fixed rather than content-derived on purpose:
+                        all four role tables share this colgroup, so their columns
+                        still line up with each other — which switching this table
+                        to table-layout:auto would have broken. */}
                     <table className="table table-sm table-hover mb-0">
                       <colgroup>
                         <col style={{ width: 44 }} />
                         <col />
-                        <col />
-                        <col />
+                        <col style={{ width: 160 }} />
+                        <col style={{ width: 140 }} />
                       </colgroup>
                       <thead className="table-light">
                         <tr>
@@ -323,7 +335,7 @@ export default function TakeAttendance() {
       </form>
 
       <div className="d-flex justify-content-between align-items-center mt-2">
-        <button type="submit" form="att-form" className="btn btn-primary px-4" disabled={saving}>
+        <button type="submit" form="att-form" className="btn btn-action px-4" disabled={saving}>
           Save Attendance
         </button>
         {ctx.session_exists && (

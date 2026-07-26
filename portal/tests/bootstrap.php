@@ -20,6 +20,7 @@ require_once __DIR__ . '/../includes/belt_helpers.php';
 require_once __DIR__ . '/../includes/registration.php';
 require_once __DIR__ . '/../includes/paypal.php';
 require_once __DIR__ . '/../includes/log_retention.php';
+require_once __DIR__ . '/../includes/twofactor.php';   // also pulls in totp.php
 
 // config.php pushed its own handler on top — restore it away first, then ours.
 restore_error_handler(); // removes config.php's db-logging handler

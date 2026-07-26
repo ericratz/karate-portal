@@ -70,7 +70,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && $valid) {
             <?php if ($done): ?>
                 <div class="alert alert-success">Your password has been reset.</div>
                 <div class="text-center mt-2">
-                    <a href="login.php" class="btn btn-success">Log In</a>
+                    <a href="login.php" class="btn btn-action">Log In</a>
                 </div>
 
             <?php elseif (!$valid): ?>
@@ -98,7 +98,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && $valid) {
                         <input type="password" name="confirm_password" class="form-control" required>
                     </div>
                     <div class="d-grid">
-                        <button type="submit" class="btn btn-primary btn-lg"
+                        <button type="submit" class="btn btn-action btn-lg"
                                 style="background:#198754;border-color:#198754">Set New Password</button>
                     </div>
                 </form>

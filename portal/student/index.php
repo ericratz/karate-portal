@@ -28,7 +28,7 @@ include __DIR__ . '/../includes/header.php';
                 Your login has been created but hasn't been linked to a student record yet.
                 Contact Noji to get set up — it usually takes just a few minutes.
             </p>
-            <a href="mailto:<?= htmlspecialchars(DOJO_EMAIL) ?>" class="btn btn-primary">
+            <a href="mailto:<?= htmlspecialchars(DOJO_EMAIL) ?>" class="btn btn-action">
                 Email Noji
             </a>
         </div>

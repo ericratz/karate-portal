@@ -83,7 +83,7 @@ export function ScoreBadge({ result, score }: { result: string; score: number | 
 export function SubPageHeading({ studentId, title, name }: { studentId: number; title: string; name: string }) {
   return (
     <div className="d-flex align-items-center gap-3 mb-4 flex-wrap">
-      <Link to={`/student/${studentId}`} className="btn btn-sm btn-outline-secondary">← Dashboard</Link>
+      <Link to={`/student/${studentId}`} className="btn btn-sm btn-action">← Dashboard</Link>
       <h4 className="mb-0">{title} — {personName(name)}</h4>
     </div>
   );

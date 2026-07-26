@@ -6,6 +6,10 @@ WORKDIR /src
 COPY frontend/package.json frontend/package-lock.json ./frontend/
 RUN cd frontend && npm ci
 COPY frontend/ ./frontend/
+# The version is owned by the PHP side and parsed by vite.config.ts, so the
+# bundle carries the same number the API reports (see portal/includes/version.php).
+# Copied as its own layer: it changes once per release, not once per edit.
+COPY portal/includes/version.php ./portal/includes/version.php
 # vite.config.ts emits hashed bundles + manifest to ../portal/parent/dist
 RUN cd frontend && npm run build
 
@@ -22,7 +26,10 @@ FROM php:8.4-apache
 RUN apt-get update \
  && apt-get install -y --no-install-recommends libzip-dev unzip curl \
  && docker-php-ext-install pdo_mysql zip \
- && a2enmod rewrite \
+ # rewrite + headers + access_compat are all required by the project's
+ # .htaccess: RewriteRule path blocks, Header security directives, and its
+ # Apache 2.2-style "Order allow,deny" file denials respectively.
+ && a2enmod rewrite headers access_compat \
  && rm -rf /var/lib/apt/lists/*
 
 # Block web access to dotfiles (.env under DocumentRoot would otherwise leak).
@@ -49,6 +56,9 @@ RUN cd portal && composer install --no-dev --no-interaction --no-progress --opti
 # nothing. If a writable dir is ever added, chown only that path.
 COPY portal/ ./portal/
 COPY tests/ ./tests/
+# The project's own .htaccess — the same file production runs. Without it the
+# image silently lost every rule it carries (see docker/apache-hardening.conf).
+COPY .htaccess ./.htaccess
 
 # React SPA bundle from the frontend build stage (dist is dockerignored, so
 # it always comes from the in-image build — never a stale host build).

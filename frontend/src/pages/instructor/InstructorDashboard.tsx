@@ -53,15 +53,15 @@ export default function InstructorDashboard() {
             Member Card <ExtIcon size={12} />
           </a>
           {data.has_children ? (
-            <Link to="/" className="btn btn-outline-secondary">View Profile</Link>
+            <Link to="/" className="btn btn-action">View Profile</Link>
           ) : (
-            <Link to={`/instructor/student/${data.own_student_id}`} className="btn btn-outline-secondary">
+            <Link to={`/instructor/student/${data.own_student_id}`} className="btn btn-action">
               View Profile
             </Link>
           )}
           <Link
             to={data.has_children ? `/pay/${data.own_student_id}` : '/pay'}
-            className="btn btn-success"
+            className="btn btn-action"
           >
             Make a Payment
           </Link>
@@ -89,7 +89,7 @@ export default function InstructorDashboard() {
                     onChange={(e) => setNewDate(e.target.value)}
                   />
                 </div>
-                <button className="btn btn-primary w-100">Record New Class</button>
+                <button className="btn btn-action w-100">Record New Class</button>
               </form>
             </div>
           </div>
@@ -97,7 +97,7 @@ export default function InstructorDashboard() {
           <div className="card border-0 shadow-sm">
             <div className="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
               <span>Recent Classes</span>
-              <Link to="/instructor/classes" className="btn btn-sm btn-outline-secondary">
+              <Link to="/instructor/classes" className="btn btn-sm btn-action">
                 View All Classes
               </Link>
             </div>
@@ -133,14 +133,14 @@ export default function InstructorDashboard() {
           <div className="card border-0 shadow-sm">
             <div className="card-header bg-white fw-semibold">Students</div>
             <div className="card-body">
-              <Link to="/instructor/roster" className="btn btn-primary w-100">View Student Roster</Link>
+              <Link to="/instructor/roster" className="btn btn-action w-100">View Student Roster</Link>
             </div>
           </div>
 
           <div className="card border-0 shadow-sm">
             <div className="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
               <span>Recent Belt Tests</span>
-              <Link to="/instructor/belt-tests" className="btn btn-sm btn-outline-secondary">View Tests</Link>
+              <Link to="/instructor/belt-tests" className="btn btn-sm btn-action">View Tests</Link>
             </div>
             <div className="card-body p-0">
               {data.recent_belt_tests.length === 0 ? (

@@ -23,8 +23,10 @@
       <code><![CDATA[$page_title]]></code>
       <code><![CDATA[$page_title]]></code>
       <code><![CDATA[$page_title]]></code>
+      <code><![CDATA[$page_title]]></code>
     </RedundantCondition>
     <TypeDoesNotContainNull>
+      <code><![CDATA['Portal']]></code>
       <code><![CDATA['Portal']]></code>
       <code><![CDATA['Portal']]></code>
       <code><![CDATA['Portal']]></code>

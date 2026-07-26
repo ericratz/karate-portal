@@ -9,18 +9,53 @@ SET time_zone = '-06:00';  -- Mountain Time (America/Denver)
 -- ------------------------------------------------------------
 -- USERS  (login accounts)
 -- ------------------------------------------------------------
+-- totp_*: two-factor. Only admin accounts are challenged (see
+-- includes/twofactor.php). totp_last_counter records the last accepted time
+-- step so a code cannot be replayed inside its own validity window.
 CREATE TABLE IF NOT EXISTS users (
-    id            INT AUTO_INCREMENT PRIMARY KEY,
-    username      VARCHAR(50)  NOT NULL UNIQUE,
-    password_hash VARCHAR(255) NOT NULL,
-    is_admin      TINYINT(1)   NOT NULL DEFAULT 0,
-    email         VARCHAR(100) NOT NULL,
-    first_name    VARCHAR(50)  DEFAULT NULL,
-    last_name     VARCHAR(50)  DEFAULT NULL,
-    date_of_birth DATE         DEFAULT NULL,
-    active        TINYINT(1)   NOT NULL DEFAULT 1,
-    last_login    DATETIME,
-    created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
+    id                INT AUTO_INCREMENT PRIMARY KEY,
+    username          VARCHAR(50)  NOT NULL UNIQUE,
+    password_hash     VARCHAR(255) NOT NULL,
+    is_admin          TINYINT(1)   NOT NULL DEFAULT 0,
+    email             VARCHAR(100) NOT NULL,
+    first_name        VARCHAR(50)  DEFAULT NULL,
+    last_name         VARCHAR(50)  DEFAULT NULL,
+    date_of_birth     DATE         DEFAULT NULL,
+    active            TINYINT(1)   NOT NULL DEFAULT 1,
+    last_login        DATETIME,
+    totp_secret       VARCHAR(64)  DEFAULT NULL,
+    totp_enabled_at   DATETIME     DEFAULT NULL,
+    totp_last_counter BIGINT       DEFAULT NULL,
+    created_at        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ------------------------------------------------------------
+-- TWO-FACTOR SUPPORT
+-- Backup codes are single-use and stored as bcrypt hashes — they are shown in
+-- plaintext once, at generation, and never again.
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS user_backup_codes (
+    id         INT AUTO_INCREMENT PRIMARY KEY,
+    user_id    INT NOT NULL,
+    code_hash  VARCHAR(255) NOT NULL,
+    used_at    DATETIME DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- A browser that has passed a challenge, so it is not asked again for ~6 months.
+-- Split-token: the selector is the lookup key, only a hash of the validator is
+-- stored, so a leaked table yields no usable cookies.
+CREATE TABLE IF NOT EXISTS trusted_devices (
+    id             INT AUTO_INCREMENT PRIMARY KEY,
+    user_id        INT NOT NULL,
+    selector       CHAR(32) NOT NULL UNIQUE,
+    validator_hash CHAR(64) NOT NULL,
+    expires_at     DATETIME NOT NULL,
+    last_seen      DATETIME DEFAULT NULL,
+    user_agent     VARCHAR(255) DEFAULT NULL,
+    created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ------------------------------------------------------------
@@ -125,15 +160,17 @@ CREATE TABLE IF NOT EXISTS student_ranks (
 -- ------------------------------------------------------------
 -- CLASS SESSIONS  (one row per class date)
 -- ------------------------------------------------------------
+-- Who TAUGHT a class is class_session_instructors (below); who RECORDED it is
+-- attendance.recorded_by. The old instructor_id column meant neither — it was
+-- silently set to whoever saved the sheet and never displayed — so it was
+-- dropped rather than left as a third, misleading answer.
 CREATE TABLE IF NOT EXISTS class_sessions (
     id            INT AUTO_INCREMENT PRIMARY KEY,
     session_date  DATE NOT NULL UNIQUE,
     class_type    ENUM('class','seminar','private') NOT NULL DEFAULT 'class',
-    instructor_id INT,
     location      VARCHAR(100) DEFAULT 'Dojo Location',
     notes         TEXT,
-    created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (instructor_id) REFERENCES users(id) ON DELETE SET NULL
+    created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ------------------------------------------------------------
@@ -155,15 +192,22 @@ CREATE TABLE IF NOT EXISTS attendance (
 -- ------------------------------------------------------------
 -- CLASS SESSION INSTRUCTORS  (who taught a given class — many-to-many)
 -- One class can be taught/handed off to several instructors on the same day.
--- The authoritative "taught by" set; class_sessions.instructor_id stays as the
--- who-recorded-it stamp and is not used for this.
+-- Each row names EITHER a roster person (student_id — most instructors teach
+-- but have no login) OR an admin login with no roster record (user_id — e.g.
+-- the owner account). Exactly one is set per row (enforced at the app level).
+-- The authoritative — and only — "taught by" set. Who *recorded* a class is a
+-- separate question, answered per row by attendance.recorded_by.
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS class_session_instructors (
+    id         INT AUTO_INCREMENT PRIMARY KEY,
     session_id INT NOT NULL,
-    user_id    INT NOT NULL,
-    PRIMARY KEY (session_id, user_id),
+    student_id INT NULL,
+    user_id    INT NULL,
     FOREIGN KEY (session_id) REFERENCES class_sessions(id) ON DELETE CASCADE,
-    FOREIGN KEY (user_id)    REFERENCES users(id)          ON DELETE CASCADE
+    FOREIGN KEY (student_id) REFERENCES students(id)       ON DELETE CASCADE,
+    FOREIGN KEY (user_id)    REFERENCES users(id)          ON DELETE CASCADE,
+    UNIQUE KEY uq_csi_student (session_id, student_id),
+    UNIQUE KEY uq_csi_user    (session_id, user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ------------------------------------------------------------
@@ -194,7 +238,7 @@ CREATE TABLE IF NOT EXISTS payments (
     student_id     INT NOT NULL,
     amount         DECIMAL(8,2) NOT NULL,
     payment_type   ENUM('monthly_tuition','registration','belt_test','slc_training','seminar','other') NOT NULL,
-    payment_method ENUM('paypal','paypal_subscription','venmo','cash','check','mail') NOT NULL,
+    payment_method ENUM('paypal','paypal_subscription','cash','check','mail') NOT NULL,
     transaction_id VARCHAR(100),
     payment_date   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     month_covered  DATE,

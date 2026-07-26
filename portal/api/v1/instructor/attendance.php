@@ -54,17 +54,20 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         $present_raw = $input['present_ids'] ?? [];
         $present_ids = array_map('intval', is_array($present_raw) ? $present_raw : []);
 
-        // Who taught the class — keep only real instructor/admin accounts so a
-        // tampered body can't attach arbitrary users to the session.
-        $instr_raw = $input['instructor_ids'] ?? [];
-        $instr_ids = filter_instructor_ids(is_array($instr_raw) ? $instr_raw : []);
+        // Who taught the class — keep only real instructor/admin people so a
+        // tampered body can't attach arbitrary records to the session.
+        $instr_raw  = $input['instructor_keys'] ?? [];
+        $instr_keys = filter_instructor_keys(is_array($instr_raw) ? $instr_raw : []);
 
         $db = db();
+        // Who taught the class lives in class_session_instructors; who recorded
+        // it is stamped per row in attendance.recorded_by below. The session
+        // itself no longer carries an instructor_id.
         $db->prepare(
-            'INSERT INTO class_sessions (session_date, class_type, instructor_id)
-             VALUES (?, ?, ?)
-             ON DUPLICATE KEY UPDATE instructor_id = VALUES(instructor_id), class_type = VALUES(class_type)'
-        )->execute([$date, $class_type, current_user_id()]);
+            'INSERT INTO class_sessions (session_date, class_type)
+             VALUES (?, ?)
+             ON DUPLICATE KEY UPDATE class_type = VALUES(class_type)'
+        )->execute([$date, $class_type]);
 
         $sid_q = $db->prepare('SELECT id FROM class_sessions WHERE session_date = ?');
         $sid_q->execute([$date]);
@@ -80,7 +83,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
 
         // Rewrite the taught-by set. If the session is dropped below (nobody
         // present), the FK's ON DELETE CASCADE clears these rows with it.
-        set_session_instructors((int)$session_id, $instr_ids);
+        set_session_instructors((int)$session_id, $instr_keys);
 
         if (empty($present_ids)) {
             // No one present — an empty class isn't worth keeping a record of
@@ -107,10 +110,10 @@ $session_id  = $session_row ? $session_row['id'] : false;
 // not-yet-recorded class the picker defaults to the primary admin — the founder
 // account (usually Noji) — since that's who teaches most days; the instructor
 // can change it before saving.
-$instructors  = instructor_users();
-$selected_ids = $session_row
-    ? session_instructor_ids((int)$session_id)
-    : default_instructor_ids();
+$instructors   = instructor_options();
+$selected_keys = $session_row
+    ? session_instructor_keys((int)$session_id)
+    : default_instructor_keys();
 
 $stmt = db()->prepare(
     'SELECT s.id, s.first_name, s.last_name, s.student_type, s.injury_waiver,
@@ -130,7 +133,7 @@ api_respond([
     'session_exists' => (bool)$session_row,
     'class_type'     => $session_row['class_type'] ?? 'class',
     'instructors'    => $instructors,
-    'selected_instructor_ids' => $selected_ids,
+    'selected_instructor_keys' => $selected_keys,
     'students'       => array_map(fn($s) => [
         'id'            => (int)$s['id'],
         'first_name'    => (string)$s['first_name'],

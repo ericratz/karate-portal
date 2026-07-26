@@ -185,6 +185,7 @@ function fmt_name(array $s): string {
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
       integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
       crossorigin="anonymous">
+<link rel="stylesheet" href="<?= app_url('/assets/css/portal.css') ?>">
 <style nonce="<?= csp_nonce() ?>">
 body { background: #f5f5f5; }
 .checkin-wrap { max-width: 480px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
@@ -198,7 +199,10 @@ body { background: #f5f5f5; }
 <div class="checkin-wrap">
 
     <div class="text-center text-muted small mb-3">
-        Shotokan Karate &amp; Self-defense &mdash; <?= date('l, j F Y') ?>
+        <!-- "and", not "&": this is the dojo's name, written the same way it is
+             everywhere else and on the printed certificates. -->
+        <span class="brand-name">Shotokan Karate and Self-defense</span>
+        &mdash; <?= date('l, j F Y') ?>
     </div>
 
     <?php if (!$pin_ok): ?>
@@ -214,7 +218,7 @@ body { background: #f5f5f5; }
             <input type="tel" name="pin" id="pinInput"
                    class="form-control form-control-lg pin-digit mb-3"
                    placeholder="••••" maxlength="20" autofocus required>
-            <button class="btn btn-primary btn-lg w-100 fw-semibold">Enter</button>
+            <button class="btn btn-action btn-lg w-100 fw-semibold">Enter</button>
         </form>
     </div>
 
@@ -226,14 +230,14 @@ body { background: #f5f5f5; }
         <div class="big-check mb-2">✅</div>
         <h4 class="fw-bold"><?= fmt_name($student) ?></h4>
         <p class="text-success fw-semibold mb-3">Checked in successfully!</p>
-        <a href="checkin.php" class="btn btn-outline-secondary btn-sm">Check in another student</a>
+        <a href="checkin.php" class="btn btn-action btn-sm">Check in another student</a>
     </div>
     <?php elseif ($already_present && $student): ?>
     <div class="card border-0 shadow text-center p-4 mb-4">
         <div class="big-check mb-2">✅</div>
         <h4 class="fw-bold"><?= fmt_name($student) ?></h4>
         <p class="text-muted mb-3">Already marked present.</p>
-        <a href="checkin.php" class="btn btn-outline-secondary btn-sm">Check in another student</a>
+        <a href="checkin.php" class="btn btn-action btn-sm">Check in another student</a>
     </div>
     <?php elseif ($error): ?>
     <div class="alert alert-danger text-center"><?= htmlspecialchars($error) ?></div>

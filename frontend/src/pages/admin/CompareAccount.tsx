@@ -157,7 +157,7 @@ export default function CompareAccount() {
   return (
     <>
       <div className="d-flex align-items-center gap-3 mb-4">
-        <a href="index.php" className="btn btn-outline-secondary btn-sm">← Dashboard</a>
+        <a href="index.php" className="btn btn-action btn-sm">← Dashboard</a>
         <h4 className="mb-0">Compare &amp; Link Account</h4>
       </div>
 
@@ -179,7 +179,7 @@ export default function CompareAccount() {
             )}
           </div>
           <div className="ms-3 flex-shrink-0" id="dismissLinkForm">
-            <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => void dismiss()}>
+            <button type="button" className="btn btn-sm btn-action" onClick={() => void dismiss()}>
               Dismiss
             </button>
           </div>
@@ -211,7 +211,7 @@ export default function CompareAccount() {
             </div>
             <a
               href="#/admin/student-edit"
-              className="btn btn-outline-secondary btn-sm"
+              className="btn btn-action btn-sm"
             >
               + Create New Student Record
             </a>
@@ -225,7 +225,7 @@ export default function CompareAccount() {
           <div className="card border-0 shadow-sm h-100">
             <div className="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
               <span>Login Account</span>
-              <a href={`user_profile.php?id=${userId}`} className="btn btn-sm btn-outline-secondary">View</a>
+              <a href={`user_profile.php?id=${userId}`} className="btn btn-sm btn-action">View</a>
             </div>
             <div className="card-body p-0">
               <div className="table-responsive">
@@ -249,7 +249,7 @@ export default function CompareAccount() {
             <div className="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
               <span>Student Record</span>
               {s && (
-                <a href={`#/instructor/student/${s.id}`} className="btn btn-sm btn-outline-secondary">
+                <a href={`#/instructor/student/${s.id}`} className="btn btn-sm btn-action">
                   View
                 </a>
               )}
@@ -278,10 +278,10 @@ export default function CompareAccount() {
 
       {s && (
         <div className="d-flex gap-3 align-items-center">
-          <button type="button" id="linkAccountsForm" className="btn btn-primary px-4" onClick={() => void link()}>
+          <button type="button" id="linkAccountsForm" className="btn btn-action px-4" onClick={() => void link()}>
             Link These Accounts
           </button>
-          <a href="index.php" className="btn btn-outline-secondary">Cancel</a>
+          <a href="index.php" className="btn btn-action">Cancel</a>
           {(data.existing_link || s.linked_user) && (
             <span className="text-warning small">
               ⚠ One or both sides are already linked — linking here will replace the existing link.

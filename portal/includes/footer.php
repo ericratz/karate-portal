@@ -23,7 +23,7 @@
             <div class="card border-0 shadow-sm mb-0">
                 <div class="card-header bg-white d-flex justify-content-between align-items-center">
                     <span class="fw-semibold">Questions or Issues?</span>
-                    <button class="btn btn-sm btn-warning" type="button"
+                    <button class="btn btn-sm btn-action" type="button"
                             data-bs-toggle="collapse" data-bs-target="#footerFeedback">
                         Contact Noji
                     </button>
@@ -38,7 +38,7 @@
                                 <textarea name="feedback_message" id="footerFeedbackMsg" class="form-control" rows="4"
                                           placeholder="Type your message here…" required></textarea>
                             </div>
-                            <button type="submit" class="btn btn-primary" id="footerFeedbackBtn">Send Message</button>
+                            <button type="submit" class="btn btn-action" id="footerFeedbackBtn">Send Message</button>
                         </form>
                     </div>
                 </div>
@@ -48,6 +48,9 @@
         <div class="footer-side-text text-end"
              style="color:#fff;font-size:.86rem;line-height:1.5;min-width:0;overflow-wrap:break-word">
             © 2026 Ratzlaff Family
+            <!-- Version stamp: makes "what is live running?" answerable by
+                 looking, on a host we deploy to by hand. -->
+            <span> · v<?= htmlspecialchars(APP_VERSION) ?></span>
         </div>
     </div>
 </footer>
@@ -179,7 +182,7 @@ window.addEventListener('pageshow', function(e) {
         var data = new FormData();
         data.append('feedback_message', msg.value);
         data.append('csrf_token', '<?= csrf_token() ?>');
-        fetch('<?= SITE_URL ?>/api/send_feedback.php', {
+        fetch('<?= app_url() ?>/api/send_feedback.php', {
             method: 'POST',
             body: data
         })

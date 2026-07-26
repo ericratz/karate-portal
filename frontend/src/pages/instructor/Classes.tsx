@@ -58,7 +58,7 @@ export default function Classes() {
           QR Check-in <ExtIcon size={12} />
         </a>
         {me.role === 'admin' && (
-          <a href="../admin/checkin_pin.php" className="btn btn-sm btn-outline-secondary ms-1">
+          <a href="../admin/checkin_pin.php" className="btn btn-sm btn-action ms-1">
             Check-in PIN
           </a>
         )}
@@ -70,7 +70,7 @@ export default function Classes() {
             value={newDate}
             onChange={(e) => setNewDate(e.target.value)}
           />
-          <Link id="newSessionBtn" to={`/instructor/attendance?date=${newDate}`} className="btn btn-success btn-sm">
+          <Link id="newSessionBtn" to={`/instructor/attendance?date=${newDate}`} className="btn btn-action btn-sm">
             + Record New Class
           </Link>
         </div>
@@ -135,7 +135,9 @@ export default function Classes() {
             <div className="table-responsive">
               <table className="table table-hover mb-0">
                 <thead className="table-light">
-                  <tr><th>Date</th><th>Type</th><th>Instructor</th><th>Present</th><th></th></tr>
+                  {/* The expander lives in the Present column, since that is
+                      what it expands — it was a separate unlabelled column. */}
+                  <tr><th>Date</th><th>Type</th><th>Instructor</th><th>Present</th></tr>
                 </thead>
                 <tbody>
                   {data.sessions.map((sess, i) => (
@@ -192,11 +194,13 @@ function SessionRows({
             ? <span className="text-muted">—</span>
             : sess.instructors.map((i) => personName(i.name)).join(', ')}
         </td>
-        <td><span className="badge bg-primary">{sess.present_count}</span></td>
-        <td className="text-muted" id={`tog-${idx}`}>{open ? '▲' : '▼'}</td>
+        <td>
+          <span className="badge bg-primary">{sess.present_count}</span>
+          <span className="text-muted ms-2" id={`tog-${idx}`}>{open ? '▲' : '▼'}</span>
+        </td>
       </tr>
       <tr id={`det-${idx}`} style={{ display: open ? '' : 'none' }}>
-        <td colSpan={5} className="px-4 py-3">
+        <td colSpan={4} className="px-4 py-3">
           {sess.attendees.length === 0 ? (
             <span className="text-muted small">No attendance recorded.</span>
           ) : (

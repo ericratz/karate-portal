@@ -14,7 +14,10 @@ test.describe('Forgot password page', () => {
     test('page loads with username field', async ({ page }) => {
         await page.goto(BASE + '/forgot_password.php');
         await assertNoPhpErrors(page, 'forgot password');
-        await expect(page.locator('h4')).toContainText('Forgot Password');
+        // The three auth pages now share one header: the dojo wordmark in the
+        // h4, with the page name as the subtitle beneath it.
+        await expect(page.locator('h4')).toContainText('Shotokan Karate');
+        await expect(page.locator('.brand-subtitle')).toContainText('Forgot Password');
         await expect(page.locator('input[name="username"]')).toBeVisible();
     });
 

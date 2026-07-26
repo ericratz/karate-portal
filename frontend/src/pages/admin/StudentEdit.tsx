@@ -391,7 +391,7 @@ export default function StudentEdit() {
                   <button
                     type="button"
                     id="profileEditBtn"
-                    className={`btn btn-sm ${profileEditing ? 'btn-warning' : 'btn-success'}`}
+                    className={`btn btn-sm ${profileEditing ? 'btn-nav' : 'btn-action'}`}
                     onClick={() => (profileEditing ? void confirmProfile() : startProfileEdit())}
                   >
                     {profileEditing ? 'Confirm' : 'Edit'}
@@ -438,12 +438,12 @@ export default function StudentEdit() {
                         <>
                           <span className="text-success">✓</span>
                           {s.injury_waiver_date && <span className="ms-1">{fmtDate(s.injury_waiver_date)}</span>}
-                          <a href={`waiver_view.php?student_id=${id}`} className="btn btn-sm btn-outline-secondary ms-2">View</a>
+                          <a href={`waiver_view.php?student_id=${id}`} className="btn btn-sm btn-action ms-2">View</a>
                         </>
                       ) : (
                         <>
                           <span className="text-muted">Not completed</span>
-                          <a href={`waiver_view.php?student_id=${id}`} className="btn btn-sm btn-success ms-2">+ Enter Waiver</a>
+                          <a href={`waiver_view.php?student_id=${id}`} className="btn btn-sm btn-action ms-2">+ Enter Waiver</a>
                         </>
                       )}
                     </div>
@@ -489,7 +489,7 @@ export default function StudentEdit() {
                   </button>
                   <button
                     type="button"
-                    className={`btn btn-sm ${attEditing ? 'btn-warning' : 'btn-success'}`}
+                    className={`btn btn-sm ${attEditing ? 'btn-nav' : 'btn-action'}`}
                     id="attEditBtn"
                     onClick={() => {
                       if (!attEditing) {
@@ -566,7 +566,7 @@ export default function StudentEdit() {
                   <button
                     id="payEditToggle"
                     type="button"
-                    className={`btn btn-sm ${payEditing ? 'btn-warning' : 'btn-success'}`}
+                    className={`btn btn-sm ${payEditing ? 'btn-nav' : 'btn-action'}`}
                     onClick={() => {
                       setPayEditing((v) => {
                         if (v) setPayEditRows(new Set());
@@ -577,7 +577,7 @@ export default function StudentEdit() {
                     {payEditing ? 'Done' : 'Edit'}
                   </button>
                 )}
-                <button type="button" className="btn btn-sm btn-success" onClick={() => setPayAddOpen((v) => !v)}>
+                <button type="button" className="btn btn-sm btn-action" onClick={() => setPayAddOpen((v) => !v)}>
                   + Add Payment
                 </button>
               </div>
@@ -657,7 +657,7 @@ export default function StudentEdit() {
                   <button
                     id="rankEditToggle"
                     type="button"
-                    className={`btn btn-sm ${rankEditing ? 'btn-danger' : 'btn-success'}`}
+                    className={`btn btn-sm ${rankEditing ? 'btn-danger' : 'btn-action'}`}
                     onClick={() => {
                       if (!rankEditing) {
                         setRankEditing(true);
@@ -676,7 +676,7 @@ export default function StudentEdit() {
                     {rankEditing ? 'Done' : 'Edit'}
                   </button>
                 )}
-                <button type="button" className="btn btn-sm btn-success" onClick={() => setRankAddOpen((v) => !v)}>
+                <button type="button" className="btn btn-sm btn-action" onClick={() => setRankAddOpen((v) => !v)}>
                   + Record Rank
                 </button>
               </div>
@@ -775,7 +775,7 @@ export default function StudentEdit() {
                   <button
                     id="btEditToggle"
                     type="button"
-                    className={`btn btn-sm ${btEditing ? 'btn-danger' : 'btn-success'}`}
+                    className={`btn btn-sm ${btEditing ? 'btn-danger' : 'btn-action'}`}
                     onClick={() => setBtEditing((v) => !v)}
                   >
                     {btEditing ? 'Done' : 'Edit'}
@@ -783,7 +783,7 @@ export default function StudentEdit() {
                 )}
                 <Link
                   to={`/instructor/belt-test-edit?student_id=${id}&ref_pid=${id}`}
-                  className="btn btn-sm btn-success"
+                  className="btn btn-sm btn-action"
                 >
                   + New Test
                 </Link>
@@ -854,7 +854,7 @@ export default function StudentEdit() {
                   <button
                     id="pwEditToggle"
                     type="button"
-                    className={`btn btn-sm ${pwEditing ? 'btn-warning' : 'btn-success'}`}
+                    className={`btn btn-sm ${pwEditing ? 'btn-nav' : 'btn-action'}`}
                     onClick={() => {
                       setPwEditing((v) => {
                         if (v) setPwEditRows(new Set());
@@ -865,7 +865,7 @@ export default function StudentEdit() {
                     {pwEditing ? 'Done' : 'Edit'}
                   </button>
                 )}
-                <button type="button" className="btn btn-sm btn-success" onClick={() => setPwAddOpen((v) => !v)}>
+                <button type="button" className="btn btn-sm btn-action" onClick={() => setPwAddOpen((v) => !v)}>
                   + Add Exemption
                 </button>
               </div>
@@ -921,13 +921,13 @@ export default function StudentEdit() {
                   <button
                     id="guardianEditToggle"
                     type="button"
-                    className={`btn btn-sm ${guardianEditing ? 'btn-warning' : 'btn-success'}`}
+                    className={`btn btn-sm ${guardianEditing ? 'btn-nav' : 'btn-action'}`}
                     onClick={() => setGuardianEditing((v) => !v)}
                   >
                     {guardianEditing ? 'Done' : 'Edit'}
                   </button>
                 )}
-                <button type="button" className="btn btn-sm btn-success" onClick={() => setGuardianAddOpen((v) => !v)}>
+                <button type="button" className="btn btn-sm btn-action" onClick={() => setGuardianAddOpen((v) => !v)}>
                   + Link
                 </button>
               </div>
@@ -963,7 +963,7 @@ export default function StudentEdit() {
                           <option key={gc.id} value={gc.id}>{personName(gc.name)}</option>
                         ))}
                       </select>
-                      <button type="submit" className="btn btn-sm btn-success">Add</button>
+                      <button type="submit" className="btn btn-sm btn-action">Add</button>
                     </>
                   ) : (
                     <span className="text-muted small">
@@ -1023,7 +1023,7 @@ export default function StudentEdit() {
               <button
                 type="button"
                 id="notesEditBtn"
-                className={`btn btn-sm ${notesEditing ? 'btn-danger' : 'btn-success'}`}
+                className={`btn btn-sm ${notesEditing ? 'btn-danger' : 'btn-action'}`}
                 onClick={() => setNotesEditing((v) => !v)}
               >
                 {notesEditing ? 'Done' : 'Edit'}
@@ -1056,7 +1056,7 @@ export default function StudentEdit() {
                 onChange={(e) => setNoteText(e.target.value)}
               />
               <div className="d-flex gap-2">
-                <button type="submit" className="btn btn-sm btn-primary">Save Note</button>
+                <button type="submit" className="btn btn-sm btn-action">Save Note</button>
               </div>
             </form>
           </div>
@@ -1128,7 +1128,7 @@ function NewStudentForm({
                 <div className="row g-3">
                   <ProfileFields form={form} setForm={setForm} withStatus={false} />
                   <div className="col-12">
-                    <button type="submit" className="btn btn-primary">Add to Roster</button>
+                    <button type="submit" className="btn btn-action">Add to Roster</button>
                   </div>
                 </div>
               </div>
@@ -1210,7 +1210,7 @@ function AddPaymentForm({
         </div>
       </div>
       <div className="d-flex gap-2">
-        <button type="submit" className="btn btn-sm btn-success">Save</button>
+        <button type="submit" className="btn btn-sm btn-action">Save</button>
         <button type="button" className="btn btn-sm btn-secondary" onClick={onCancel}>Cancel</button>
       </div>
     </form>
@@ -1263,7 +1263,7 @@ function AddRankForm({
         </div>
       </div>
       <div className="d-flex gap-2">
-        <button type="submit" className="btn btn-sm btn-success">Save</button>
+        <button type="submit" className="btn btn-sm btn-action">Save</button>
         <button type="button" className="btn btn-sm btn-secondary" onClick={onCancel}>Cancel</button>
       </div>
     </form>
@@ -1321,7 +1321,7 @@ function AddExemptionForm({
         </div>
       </div>
       <div className="d-flex gap-2">
-        <button type="submit" className="btn btn-sm btn-success">Save</button>
+        <button type="submit" className="btn btn-sm btn-action">Save</button>
         <button type="button" className="btn btn-sm btn-secondary" onClick={onCancel}>Cancel</button>
       </div>
     </form>
@@ -1358,11 +1358,11 @@ function PayRows({
         <td>${p.amount.toFixed(2)}</td>
         {p.is_donation ? (
           <td className="pay-action-col text-nowrap">
-            <a href="donations.php" className="btn btn-sm btn-outline-secondary py-0">Donations</a>
+            <a href="donations.php" className="btn btn-sm btn-action py-0">Donations</a>
           </td>
         ) : (
           <td className="pay-action-col text-nowrap">
-            <button type="button" className="btn btn-sm btn-outline-primary py-0 me-1 toggle-pay-row-btn" data-id={p.id} onClick={onToggle}>
+            <button type="button" className="btn btn-sm btn-action py-0 me-1 toggle-pay-row-btn" data-id={p.id} onClick={onToggle}>
               Edit
             </button>
             <button type="button" className="btn btn-sm btn-outline-danger py-0" onClick={onDelete}>✕</button>
@@ -1429,7 +1429,7 @@ function PayRows({
                 </div>
               </div>
               <div className="col-auto">
-                <button type="submit" className="btn btn-sm btn-success">Save</button>
+                <button type="submit" className="btn btn-sm btn-action">Save</button>
                 <button type="button" className="btn btn-sm btn-secondary toggle-pay-row-btn ms-1" data-id={p.id} onClick={onToggle}>
                   Cancel
                 </button>
@@ -1471,7 +1471,7 @@ function PwRows({
         </td>
         <td className="text-nowrap">{fmtDate(pw.granted_date)}</td>
         <td className="pw-action-col text-nowrap">
-          <button type="button" className="btn btn-sm btn-outline-primary py-0 me-1 toggle-pw-row-btn" data-id={pw.id} onClick={onToggle}>
+          <button type="button" className="btn btn-sm btn-action py-0 me-1 toggle-pw-row-btn" data-id={pw.id} onClick={onToggle}>
             Edit
           </button>
           <button type="button" className="btn btn-sm btn-outline-danger py-0" onClick={onDelete}>✕</button>
@@ -1520,7 +1520,7 @@ function PwRows({
               />
             </div>
             <div className="col-auto">
-              <button type="submit" className="btn btn-sm btn-success">Save</button>
+              <button type="submit" className="btn btn-sm btn-action">Save</button>
               <button type="button" className="btn btn-sm btn-secondary toggle-pw-row-btn ms-1" data-id={pw.id} onClick={onToggle}>
                 Cancel
               </button>
@@ -1555,7 +1555,7 @@ function StudentNoteEntry({
           {fmtDateTime(n.created_at)} · <strong>{n.username ?? 'unknown'}</strong>
         </small>
         <div className="d-flex gap-1 flex-shrink-0">
-          <button type="button" className="btn btn-sm btn-success py-0 note-edit-btn" data-id={n.id} onClick={onToggleEdit}>
+          <button type="button" className="btn btn-sm btn-action py-0 note-edit-btn" data-id={n.id} onClick={onToggleEdit}>
             Edit
           </button>
           <span className="note-delete">
@@ -1583,7 +1583,7 @@ function StudentNoteEntry({
           onChange={(e) => setContent(e.target.value)}
         />
         <div className="d-flex gap-2">
-          <button type="submit" className="btn btn-sm btn-primary">Save</button>
+          <button type="submit" className="btn btn-sm btn-action">Save</button>
           <button type="button" className="btn btn-sm btn-secondary note-cancel-btn" data-id={n.id} onClick={onToggleEdit}>
             Cancel
           </button>

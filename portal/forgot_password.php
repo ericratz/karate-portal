@@ -49,6 +49,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                 'INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES (?, ?, ?)'
             )->execute([$user['id'], $token, $expires]);
 
+            // Absolute on purpose: this goes in an email, where a root-relative
+            // path has nothing to resolve against. Do not switch to app_url().
             $reset_url = SITE_URL . '/reset_password.php?token=' . $token;
             $subject   = 'Reset your password — ' . SITE_NAME;
             $body      = "You requested a password reset for your " . SITE_NAME . " account.\n\n"
@@ -94,17 +96,23 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
           href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
           integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
           crossorigin="anonymous">
+    <link rel="stylesheet" href="<?= app_url('/assets/css/portal.css') ?>">
     <style nonce="<?= csp_nonce() ?>">
+        /* Matches login.php / register.php: same width, same purple header
+           carrying the black wordmark, same muted subtitle. */
         body { background: #f0f0f0; }
-        .card-wrap { max-width: 420px; margin: 80px auto; }
+        .card-wrap { max-width: 440px; margin: 80px auto; }
         .card-header { background: #6f42c1; color: #fff; text-align: center; padding: 1.25rem; }
         .card-header h4 { margin: 0; font-weight: 600; }
-    </style>
+        </style>
 </head>
 <body>
 <div class="card-wrap">
     <div class="card shadow">
-        <div class="card-header"><h4>Forgot Password</h4></div>
+        <div class="card-header">
+            <h4 class="brand-name">Shotokan Karate and <span class="text-nowrap">Self-defense</span></h4>
+            <small class="brand-subtitle">Forgot Password</small>
+        </div>
         <div class="card-body p-4">
 
             <?php if ($sent): ?>
@@ -126,8 +134,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                     <input type="hidden" name="username" value="<?= htmlspecialchars($username) ?>">
                     <input type="hidden" name="confirmed" value="1">
                     <div class="d-grid">
-                        <button type="submit" class="btn btn-lg"
-                                style="background:#198754;border-color:#198754;color:#fff">Send Reset Link</button>
+                        <button type="submit" class="btn btn-action btn-lg">Send Reset Link</button>
                     </div>
                 </form>
 
@@ -145,8 +152,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                                value="<?= htmlspecialchars($username) ?>">
                     </div>
                     <div class="d-grid">
-                        <button type="submit" class="btn btn-lg"
-                                style="background:#198754;border-color:#198754;color:#fff">Continue</button>
+                        <button type="submit" class="btn btn-action btn-lg">Continue</button>
                     </div>
                 </form>
                 <div class="text-center mt-3 small">

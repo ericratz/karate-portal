@@ -172,7 +172,7 @@ export default function UserProfile() {
                   <button
                     type="button"
                     id="accountEditBtn"
-                    className={`btn btn-sm ${editing ? 'btn-warning' : 'btn-success'}`}
+                    className={`btn btn-sm ${editing ? 'btn-nav' : 'btn-action'}`}
                     onClick={() => (editing ? void confirmEdit() : startEdit())}
                   >
                     {editing ? 'Confirm' : 'Edit'}
@@ -280,7 +280,7 @@ export default function UserProfile() {
                     </div>
                   </div>
                   <div className="d-flex gap-2">
-                    <a href={`#/admin/student-edit?id=${u.student_id}`} className="btn btn-sm btn-outline-primary">
+                    <a href={`#/admin/student-edit?id=${u.student_id}`} className="btn btn-sm btn-action">
                       Edit Roster Entry
                     </a>
                     <button
@@ -323,7 +323,7 @@ export default function UserProfile() {
                         </option>
                       ))}
                     </select>
-                    <button type="submit" className="btn btn-sm btn-outline-primary">Compare</button>
+                    <button type="submit" className="btn btn-sm btn-action">Compare</button>
                   </form>
                 </>
               ) : (
@@ -338,7 +338,7 @@ export default function UserProfile() {
           <div className="card border-0 shadow-sm">
             <div className="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
               <span>Password</span>
-              <button className="btn btn-sm btn-success" type="button" onClick={() => setPwOpen((v) => !v)}>
+              <button className="btn btn-sm btn-action" type="button" onClick={() => setPwOpen((v) => !v)}>
                 Change
               </button>
             </div>
@@ -367,7 +367,8 @@ export default function UserProfile() {
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                   />
-                  <button type="submit" className="btn btn-sm btn-warning">Set Password</button>
+                  {/* Purple: submitting a new password is data entry, same as Log In. */}
+                  <button type="submit" className="btn btn-sm btn-nav">Set Password</button>
                   <button type="button" className="btn btn-sm btn-secondary" onClick={() => setPwOpen(false)}>
                     Cancel
                   </button>
@@ -395,7 +396,7 @@ export default function UserProfile() {
                   )}
                 </div>
                 <button
-                  className={`btn btn-sm ${u.active ? 'btn-outline-danger' : 'btn-outline-success'}`}
+                  className={`btn btn-sm ${u.active ? 'btn-outline-danger' : 'btn-action'}`}
                   onClick={() => {
                     if (window.confirm(`${u.active ? 'Deactivate' : 'Activate'} this account?`)) {
                       void run({ action: 'toggle_active' }, 'Changes saved.');

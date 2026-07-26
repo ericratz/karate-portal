@@ -47,8 +47,30 @@ function DarkToggle() {
   );
 }
 
-/** The admin "Admin" dropdown — same items/sections as includes/header.php. */
-function AdminMenu({ onNavigate }: { onNavigate: () => void }) {
+/**
+ * One entry in a navbar dropdown: an SPA route, a plain href (for the pages
+ * still served by PHP), a section heading, or a rule.
+ */
+type MenuEntry =
+  | { to: string; label: string }
+  | { href: string; label: string }
+  | { header: string }
+  | { divider: true };
+
+/**
+ * Navbar dropdown shell — React-controlled, so no bootstrap JS in the bundle.
+ * Shared by the Admin and Instructor menus rather than duplicated: the two
+ * differ only in their label and their entries.
+ */
+function NavMenu({
+  label,
+  entries,
+  onNavigate,
+}: {
+  label: string;
+  entries: MenuEntry[];
+  onNavigate: () => void;
+}) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLLIElement>(null);
 
@@ -61,14 +83,6 @@ function AdminMenu({ onNavigate }: { onNavigate: () => void }) {
     return () => document.removeEventListener('click', close);
   }, [open]);
 
-  const spa = (to: string, label: string) => (
-    <li>
-      <Link className="dropdown-item" to={to} onClick={() => { setOpen(false); onNavigate(); }}>
-        {label}
-      </Link>
-    </li>
-  );
-
   return (
     <li className="nav-item dropdown" ref={ref}>
       <a
@@ -80,38 +94,85 @@ function AdminMenu({ onNavigate }: { onNavigate: () => void }) {
           setOpen((v) => !v);
         }}
       >
-        Admin
+        {label}
       </a>
       <ul
         className={`dropdown-menu dropdown-menu-end${open ? ' show' : ''}`}
         style={{ maxHeight: 'calc(100vh - 120px)', overflowY: 'auto', right: 0 }}
       >
-        <li><h6 className="dropdown-header">Student Info</h6></li>
-        {spa('/instructor/classes', 'Attendance')}
-        {spa('/instructor/belt-tests', 'Belt Tests')}
-        {spa('/admin/notes', 'Class Notes')}
-        {spa('/admin/email', 'Email Students')}
-        {spa('/instructor', 'Instructor Dashboard')}
-        {spa('/admin/roster', 'Roster')}
-        <li><hr className="dropdown-divider" /></li>
-        <li><h6 className="dropdown-header">Finances</h6></li>
-        {spa('/admin/donations', 'Donations')}
-        {spa('/admin/waivers', 'Exemptions')}
-        {spa('/admin/expenses', 'Expenses')}
-        {spa('/admin/payments', 'Payments')}
-        <li><hr className="dropdown-divider" /></li>
-        <li><h6 className="dropdown-header">Security</h6></li>
-        {spa('/admin/logs', 'Logs')}
-        {spa('/admin/users', 'Users')}
+        {entries.map((entry, i) => {
+          if ('divider' in entry) return <li key={i}><hr className="dropdown-divider" /></li>;
+          if ('header' in entry) return <li key={i}><h6 className="dropdown-header">{entry.header}</h6></li>;
+          if ('href' in entry) {
+            return (
+              <li key={i}>
+                <a className="dropdown-item" href={entry.href}>{entry.label}</a>
+              </li>
+            );
+          }
+          return (
+            <li key={i}>
+              <Link
+                className="dropdown-item"
+                to={entry.to}
+                onClick={() => { setOpen(false); onNavigate(); }}
+              >
+                {entry.label}
+              </Link>
+            </li>
+          );
+        })}
       </ul>
     </li>
   );
 }
 
+/** The admin "Admin" dropdown — same items/sections as includes/header.php. */
+const ADMIN_ENTRIES: MenuEntry[] = [
+  { header: 'Student Info' },
+  { to: '/instructor/classes', label: 'Attendance' },
+  { to: '/instructor/belt-tests', label: 'Belt Tests' },
+  { to: '/admin/notes', label: 'Class Notes' },
+  { to: '/admin/email', label: 'Email Students' },
+  { to: '/instructor', label: 'Instructor Dashboard' },
+  { to: '/admin/roster', label: 'Roster' },
+  { divider: true },
+  { header: 'Finances' },
+  { to: '/admin/donations', label: 'Donations' },
+  { to: '/admin/waivers', label: 'Exemptions' },
+  { to: '/admin/expenses', label: 'Expenses' },
+  { to: '/admin/payments', label: 'Payments' },
+  { divider: true },
+  { header: 'Security' },
+  { to: '/admin/logs', label: 'Logs' },
+  { to: '/admin/users', label: 'Users' },
+  // Server-rendered, so a plain href rather than an SPA route.
+  { href: '/karate/portal/admin/security.php', label: 'Two-Factor' },
+];
+
+/**
+ * The instructor "Menu" dropdown. Instructors previously had no navbar links at
+ * all — only the dark-mode toggle and Log out — so every move had to go back
+ * through a dashboard card. These are the instructor-reachable routes.
+ */
+const INSTRUCTOR_ENTRIES: MenuEntry[] = [
+  { to: '/instructor', label: 'Instructor Dashboard' },
+  { to: '/instructor/roster', label: 'Roster' },
+  { divider: true },
+  { header: 'Attendance' },
+  { to: '/instructor/classes', label: 'Classes' },
+  { to: '/instructor/attendance', label: 'Take Attendance' },
+  { divider: true },
+  { to: '/instructor/belt-tests', label: 'Belt Tests' },
+];
+
 export default function Layout({ children }: { children: ReactNode }) {
   const { me } = useSession();
   const tip = roleTips[me.role];
   const isAdmin = me.role === 'admin';
+  const isInstructor = me.role === 'instructor';
+  // Both roles get a collapsible navbar; everyone else keeps the bare chrome.
+  const hasNav = isAdmin || isInstructor;
   const [navOpen, setNavOpen] = useState(false);
 
   return (
@@ -128,7 +189,7 @@ export default function Layout({ children }: { children: ReactNode }) {
               My Dashboard
             </Link>
           )}
-          {isAdmin && (
+          {hasNav && (
             <button
               className="navbar-toggler"
               type="button"
@@ -138,7 +199,22 @@ export default function Layout({ children }: { children: ReactNode }) {
               <span className="navbar-toggler-icon" />
             </button>
           )}
-          <div className={isAdmin ? `collapse navbar-collapse${navOpen ? ' show' : ''}` : 'd-flex ms-auto'} id="navMenu">
+          <div className={hasNav ? `collapse navbar-collapse${navOpen ? ' show' : ''}` : 'd-flex ms-auto'} id="navMenu">
+            {isInstructor && (
+              <ul className="navbar-nav me-auto">
+                <li className="nav-item">
+                  <Link className="nav-link nav-link-lg" to="/instructor/roster" onClick={() => setNavOpen(false)}>
+                    Roster
+                  </Link>
+                </li>
+                <li className="nav-item">
+                  <Link className="nav-link nav-link-lg" to="/instructor/classes" onClick={() => setNavOpen(false)}>
+                    Attendance
+                  </Link>
+                </li>
+                <NavMenu label="Menu" entries={INSTRUCTOR_ENTRIES} onNavigate={() => setNavOpen(false)} />
+              </ul>
+            )}
             {isAdmin && (
               <ul className="navbar-nav me-auto">
                 <li className="nav-item">
@@ -162,7 +238,7 @@ export default function Layout({ children }: { children: ReactNode }) {
                     Jira <ExtIcon size={12} />
                   </a>
                 </li>
-                <AdminMenu onNavigate={() => setNavOpen(false)} />
+                <NavMenu label="Admin" entries={ADMIN_ENTRIES} onNavigate={() => setNavOpen(false)} />
               </ul>
             )}
             <div className="d-flex align-items-center gap-3">

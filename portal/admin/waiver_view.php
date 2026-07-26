@@ -310,7 +310,7 @@ include __DIR__ . '/../includes/header.php';
 
         <?php if ($is_admin): ?>
         <hr class="mt-4 mb-3">
-        <button type="submit" class="btn btn-primary px-4 mb-2">Save Waiver</button>
+        <button type="submit" class="btn btn-action px-4 mb-2">Save Waiver</button>
         <span class="text-muted small ms-2">Changes are logged in the audit log</span>
         <?php endif; ?>
 

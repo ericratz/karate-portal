@@ -105,7 +105,7 @@ export default function ProfileCard({
           <button
             type="button"
             id="profileEditBtn"
-            className={`btn btn-sm ${editing ? 'btn-warning' : 'btn-success'}`}
+            className={`btn btn-sm ${editing ? 'btn-nav' : 'btn-action'}`}
             disabled={saving}
             onClick={() => (editing ? void save() : startEdit())}
           >
@@ -146,7 +146,7 @@ export default function ProfileCard({
                 <>
                   <span className="text-success">✓</span>
                   {student.injury_waiver_date ? ` ${fmtDate(student.injury_waiver_date)}` : ''}
-                  <Link to={`/waiver/${student.id}`} className="btn btn-sm btn-outline-secondary ms-2">View</Link>
+                  <Link to={`/waiver/${student.id}`} className="btn btn-sm btn-action ms-2">View</Link>
                 </>
               ) : (
                 '—'

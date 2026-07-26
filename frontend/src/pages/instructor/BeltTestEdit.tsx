@@ -552,7 +552,7 @@ export default function BeltTestEdit() {
                        checked={feePaid} onChange={(e) => setFeePaid(e.target.checked)} />
                 <label className="form-check-label" htmlFor="feePaid">Belt Test Fee Paid</label>
               </div>
-              <button type="submit" className="btn btn-primary" disabled={saving}>
+              <button type="submit" className="btn btn-action" disabled={saving}>
                 {isEdit ? 'Save Changes' : 'Record Test'}
               </button>
             </div>

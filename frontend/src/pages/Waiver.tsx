@@ -326,7 +326,7 @@ export default function Waiver() {
                     I have read and fully understand this agreement and voluntarily agree to be bound by its terms.
                   </label>
                 </div>
-                <button type="submit" className="btn btn-primary px-4 mb-2" disabled={submitting}>
+                <button type="submit" className="btn btn-action px-4 mb-2" disabled={submitting}>
                   {submitting ? 'Submitting…' : 'Submit Signed Waiver'}
                 </button>
               </>

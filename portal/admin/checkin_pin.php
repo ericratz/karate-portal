@@ -28,7 +28,7 @@ include __DIR__ . '/../includes/header.php';
 ?>
 
 <div class="d-flex align-items-center gap-3 mb-4">
-    <a href="../instructor/attendance_sessions.php" class="btn btn-sm btn-filter">← Classes</a>
+    <a href="<?= app_url('/instructor/attendance_sessions.php') ?>" class="btn btn-sm btn-filter">← Classes</a>
     <h4 class="mb-0">Check-in PIN</h4>
 </div>
 
@@ -48,7 +48,7 @@ include __DIR__ . '/../includes/header.php';
                              data-pin="<?= htmlspecialchars($current_pin) ?>">
                             <?= str_repeat('•', max(4, strlen($current_pin))) ?>
                         </div>
-                        <button type="button" id="togglePinBtn" class="btn btn-sm btn-outline-secondary">View</button>
+                        <button type="button" id="togglePinBtn" class="btn btn-sm btn-action">View</button>
                     </div>
                     <?php if ($updated_at): ?>
                     <div class="text-muted small">Last changed <?= htmlspecialchars(date('j M Y g:i a', (int) strtotime($updated_at))) ?></div>
@@ -61,7 +61,7 @@ include __DIR__ . '/../includes/header.php';
                         <input type="text" name="pin" class="form-control" style="width:140px"
                                placeholder="e.g. 4821" maxlength="20" autocomplete="off">
                     </div>
-                    <button class="btn btn-primary">Update PIN</button>
+                    <button class="btn btn-action">Update PIN</button>
                 </form>
             </div>
         </div>

@@ -13,6 +13,7 @@
           href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
           integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
           crossorigin="anonymous">
+    <link rel="stylesheet" href="<?= app_url('/assets/css/portal.css') ?>">
     <style nonce="<?= csp_nonce() ?>">
         .navbar { background: #6f42c1 !important; }
         .navbar .navbar-brand,
@@ -131,7 +132,7 @@
         }
 
         /* Global green buttons */
-        .btn-primary {
+        .btn-action {
             --bs-btn-bg: #198754;
             --bs-btn-border-color: #198754;
             --bs-btn-hover-bg: #157347;
@@ -210,7 +211,7 @@
                 overflow-y: auto;
             }
         }
-        .btn-outline-secondary, .btn-outline-primary {
+        .btn-action, .btn-action {
             --bs-btn-bg: #198754;
             --bs-btn-color: #fff;
             --bs-btn-border-color: #198754;
@@ -234,10 +235,10 @@
 <nav class="navbar navbar-expand-md sticky-top">
     <div class="container-fluid">
         <?php
-        if (has_role('admin'))          $dashboard_url = SITE_URL . '/admin/';
-        elseif (has_role('instructor')) $dashboard_url = SITE_URL . '/instructor/';
-        elseif (has_role('parent'))     $dashboard_url = SITE_URL . '/parent/';
-        else                            $dashboard_url = SITE_URL . '/student/';
+        if (has_role('admin'))          $dashboard_url = app_url('/admin/');
+        elseif (has_role('instructor')) $dashboard_url = app_url('/instructor/');
+        elseif (has_role('parent'))     $dashboard_url = app_url('/parent/');
+        else                            $dashboard_url = app_url('/student/');
         ?>
         <a class="navbar-brand fw-semibold" href="<?= $dashboard_url ?>">
             <?php
@@ -256,10 +257,10 @@
 
                 <?php if (has_role('admin')): ?>
                 <li class="nav-item">
-                    <a class="nav-link nav-link-lg" href="<?= SITE_URL ?>/admin/students.php">Roster</a>
+                    <a class="nav-link nav-link-lg" href="<?= app_url() ?>/admin/students.php">Roster</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link nav-link-lg" href="<?= SITE_URL ?>/instructor/attendance_sessions.php">Attendance</a>
+                    <a class="nav-link nav-link-lg" href="<?= app_url() ?>/instructor/attendance_sessions.php">Attendance</a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link nav-link-lg" href="https://ericratz.atlassian.net/jira/software/projects/SCRUM/boards/1" target="_blank" style="color:#7ab3f5 !important;">Jira <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16" style="vertical-align:middle;margin-left:2px"><path fill-rule="evenodd" d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5"/><path fill-rule="evenodd" d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 1.707V5.5a.5.5 0 0 0 1 0z"/></svg></a>
@@ -269,22 +270,23 @@
                        data-bs-toggle="dropdown" role="button">Admin</a>
                     <ul class="dropdown-menu dropdown-menu-end" style="max-height:calc(100vh - 120px);overflow-y:auto;">
                         <li><h6 class="dropdown-header">Student Info</h6></li>
-                        <li><a class="dropdown-item" href="<?= SITE_URL ?>/instructor/attendance_sessions.php">Attendance</a></li>
-                        <li><a class="dropdown-item" href="<?= SITE_URL ?>/instructor/belt_tests_all.php">Belt Tests</a></li>
-                        <li><a class="dropdown-item" href="<?= SITE_URL ?>/admin/student_notes.php">Class Notes</a></li>
-                        <li><a class="dropdown-item" href="<?= SITE_URL ?>/admin/email_students.php">Email Students</a></li>
-                        <li><a class="dropdown-item" href="<?= SITE_URL ?>/instructor/">Instructor Dashboard</a></li>
-                        <li><a class="dropdown-item" href="<?= SITE_URL ?>/admin/students.php">Roster</a></li>
+                        <li><a class="dropdown-item" href="<?= app_url() ?>/instructor/attendance_sessions.php">Attendance</a></li>
+                        <li><a class="dropdown-item" href="<?= app_url() ?>/instructor/belt_tests_all.php">Belt Tests</a></li>
+                        <li><a class="dropdown-item" href="<?= app_url() ?>/admin/student_notes.php">Class Notes</a></li>
+                        <li><a class="dropdown-item" href="<?= app_url() ?>/admin/email_students.php">Email Students</a></li>
+                        <li><a class="dropdown-item" href="<?= app_url() ?>/instructor/">Instructor Dashboard</a></li>
+                        <li><a class="dropdown-item" href="<?= app_url() ?>/admin/students.php">Roster</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><h6 class="dropdown-header">Finances</h6></li>
-                        <li><a class="dropdown-item" href="<?= SITE_URL ?>/admin/donations.php">Donations</a></li>
-                        <li><a class="dropdown-item" href="<?= SITE_URL ?>/admin/waivers.php">Exemptions</a></li>
-                        <li><a class="dropdown-item" href="<?= SITE_URL ?>/admin/expenses.php">Expenses</a></li>
-                        <li><a class="dropdown-item" href="<?= SITE_URL ?>/admin/payments.php">Payments</a></li>
+                        <li><a class="dropdown-item" href="<?= app_url() ?>/admin/donations.php">Donations</a></li>
+                        <li><a class="dropdown-item" href="<?= app_url() ?>/admin/waivers.php">Exemptions</a></li>
+                        <li><a class="dropdown-item" href="<?= app_url() ?>/admin/expenses.php">Expenses</a></li>
+                        <li><a class="dropdown-item" href="<?= app_url() ?>/admin/payments.php">Payments</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><h6 class="dropdown-header">Security</h6></li>
-                        <li><a class="dropdown-item" href="<?= SITE_URL ?>/admin/logs.php">Logs</a></li>
-                        <li><a class="dropdown-item" href="<?= SITE_URL ?>/admin/users.php">Users</a></li>
+                        <li><a class="dropdown-item" href="<?= app_url() ?>/admin/logs.php">Logs</a></li>
+                        <li><a class="dropdown-item" href="<?= app_url() ?>/admin/users.php">Users</a></li>
+                        <li><a class="dropdown-item" href="<?= app_url() ?>/admin/security.php">Two-Factor</a></li>
                     </ul>
                 </li>
                 <?php endif; ?>
@@ -314,7 +316,7 @@
                     ?>
                     <span class="role-badge"<?= $_tip ? ' data-bs-toggle="tooltip" title="' . htmlspecialchars($_tip) . '"' : '' ?>><?= htmlspecialchars($_rt) ?></span>
                     &nbsp;
-                    <a href="<?= SITE_URL ?>/logout.php"
+                    <a href="<?= app_url() ?>/logout.php"
                        class="btn btn-sm btn-logout ms-2">Log out</a>
                 </span>
             </div>

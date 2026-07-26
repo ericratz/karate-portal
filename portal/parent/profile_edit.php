@@ -188,7 +188,7 @@ include __DIR__ . '/../includes/header.php';
                           placeholder="Allergies, conditions, medications, etc."><?= htmlspecialchars($student['medical_note'] ?? '') ?></textarea>
             </div>
             <div class="col-12">
-                <button type="submit" class="btn btn-success">Save Profile</button>
+                <button type="submit" class="btn btn-action">Save Profile</button>
                 <a href="index.php?student_id=<?= $student_id ?>" class="btn btn-secondary ms-2">Cancel</a>
             </div>
         </form>
@@ -232,7 +232,7 @@ include __DIR__ . '/../includes/header.php';
                     <input type="password" name="confirm_password" class="form-control" required>
                 </div>
                 <div class="col-12">
-                    <button class="btn btn-primary">Update Password</button>
+                    <button class="btn btn-action">Update Password</button>
                 </div>
             </form>
         </div>

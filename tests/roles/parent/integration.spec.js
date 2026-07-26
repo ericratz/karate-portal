@@ -153,7 +153,7 @@ test.describe('Parent portal — integration', () => {
         await expect(page.locator('body')).toContainText('Monthly Auto-Pay');
         // Own record + 2 children — one row (Active badge or setup button) each
         await expect(
-            page.locator('.btn-success:has-text("Set up Auto-Pay"), .text-success:has-text("Active")'),
+            page.locator('.btn-action:has-text("Set up Auto-Pay"), .text-success:has-text("Active")'),
         ).toHaveCount(3);
     });
 

@@ -53,8 +53,19 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     );
   }
 
+  // A partial deploy — this bundle uploaded without the matching PHP, or vice
+  // versa — used to present as a blank page with nothing in any log. Now it
+  // announces itself, with both numbers, so the fix is obvious from the screen.
+  const stale = me.app_version !== __APP_VERSION__;
+
   return (
     <SessionContext.Provider value={{ me, family, refreshFamily }}>
+      {stale && (
+        <div className="alert alert-warning rounded-0 mb-0 text-center small" role="alert">
+          <strong>Partial deploy detected.</strong> This page was built for v{__APP_VERSION__} but the
+          server is running v{me.app_version}. Finish uploading the release — see RELEASE.md.
+        </div>
+      )}
       {children}
     </SessionContext.Provider>
   );

@@ -90,7 +90,7 @@ export default function Expenses() {
     <>
       <div className="d-flex align-items-center justify-content-between mb-4">
         <h3 className="mb-0">Expenses</h3>
-        <button className="btn btn-success btn-sm" onClick={() => setFormOpen((v) => !v)}>
+        <button className="btn btn-action btn-sm" onClick={() => setFormOpen((v) => !v)}>
           + Record Expense
         </button>
       </div>
@@ -157,7 +157,7 @@ export default function Expenses() {
                 />
               </div>
               <div className="col-12">
-                <button className="btn btn-success">Save Expense</button>
+                <button className="btn btn-action">Save Expense</button>
               </div>
             </form>
           </div>
@@ -226,7 +226,7 @@ export default function Expenses() {
             {data.expenses.length > 0 && (
               <button
                 id="editToggle"
-                className={editing ? 'btn btn-sm btn-danger' : 'btn btn-sm btn-outline-secondary'}
+                className={editing ? 'btn btn-sm btn-danger' : 'btn btn-sm btn-action'}
                 onClick={() => setEditing((v) => !v)}
               >
                 {editing ? 'Done' : 'Edit'}

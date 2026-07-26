@@ -255,7 +255,7 @@ export default function EmailStudents() {
               </div>
             </div>
 
-            <button type="submit" className="btn btn-primary px-4" id="sendBtn">
+            <button type="submit" className="btn btn-action px-4" id="sendBtn">
               Send Email
             </button>
           </div>

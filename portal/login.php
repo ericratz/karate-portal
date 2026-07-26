@@ -21,6 +21,10 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             case 'ok':
                 header('Location: ' . dashboard_url($_SESSION['role']));
                 exit;
+            case 'twofa':
+                // Password accepted, but this account needs a code and this
+                // browser is not trusted. No session exists yet.
+                redirect('/two_factor.php');
             case 'inactive':
                 $error = 'Your account has been deactivated. Contact Noji for help.';
                 break;
@@ -65,12 +69,16 @@ if (defined('GOOGLE_CLIENT_ID') && GOOGLE_CLIENT_ID !== '') {
           href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
           integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
           crossorigin="anonymous">
+    <link rel="stylesheet" href="<?= app_url('/assets/css/portal.css') ?>">
     <style nonce="<?= csp_nonce() ?>">
         body { background: #f0f0f0; }
         .login-card {
-            max-width: 400px;
+            max-width: 440px;
             margin: 80px auto;
         }
+        /* Purple header with the black wordmark on it. The face is heavy enough
+           to carry: black on #6f42c1 is ~3.9:1, and at 24px bold this counts as
+           large text, which WCAG AA clears at 3:1. */
         .login-card .card-header {
             background: #6f42c1;
             color: #fff;
@@ -78,7 +86,6 @@ if (defined('GOOGLE_CLIENT_ID') && GOOGLE_CLIENT_ID !== '') {
             padding: 1.25rem;
         }
         .login-card .card-header h4 { margin: 0; font-weight: 600; }
-        .login-card .card-header small { opacity: .85; }
         .btn-google {
             background: #fff;
             border: 1px solid #dadce0;
@@ -93,8 +100,10 @@ if (defined('GOOGLE_CLIENT_ID') && GOOGLE_CLIENT_ID !== '') {
 <div class="login-card">
     <div class="card shadow">
         <div class="card-header">
-            <h4>Shotokan Karate</h4>
-            <small>Student &amp; Instructor Portal</small>
+            <!-- "Self-defense" is kept intact: left to itself the line breaks at
+                 the hyphen on this narrow card, splitting the word. -->
+            <h4 class="brand-name">Shotokan Karate and <span class="text-nowrap">Self-defense</span></h4>
+            <small class="brand-subtitle">Student &amp; Instructor Portal</small>
         </div>
         <div class="card-body p-4">
 
@@ -117,7 +126,9 @@ if (defined('GOOGLE_CLIENT_ID') && GOOGLE_CLIENT_ID !== '') {
                            class="form-control" autocomplete="current-password" required>
                 </div>
                 <div class="d-grid">
-                    <button type="submit" class="btn btn-primary btn-lg">Log In</button>
+                    <!-- Purple, not green: submitting credentials is data entry,
+                         and it puts the brand colour on the first screen users see. -->
+                    <button type="submit" class="btn btn-nav btn-lg">Log In</button>
                 </div>
             </form>
 
@@ -143,12 +154,12 @@ if (defined('GOOGLE_CLIENT_ID') && GOOGLE_CLIENT_ID !== '') {
 
         </div>
         <div class="card-footer text-center text-muted small py-2">
-            <a href="<?= SITE_URL ?>/forgot_password.php">Forgot password?</a>
+            <a href="<?= app_url() ?>/forgot_password.php">Forgot password?</a>
             &nbsp;|&nbsp;
             Don't have an account?
-            <a href="<?= SITE_URL ?>/register.php">Create one</a>
+            <a href="<?= app_url() ?>/register.php">Create one</a>
             &nbsp;|&nbsp;
-            <a href="/karate/">Back to karate home</a>
+            <a class="text-nowrap" href="/karate/">Back to karate home</a>
         </div>
     </div>
 </div>

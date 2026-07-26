@@ -5,6 +5,8 @@ portal/parent/dist/
 tests/report/
 test-results/
 tests/results/
+# Visual-review captures — regenerated on demand, never reviewed in git
+tests/visual/shots/
 tests/.db-snapshot.sql
 tests/.test-status.json
 tests/credentials.js
@@ -13,7 +15,6 @@ memory/
 *.txt
 tests/clear_rate_limit.php
 tests/cleanup.config.js
-portal/admin/assets/
 portal/vendor/
 portal/.phpunit.result.cache
 portal/.psalm-cache/

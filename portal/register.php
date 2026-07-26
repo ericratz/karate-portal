@@ -239,16 +239,16 @@ if ($step === 'confirm' && ($sel['type'] ?? '') === 'claim') {
           href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
           integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
           crossorigin="anonymous">
+    <link rel="stylesheet" href="<?= app_url('/assets/css/portal.css') ?>">
     <style nonce="<?= csp_nonce() ?>">
         body { background: #f0f0f0; }
         .register-card { max-width: 520px; margin: 48px auto 80px; }
+        /* Purple header with the black wordmark on it — see login.php. */
         .register-card .card-header {
             background: #6f42c1; color: #fff;
             text-align: center; padding: 1.25rem 1.25rem .75rem;
         }
         .register-card .card-header h4  { margin: 0; font-weight: 600; }
-        .register-card .card-header small { opacity: .85; }
-
         /* Step dots */
         .step-dots { display: flex; gap: 6px; justify-content: center; margin-top: .5rem; }
         .step-dot  { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,.35); }
@@ -289,8 +289,8 @@ if ($step === 'confirm' && ($sel['type'] ?? '') === 'claim') {
 
     <!-- ── Card header with step indicator ── -->
     <div class="card-header">
-        <h4>Shotokan Karate</h4>
-        <small>
+        <h4 class="brand-name">Shotokan Karate and <span class="text-nowrap">Self-defense</span></h4>
+        <small class="brand-subtitle">
             <?php if ($step === 'form')   echo 'Create an Account';
             elseif ($step === 'match')    echo 'Find Your Record';
             else                          echo 'Confirm &amp; Create Account'; ?>
@@ -350,7 +350,7 @@ if ($step === 'confirm' && ($sel['type'] ?? '') === 'claim') {
                     <input type="password" name="confirm" class="form-control" required>
                 </div>
                 <div class="col-12">
-                    <button class="btn btn-primary w-100">Next &rarr;</button>
+                    <button class="btn btn-action w-100">Next &rarr;</button>
                 </div>
             </div>
         </form>
@@ -411,7 +411,7 @@ if ($step === 'confirm' && ($sel['type'] ?? '') === 'claim') {
             <input type="hidden" name="action"         value="select">
             <input type="hidden" name="selection_type" id="selType"      value="">
             <input type="hidden" name="student_id"     id="selStudentId" value="0">
-            <button type="submit" class="btn btn-primary w-100" id="continueBtn" disabled>
+            <button type="submit" class="btn btn-action w-100" id="continueBtn" disabled>
                 Continue &rarr;
             </button>
         </form>
@@ -472,7 +472,7 @@ if ($step === 'confirm' && ($sel['type'] ?? '') === 'claim') {
             <form method="post">
                 <?= csrf_input() ?>
                 <input type="hidden" name="action" value="confirm">
-                <button class="btn btn-primary w-100">Yes, this is me — Create Account</button>
+                <button class="btn btn-action w-100">Yes, this is me — Create Account</button>
             </form>
             <form method="post" class="text-center mt-2">
                 <input type="hidden" name="action" value="back2">
@@ -515,7 +515,7 @@ if ($step === 'confirm' && ($sel['type'] ?? '') === 'claim') {
             <form method="post">
                 <?= csrf_input() ?>
                 <input type="hidden" name="action" value="confirm">
-                <button class="btn btn-primary w-100">Create Account</button>
+                <button class="btn btn-action w-100">Create Account</button>
             </form>
             <form method="post" class="text-center mt-2">
                 <input type="hidden" name="action" value="back2">
@@ -556,7 +556,7 @@ if ($step === 'confirm' && ($sel['type'] ?? '') === 'claim') {
             <form method="post">
                 <?= csrf_input() ?>
                 <input type="hidden" name="action" value="confirm">
-                <button class="btn btn-primary w-100">Create Account</button>
+                <button class="btn btn-action w-100">Create Account</button>
             </form>
             <?php if (!empty($matches)): ?>
             <form method="post" class="text-center mt-2">
@@ -578,7 +578,7 @@ if ($step === 'confirm' && ($sel['type'] ?? '') === 'claim') {
 
     <div class="card-footer text-center text-muted small py-2">
         <?php if ($step === 'form'): ?>
-            Already have an account? <a href="<?= SITE_URL ?>/login.php">Log in</a>
+            Already have an account? <a href="<?= app_url() ?>/login.php">Log in</a>
         <?php else: ?>
             &nbsp;
         <?php endif; ?>

@@ -8,6 +8,8 @@ export interface Me {
   username: string;
   role: string;
   csrf_token: string;
+  /** Version the PHP side is running — compared against __APP_VERSION__. */
+  app_version: string;
 }
 
 export interface NextRank {
@@ -309,8 +311,8 @@ export interface AttendanceStudent {
   last_attended: string | null;
 }
 
-export interface InstructorRef {
-  id: number;
+export interface InstructorOption {
+  key: string;   // "s:<studentId>" (roster person) or "u:<userId>" (admin login)
   name: string;
 }
 
@@ -318,8 +320,8 @@ export interface AttendanceContext {
   date: string;
   session_exists: boolean;
   class_type: string;
-  instructors: InstructorRef[];            // selectable admins + instructors
-  selected_instructor_ids: number[];       // who taught (or the default for a new class)
+  instructors: InstructorOption[];          // selectable roster instructors + admin logins
+  selected_instructor_keys: string[];       // who taught (or the default for a new class)
   students: AttendanceStudent[];
 }
 
@@ -335,7 +337,7 @@ export interface ClassSession {
   class_type: string;
   present_count: number;
   attendees: { first_name: string; last_name: string }[];
-  instructors: InstructorRef[];
+  instructors: { name: string }[];
 }
 
 export interface SessionsData {
