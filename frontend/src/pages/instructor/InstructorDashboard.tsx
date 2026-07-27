@@ -42,7 +42,33 @@ export default function InstructorDashboard() {
   return (
     <>
       {data.own_student_id > 0 && (
-        <div className="d-flex justify-content-end gap-2 mb-3">
+        <div className="d-flex justify-content-end gap-2 mb-3 flex-wrap">
+          {/* An instructor's own next-belt sheets. Rendered only when the rank
+              actually has them — a top-rank instructor has no next belt, and
+              not every rank ships both files. Styled as the member card is,
+              since all three open a document outside the app. */}
+          {data.next_rank?.hw_url && (
+            <a
+              href={data.next_rank.hw_url}
+              target="_blank"
+              rel="noreferrer"
+              className="btn text-white"
+              style={{ backgroundColor: '#0052cc', borderColor: '#0052cc' }}
+            >
+              Next Belt Homework <ExtIcon size={12} />
+            </a>
+          )}
+          {data.next_rank?.test_url && (
+            <a
+              href={data.next_rank.test_url}
+              target="_blank"
+              rel="noreferrer"
+              className="btn text-white"
+              style={{ backgroundColor: '#0052cc', borderColor: '#0052cc' }}
+            >
+              Next Belt Test <ExtIcon size={12} />
+            </a>
+          )}
           <a
             href={`../admin/member_card.php?student_id=${data.own_student_id}`}
             target="_blank"

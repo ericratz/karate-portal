@@ -7,8 +7,8 @@ Last drill: **2026-07-10** against `backups/karate_backup_2026-07-09_213803.sql`
 ## Backup sources
 
 - **Live (StackCP)**: `cron/backup.php` runs Sundays 7:00 AM Utah, writes
-  `karate_YYYY-MM-DD.sql` to `/home/sites/35b/0/049118ce4f/backups/karate/`,
-  keeps 8 weeks. Download via StackCP file manager, or use the admin portal's
+  `karate_YYYY-MM-DD.sql` to the account's `backups/karate/` directory (full path in
+  the untracked `portal/cron/CRON_SETUP.txt`), keeps 8 weeks. Download via StackCP file manager, or use the admin portal's
   DB backup page (`portal/admin/db_backup.php`).
 - **Local**: `backups/` in the repo checkout.
 

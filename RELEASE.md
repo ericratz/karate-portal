@@ -66,8 +66,21 @@ build can never be picked up.
 
 ```bash
 docker compose build app
+docker compose up -d --force-recreate app
 docker compose cp app:/var/www/html/karate/portal/parent/dist ./portal/parent/dist
 ```
+
+> **Trap:** `docker compose cp` reads the **running container**, not the image you just built. Without
+> the `--force-recreate` line the container keeps running the previous image and you extract the
+> *previous* release's bundle — silently, with no error. That is a partial deploy pre-loaded into the
+> upload set, so always confirm the version actually baked in before uploading:
+>
+> ```bash
+> grep -o '· v.\{0,14\}' portal/parent/dist/assets/index-*.js
+> ```
+>
+> It must print the version from `version.php`. The entry filename is content-hashed, so a hash
+> identical to last release's is itself a sign nothing was rebuilt.
 
 > **Trap:** the extracted folder contains a **hidden `.vite/` directory** holding `manifest.json`.
 > The four PHP shells (`admin/app.php`, `instructor/app.php`, `parent/app.php`, `student/app.php`)
@@ -87,7 +100,9 @@ cat portal/parent/dist/.vite/manifest.json | head
 Take a fresh dump even if the weekly cron ran — this is the rollback point.
 
 - Admin portal → DB backup page (`portal/admin/db_backup.php`), or
-- StackCP file manager → `/home/sites/35b/0/049118ce4f/backups/karate/`
+- StackCP file manager → the `backups/karate/` directory on the hosting account (sibling of
+  `public_html`, so it is not web-reachable; the full path is in `portal/cron/CRON_SETUP.txt`,
+  which is untracked on purpose)
 
 Download it to `backups/` locally. A valid dump starts with `-- Database backup:` and ends with
 `-- End of backup`; if the footer is missing the export was truncated — do not proceed.

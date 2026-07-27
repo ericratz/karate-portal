@@ -16,4 +16,4 @@
 // loud instead of rendering an empty page.
 //
 // Keep the format a bare dotted number — vite.config.ts matches on '...' quotes.
-if (!defined('APP_VERSION')) define('APP_VERSION', '5.1');
+if (!defined('APP_VERSION')) define('APP_VERSION', '5.1.1');

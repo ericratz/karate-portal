@@ -8,6 +8,10 @@ export interface Me {
   username: string;
   role: string;
   csrf_token: string;
+  /** This user's own roster record, or 0 if they have none (e.g. a login-only admin). */
+  own_student_id: number;
+  /** Whether that roster record has linked children — decides where "My Profile" goes. */
+  has_children: boolean;
   /** Version the PHP side is running — compared against __APP_VERSION__. */
   app_version: string;
 }
@@ -278,6 +282,8 @@ export interface InstructorDashboardData {
   has_more_tests: boolean;
   own_student_id: number;
   has_children: boolean;
+  /** The instructor's own next belt — null if they have no roster record or are at the top rank. */
+  next_rank: NextRank | null;
 }
 
 // GET /instructor/roster.php

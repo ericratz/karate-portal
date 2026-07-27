@@ -153,18 +153,35 @@ const ADMIN_ENTRIES: MenuEntry[] = [
 /**
  * The instructor "Menu" dropdown. Instructors previously had no navbar links at
  * all — only the dark-mode toggle and Log out — so every move had to go back
- * through a dashboard card. These are the instructor-reachable routes.
+ * through a dashboard card.
+ *
+ * Flat and alphabetical: the list is short enough that section headings cost a
+ * scan rather than saving one. Instructor Dashboard and Take Attendance are
+ * deliberately absent — the navbar brand already goes to the dashboard, and
+ * attendance is reached by picking a date there.
+ *
+ * The personal entries only appear for an instructor who also has a roster
+ * record. "My Profile" goes to the family dashboard when they have children
+ * linked, since that view covers their own record *and* the children; without
+ * children there is no family view, so it goes to their own student page —
+ * the same rule the dashboard buttons use.
  */
-const INSTRUCTOR_ENTRIES: MenuEntry[] = [
-  { to: '/instructor', label: 'Instructor Dashboard' },
-  { to: '/instructor/roster', label: 'Roster' },
-  { divider: true },
-  { header: 'Attendance' },
-  { to: '/instructor/classes', label: 'Classes' },
-  { to: '/instructor/attendance', label: 'Take Attendance' },
-  { divider: true },
-  { to: '/instructor/belt-tests', label: 'Belt Tests' },
-];
+function instructorEntries(ownStudentId: number, hasChildren: boolean): MenuEntry[] {
+  const entries: MenuEntry[] = [
+    { to: '/instructor/belt-tests', label: 'Belt Tests' },
+    { to: '/instructor/classes', label: 'Classes' },
+    { to: '/instructor/roster', label: 'Roster' },
+  ];
+  if (ownStudentId > 0) {
+    entries.push(
+      { to: hasChildren ? `/pay/${ownStudentId}` : '/pay', label: 'Make a Payment' },
+      { to: hasChildren ? '/' : `/instructor/student/${ownStudentId}`, label: 'My Profile' },
+    );
+  }
+  return entries.sort((a, b) =>
+    'label' in a && 'label' in b ? a.label.localeCompare(b.label) : 0,
+  );
+}
 
 export default function Layout({ children }: { children: ReactNode }) {
   const { me } = useSession();
@@ -212,7 +229,11 @@ export default function Layout({ children }: { children: ReactNode }) {
                     Attendance
                   </Link>
                 </li>
-                <NavMenu label="Menu" entries={INSTRUCTOR_ENTRIES} onNavigate={() => setNavOpen(false)} />
+                <NavMenu
+                  label="Menu"
+                  entries={instructorEntries(me.own_student_id, me.has_children)}
+                  onNavigate={() => setNavOpen(false)}
+                />
               </ul>
             )}
             {isAdmin && (

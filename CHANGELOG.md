@@ -4,6 +4,21 @@ Full version history for the Shotokan Karate Portal. See `README.md` for the cur
 
 ---
 
+## V5.1.1
+
+Instructor navbar tidy-up, plus repository hygiene.
+
+- **Instructor "Menu" dropdown is flat and alphabetical** — section headings dropped; Instructor Dashboard and Take Attendance removed as duplicates of the navbar brand and the dashboard's date picker
+- **My Profile and Make a Payment added to that menu**, for instructors who have a roster record. My Profile goes to the family dashboard when children are linked, matching the dashboard buttons
+- **Instructors can reach their own next-belt homework and test sheets** — two buttons beside Member Card, shown only when the rank has the files. `api/v1/instructor/dashboard.php` gained `next_rank`; `me.php` gained `own_student_id` and `has_children`, which the navbar needs on every page
+- **`portal/admin/assets/` untracked** — `signature.png`, a real handwritten signature, had been in the index since V5.0 and publicly browsable. The V5.1 `.gitignore` rule never removed it: ignoring a path does not untrack a staged file
+- **Hosting account path removed** from `RELEASE.md` and `tests/RESTORE_RUNBOOK.md`
+- **History audited** — `.env` and `backups/` were never committed, on any ref. `git ls-files -i -c --exclude-standard` is the check that would have caught the signature at V5.0
+- **`RELEASE.md` Step 2 gained the missing container recreate** — `docker compose cp` reads the running container, not the image just built, so extracting straight after `build` silently yields the previous release's `dist`
+- **Tests** — 535 Playwright (5 skipped, `PW_RETRIES=0`, zero flakes), 166 PHPUnit (355 assertions), 54 Vitest, Psalm standard + taint clean, strict TypeScript clean
+
+---
+
 ## V5.1
 
 Follow-up to V5.0: the CI failure it caused, and the tests it should have shipped with. No application
