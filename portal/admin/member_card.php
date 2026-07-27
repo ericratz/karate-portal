@@ -78,7 +78,7 @@ $role_label = in_array($student['student_type'], ['instructor', 'admin']) ? 'Ins
 <style nonce="<?= csp_nonce() ?>">
 @font-face {
     font-family: 'Albertus Extra Bold';
-    src: url('assets/albertusextrabold_regular.ttf') format('truetype');
+    src: url('<?= app_url('/assets/fonts/albertusextrabold_regular.ttf') ?>') format('truetype');
     font-weight: normal;
     font-style: normal;
 }

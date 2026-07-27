@@ -1,4 +1,4 @@
-# Shotokan Karate Portal — V5.0
+# Shotokan Karate Portal — V5.1
 
 A full-stack membership management platform for a martial arts dojo — role-based dashboards, attendance tracking, belt test progression, payments (PayPal + manual), digital waivers, and self-service check-in. Built with PHP and MySQL behind a React 19 + TypeScript SPA: all four portals (admin, instructor, parent, student) were incrementally migrated from server-rendered pages to a single code-split bundle over a versioned JSON API, with every old page URL preserved as a redirect stub. Fully containerized with Docker (app + database + CI toolchain) and verified by a 700+ test Playwright + PHPUnit + Vitest suite and Psalm static + taint analysis running on every push via GitHub Actions.
 
@@ -16,7 +16,7 @@ and the running version is stamped into the footer and the API.
 - **Defense-in-depth access control** — role checks on every protected page, plus per-record ownership scoping (a parent can only ever query their own linked children's data, verified server-side, not just hidden client-side)
 - **Digital workflows end-to-end** — self-service registration with duplicate-account detection, digital injury waivers, PayPal one-time + subscription payments, PDF rank certificates, PIN-gated self check-in
 - **Mobile-friendly** — layout and touch targets tuned for phone-width viewports, with a dedicated Playwright suite exercising core flows at mobile sizes
-- **535 Playwright tests + 150 PHPUnit tests + 50 Vitest component tests**, plus Psalm static analysis at level 3 and taint analysis, and strict TypeScript, run on every push via a self-hosted GitHub Actions CI pipeline
+- **535 Playwright tests + 166 PHPUnit tests + 54 Vitest component tests**, plus Psalm static analysis at level 3 and taint analysis, and strict TypeScript, run on every push via a self-hosted GitHub Actions CI pipeline
 - **Deployable by hand, verifiably** — live is shared hosting with no build step and no Composer, so the upload set is assembled by hand. The running version is stamped into the footer and the API, the SPA bundle compiles the same number in and shows a banner if the two ever disagree, and [`RELEASE.md`](RELEASE.md) carries the deploy order, verification and rollback. A partial upload used to present as a blank page with nothing in any log; it now announces itself
 - **Fully containerized** — app, database, and the entire CI toolchain (Psalm, PHPUnit, Playwright, plus opt-in nmap/Nikto/ZAP scanners) run in Docker via `docker compose`, so dev and CI share one reproducible stack — as of V4.4 the containers are also the local dev server, running the same PHP 8.4.23 as production instead of a machine-coupled XAMPP install
 - **22 shipped releases in 7+ weeks**, solo — from a bare attendance tracker to a full multi-role membership platform with payments, security hardening, static analysis, containerization, and CI (see [`CHANGELOG.md`](CHANGELOG.md))
@@ -34,7 +34,7 @@ and the running version is stamped into the footer and the API.
 | Frontend | React 19 + TypeScript + Vite + react-router + Chart.js — one SPA for all four portals over `api/v1` JSON endpoints (admin routes lazy-loaded) · Bootstrap 5 + vanilla JS on the remaining server-rendered pages (auth, print/document views, profile edit) |
 | Payments | PayPal JS SDK (one-time + subscriptions), loaded on demand by the SPA pay route |
 | Auth | Username/password + Google OAuth, with optional TOTP two-factor on admin accounts (trusted-device, not per-login) |
-| Tests | Playwright 1.60 (535 tests) + PHPUnit 9.6 (150 tests) + Vitest/React Testing Library (50 tests) |
+| Tests | Playwright 1.60 (535 tests) + PHPUnit 9.6 (166 tests) + Vitest/React Testing Library (54 tests) |
 | Static analysis | Psalm 6 (level 3 + taint analysis, both CI-gating) — PHP; TypeScript strict — SPA; `@ts-check` + JSDoc via `tsconfig.json` (`checkJs`) — test suite |
 | Containerization | Docker + docker-compose — `app` (php:8.4-apache), `db` (mysql:8.0), `ci` (Playwright + PHP + Composer) |
 | CI | GitHub Actions — self-hosted Windows runner, containerized pipeline; `tests.yml` (Psalm standard + taint, PHPUnit, Vitest, Playwright) on every push to `main`, plus `security.yml` (nmap/Nikto/ZAP) weekly and on-demand |
@@ -79,7 +79,7 @@ Role is derived at login from account state — not stored as an editable field 
 
 ## Testing
 
-535 Playwright tests across all four roles (dashboards, React SPA flows, access-control boundaries, security regressions, mobile viewport) plus 150 PHPUnit unit/integration tests and 50 Vitest + React Testing Library component tests, run automatically on every push via GitHub Actions alongside Psalm static and taint analysis and a strict-mode TypeScript check of the SPA — all inside Docker containers (app, database, and CI toolchain), so CI exercises the same reproducible stack used for local development. The Playwright/Node test files themselves are type-checked with `@ts-check` + JSDoc annotations (`tsconfig.json` with `checkJs`).
+535 Playwright tests across all four roles (dashboards, React SPA flows, access-control boundaries, security regressions, mobile viewport) plus 166 PHPUnit unit/integration tests and 54 Vitest + React Testing Library component tests, run automatically on every push via GitHub Actions alongside Psalm static and taint analysis and a strict-mode TypeScript check of the SPA — all inside Docker containers (app, database, and CI toolchain), so CI exercises the same reproducible stack used for local development. The Playwright/Node test files themselves are type-checked with `@ts-check` + JSDoc annotations (`tsconfig.json` with `checkJs`).
 
 Payment/OAuth callbacks, live email delivery, and scheduled cron jobs are validated through manual verification against the staging/production environment, since they depend on publicly reachable callback URLs and real third-party services.
 
@@ -99,6 +99,8 @@ DB_USER=root
 DB_PASS=yourpassword
 SITE_URL=http://localhost/karate/portal
 # GOOGLE_CLIENT_ID=...  GOOGLE_CLIENT_SECRET=...  (optional)
+# BACKUP_DIR=/path/outside/the/web/root/   (production only — cron/backup.php
+#   refuses to run without it rather than guessing a web-reachable default)
 
 # 2. Create tests/credentials.js (gitignored) — local test-account logins
 module.exports = {

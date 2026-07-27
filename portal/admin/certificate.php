@@ -58,7 +58,7 @@ $bg_v = filemtime(__DIR__ . '/assets/Certificate of Rank Template.jpg');
 <style nonce="<?= csp_nonce() ?>">
 @font-face {
     font-family: 'Albertus Extra Bold';
-    src: url('assets/albertusextrabold_regular.ttf') format('truetype');
+    src: url('<?= app_url('/assets/fonts/albertusextrabold_regular.ttf') ?>') format('truetype');
     font-weight: normal;
     font-style: normal;
 }

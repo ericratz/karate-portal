@@ -66,12 +66,20 @@ test.describe('cron scripts refuse to run over HTTP', () => {
     // if the .htaccess rule is lost again, the script itself must refuse.
     // Asserted by reading the file, since the HTTP request is (correctly)
     // blocked upstream by Apache before PHP is ever reached.
+    //
+    // portal/cron/ is gitignored, so a clean checkout — which is exactly what CI
+    // does — has no such directory and these can only be checked where the files
+    // actually live. Skipping is honest about that; failing on a file the
+    // repository does not contain is not a real signal. The HTTP-level checks
+    // above still run everywhere.
     const fs = require('fs');
     const path = require('path');
     const CRON = path.join(__dirname, '..', '..', 'portal', 'cron');
+    const present = fs.existsSync(CRON);
 
     for (const f of ['backup.php', 'attendance_alert.php', 'rent_reminder.php', 'waiver_alert.php']) {
         test(`${f} has a CLI-only guard`, () => {
+            test.skip(!present, 'portal/cron is gitignored — not present in a clean checkout');
             const src = fs.readFileSync(path.join(CRON, f), 'utf8');
             expect(src).toContain("PHP_SAPI !== 'cli'");
         });

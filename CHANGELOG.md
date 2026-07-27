@@ -4,276 +4,40 @@ Full version history for the Shotokan Karate Portal. See `README.md` for the cur
 
 ---
 
+## V5.1
+
+Follow-up to V5.0: the CI failure it caused, and the tests it should have shipped with. No application
+behaviour changed.
+
+- **Cron-guard specs fixed** — they read `portal/cron/*.php` to confirm each job carries its CLI-only guard, but `portal/cron/` is gitignored, so CI's clean checkout has no such files and they failed there while passing locally. They now skip when the directory is absent; the HTTP-level checks still run everywhere. Verified by rebuilding the CI image with `portal/cron` excluded to reproduce a clean checkout, rather than by assuming a second time
+- **The suite's one recurring flake fixed** — `logout()` in the test helpers raced the app: an in-flight `api/v1` fetch 401s the moment the session dies and the client navigates to `login.php` itself, interrupting the helper's navigation to `logout.php`. It tolerated that on the first attempt but retried with an unguarded `goto`. It now waits for the URL to settle rather than assuming it has, since either route arriving at login means the session is gone — the client only redirects because the server rejected it. Deliberately not "navigate to login.php and call it done", which would let the URL assertion pass over a live session and turn a flaky failure into a silent one
+- **Tests for what V5.0 added without them** — `attempt_login()`'s second-factor branch (an enrolled admin gets `'twofa'` and **no** `user_id` in the session; non-admins are never challenged; a pending half-login expires and cannot be resumed), `base_path()`/`app_url()` (asserted on shape — always root-relative, never a scheme or host, which is exactly what a well-meaning fix reaching for `SITE_URL` again would break), and the partial-deploy banner (a safety net that would otherwise fail silently, discovered only at the next bad deploy). Coverage percentage was not the target: the React pages read 0% under Vitest but are exercised end-to-end by Playwright
+- **`portal/cron/*.php` is now tracked** — four scheduled jobs that ran the backups and alerts had been gitignored, so they existed in exactly one place with no history and no backup. Tracking them needed a scrub first: the live account path was hardcoded in every header, and `backup.php` named the backup directory in source. `BACKUP_DIR` now comes from `.env` with **no fallback** — a default would most likely land under the web root and quietly publish every dump, so the job refuses and emails a failure instead. `CRON_SETUP.txt` stays untracked; it names the host, the account path and the schedule. Also corrected the setup notes, which still specified `php74` while the site and the jobs run 8.4 — the scripts require `config.php`, which now uses 8.x-only syntax, so an older binary would have broken every job silently
+- **`portal/admin/assets/` stays untracked, and the brand font moved out of it** — un-ignoring that directory to version the font would also have published `signature.png`, a real handwritten signature used on rank certificates. Unlike a leaked credential a signature cannot be rotated, and anyone with the repo could paste it onto any document; the directory also holds a 4 MB certificate template that git would store in full on every change. The font is now tracked once at `portal/assets/fonts/`, with `certificate.php` and `member_card.php` pointed at it through `app_url()` — which also removed a duplicate copy that could have drifted
+- **Still untested** — the two-factor challenge in a browser. It needs an enrolled admin, and enrolling the real one mid-suite breaks every admin spec running in parallel; doing it properly needs a disposable-admin fixture that does not exist yet. The unit tests above cover the security decision itself
+- **Tests** — 535 Playwright (531 + 4 skipped on CI, where `portal/cron` is absent), 166 PHPUnit (355 assertions), 54 Vitest, Psalm standard + taint clean, strict TypeScript clean; full suite verified at `PW_RETRIES=0` with zero flakes
+
+---
+
 ## V5.0
 
-A major release rather than another point bump, and the first one whose theme is *how this project
-ships* rather than what it does: a version the running app can report about itself, a written deploy
-runbook, and a repeatable visual-review harness — alongside two-factor authentication, a UI
-consistency pass, the class-instructor rework, and the closing of two gaps that had been carried
-forward in writing since V4.5.
+A major release whose theme is how the project ships rather than what it does: a version the running app
+can report about itself, a written deploy runbook, and a repeatable visual-review harness — alongside
+two-factor authentication, a UI consistency pass, and the class-instructor rework. Most of what it fixes
+was invisible rather than broken, and each was found by making something observable.
 
-The through-line is that most of the problems fixed here were invisible rather than broken. A
-`.htaccess` doing nothing in dev, a stylesheet that could not reach the login page, four class names
-rendering as one button, redirects that only worked under one hostname: each was working well enough
-to go unnoticed, and each was found by making something observable — a version stamp, a screenshot, a
-test that had never existed.
-
-**Release infrastructure:**
-
-- **The running version is now visible from the outside** — nothing in the shipped tree named its own
-  version, so "what is live actually running?" could only be answered by diffing files over FTP.
-  `portal/includes/version.php` now owns a single `APP_VERSION`, rendered in the site footer and
-  returned by `api/v1/me.php`. `frontend/vite.config.ts` parses that same PHP file at build time so
-  the SPA bundle carries the identical number, and a build that cannot read it fails rather than
-  shipping an "unknown" that would defeat the check
-- **A partial deploy now announces itself** — the bundle compares the version it was compiled with
-  against what the API reports and renders a "Partial deploy detected" banner naming both. This is the
-  failure that blanked the attendance page on live: a new bundle uploaded against the old API,
-  presenting as an empty page with nothing in any log. Verified by simulating exactly that split
-- **`RELEASE.md`** — the deploy runbook. Live is shared hosting with no build step and no Composer, and
-  the build artifacts (`parent/dist/`, `vendor/`) plus brand assets are deliberately untracked, so git
-  is not the deploy manifest. The runbook is: the matched-set rule, version bump, pre-flight, build and
-  extract (including the hidden `.vite/` directory that carries the manifest the PHP shells read), live
-  backup, deploy order, verification, rollback
-- **A visual-review harness** — `tests/visual/shots.spec.js` walks every significant page as each role
-  at desktop and mobile widths and writes full-page PNGs. Gated behind `VISUAL=1` rather than
-  `testIgnore`, which would exclude the file even when named explicitly on the command line
-
-**One stylesheet, and buttons whose colour means something:**
-
-- **The brand styling existed in four drifting copies** — `includes/header.php`'s inline `<style>`,
-  `frontend/src/index.css`, and a separate `<style>` block on each of `login.php`, `register.php` and
-  `forgot_password.php`. New `portal/assets/css/portal.css` is now loaded by all nine entry points
-  (the four SPA shells and the five server-rendered pages), so a class means one thing everywhere
-- **`.btn-primary` was overridden to green, and that was the root of the inconsistency.** With
-  `.btn-primary`, `.btn-outline-primary`, `.btn-outline-secondary` and `.btn-success` all rendering as
-  the same solid green, the class name carried no information and authors picked between them
-  effectively at random — **139 uses across 38 files**. Worse, the override lived in the SPA
-  stylesheet, which `login.php` never loads, so the *same class* rendered Bootstrap blue there: that
-  is why "Log In" was blue while every other primary button in the app was green
-- **Buttons are now semantic** — `.btn-action` (green: add, edit, view, save), `.btn-nav` (purple:
-  navigation and affirmative data entry), `.btn-external` (blue + symbol: leaves the portal),
-  `.btn-filter` (grey, purple when active), `.btn-danger` (red, unchanged). The 139 green-rendering
-  uses were mechanically renamed to `.btn-action`, which changed no pixels — they already rendered
-  green — while making the name match what you see. Bootstrap's own classes keep their own meanings
-- **Yellow is gone from the button layer entirely** — the last three (Set Password, Link Account to
-  Selected Record, Resolve) are purple: two submit data, one navigates. Yellow now means exactly one
-  thing in the app — attention — across its 22 remaining uses as warning banners, status badges
-  ("No waiver", "Override", "RETEST") and highlighted rows. Previously a yellow button and a yellow
-  warning badge could sit on the same screen meaning different things
-- **A shell-relative link fixed with it** — the dashboard's Resolve control was a document-relative
-  `resolve_link.php` href, which resolves against whichever shell is current; and since `resolve-link`
-  is a real SPA route, it is now an in-app `Link` that navigates without a full page load through the
-  redirect stub
-- **Destructive actions are an outline, not a solid block** — `.btn-outline-danger` (a red line that
-  fills on hover, matching the navbar's Log out button) rather than solid `.btn-danger`, so a
-  destructive control reads as one without shouting from every screen it sits on. Already the majority
-  convention at 20 uses; now written down in `portal.css` and applied to the two-factor page's
-  "Turn off" and "Forget all"
-- **The two outliers fixed** — "Log In" is purple (submitting credentials is data entry, and it puts
-  the brand colour on the first screen users see) and the footer's "Contact Noji" is green (it acts —
-  it opens the message form) instead of the lone yellow button in the app
-- **`.btn-blue` retired** — an ad-hoc class that existed only because `.btn-primary` had been taken
-  over, i.e. a name meaning "actually blue". Its single use (the logs backup download) is now
-  `.btn-external`, naming the meaning rather than the colour; its document-relative `href` was made
-  root-relative at the same time
-- **`.btn-filter` moved into the shared sheet**, which fixed a silent break: `admin/checkin_pin.php`
-  uses it but, being server-rendered, never loaded the SPA stylesheet where it was defined — so those
-  buttons had been rendering completely unstyled
-- **The dojo's name is set in its own typeface, in black** — `Albertus Extra Bold` was previously
-  loaded only by the printed rank certificate and member card. It now lives at `portal/assets/fonts/`
-  behind a `.brand-name` class available to every page, which also fixes the colour: the wordmark is
-  always black, matching the printed materials. It sits on the brand purple, which the weight of the
-  face carries — black on `#6f42c1` is ~3.9:1, and at the 24px bold these headings use, that clears
-  WCAG AA's 3:1 threshold for large text. `font-display: swap` keeps the name readable while the
-  127 KB face loads; the CSP already allowed `font-src 'self'`
-- **The name is now written the same way everywhere it appears** — it had drifted into three
-  variants: the full *Shotokan Karate and Self-defense* on the printed certificate and member card,
-  a truncated "Shotokan Karate" on the login, register and Google-registration headers, and
-  "Shotokan Karate & Self-defense" with an ampersand on the public check-in page. All are now the
-  full name in the brand face, including the mailing address on the pay page. (Page `<title>`s keep
-  the short form — browser tabs cannot be styled and have no room.) The check-in page had never
-  loaded the shared stylesheet at all, so it was carrying its own fourth copy of the look
-- **The four auth pages now share one format** — `login.php`, `register.php`,
-  `forgot_password.php` and `google-register.php` had drifted into different headers. All four now
-  use the same 440px card, the same purple header carrying the black wordmark, and the same subtitle
-  naming the page — as does the new two-factor challenge, so it does not look like a different site
-  mid-login. `forgot_password.php` had never shown the dojo name at all, and its two buttons carried hardcoded
-  `style="background:#198754"` inline green — now `.btn-action` like everywhere else. "Self-defense"
-  is held together with a nowrap span; left alone it broke at the hyphen and split the word
-- **Edit toggles confirm in purple** — the nine Edit/Save/Confirm toggles (profile card, student
-  profile, student editor, user profile, payments) were green when idle and yellow once pressed. The
-  pressed state is now purple, so the button changing colour *and* label reads as "press again to
-  confirm" rather than as a warning. The three standalone yellow buttons (Resolve, Set Password, Link
-  Account) are not toggles and were left alone
-- **Caught by the visual harness, not by review** — loading `portal.css` *before* the bundle stripped
-  the background off every button in the SPA. The bundle contains Bootstrap, whose `.btn` rule sets
-  `--bs-btn-bg: transparent` at identical specificity to `.btn-action`, so load order decided the
-  winner. The server-rendered pages were unaffected (their Bootstrap comes from the CDN first), which
-  is exactly the kind of half-broken state a code read would have missed. The shells now load the
-  shared sheet last
-
-**Two-factor authentication (admin accounts):**
-
-- **Prompted per device, not per login** — this is the part that made 2FA worth having here. A code is
-  asked for once per browser; that browser is then trusted for 180 days and not asked again. What it
-  defends against is the case that actually matters for this app: someone who has learned the password
-  signing in from their own machine, which has no trust cookie. Being challenged at every login was
-  explicitly not wanted, and would not have been worth the friction
-- **Admin accounts only.** Admins can read the whole roster, edit payments and reach the logs; putting
-  a family through authenticator setup to view their child's attendance is not a trade worth making
-- **TOTP is hand-rolled and verified against the RFCs, not against itself** — `includes/totp.php` is an
-  HMAC and a truncation, both fully specified, and `TwoFactorTest` asserts it against the published
-  test vectors in RFC 4226 Appendix D and RFC 6238 Appendix B (plus RFC 4648 for base32). That is
-  stronger evidence than a self-consistent round-trip test, and it avoids adding a Composer package
-  that would then have to be uploaded by hand to a host with no Composer
-- **A code cannot be replayed** — `users.totp_last_counter` records the last accepted time step. A TOTP
-  code is otherwise valid for its whole 30-second step plus the drift window, so one read over a
-  shoulder would work for up to ~90 seconds; each is now strictly single-use
-- **Trusted devices use a split token** — the cookie is `selector:validator`; the selector is the
-  indexed lookup key and only a SHA-256 of the validator is stored, so a leaked table yields no usable
-  cookies. A correct selector with a wrong validator deletes the record, so a guess cannot be retried.
-  The cookie carries the same flags as the session cookie, including `Secure` via `site_is_https()`
-- **Ten single-use backup codes**, bcrypt-hashed and shown in plaintext exactly once at generation.
-  The challenge page tells them apart from TOTP codes by shape, so a typo in a 6-digit code never
-  burns a backup code
-- **A half-finished login grants nothing** — passing the password sets only a short-lived pending
-  marker; `$_SESSION['user_id']` stays unset, so every existing guard already denies it. Verified: with
-  a pending login the admin shell redirects to the login page and `api/v1/me.php` returns 401. The
-  challenge itself is rate-limited on the same table as passwords under a separate identifier, without
-  which the second factor would be brute-forceable by someone who already has the first
-- **Enrolment proves a working code before switching anything on** — the candidate secret is held in
-  the session, never the database, until a code generated from it verifies, so an abandoned or
-  mis-scanned setup cannot lock the account out. Turning 2FA *off* re-checks the password: holding a
-  live session is not by itself authority to remove a security control
-- **The lockout escape hatch is documented, not built** — losing both the authenticator and every
-  backup code is resolved with SQL, recorded at the end of `migrations/v5_two_factor.sql`. There is
-  deliberately no in-app path, because anyone locked out cannot reach the app
-- **No QR code.** Generating one needs either a Composer dependency or ~500 lines of Reed-Solomon, and
-  the CSP rules out an external chart API. Enrolment shows the secret in readable 4-character groups
-  plus an `otpauth://` link that hands it straight to the app on a phone. Worth revisiting if a
-  dependency becomes acceptable
-- **Schema: three nullable columns and two tables, additive but not optional.** With no secret
-  enrolled `twofa_challenge_required()` returns false, so nothing about signing in changes until 2FA
-  is switched on from Admin → Two-Factor. The columns themselves, though, are load-bearing from the
-  moment the PHP lands: `attempt_login()` reads them for admin accounts, so this release's code
-  against an unmigrated database locks admins out while parents and students continue to log in
-  normally — non-admins short-circuit before that query. Confirmed by dropping the columns and
-  reproducing it, which is why the migration leads the deploy order in `RELEASE.md`
-
-**Navigation and smaller UI fixes:**
-
-- **Instructors have a navbar again** — they previously got no links at all, just the dark-mode toggle
-  and Log out, so every move went back through a dashboard card. They now get Roster and Attendance
-  links plus a "Menu" dropdown covering the instructor-reachable routes. The admin dropdown was
-  generalised into a shared `NavMenu` (label + entries) rather than copied, since the two differ only
-  in their contents
-- **The Classes list's expander moved into the Present column** — it had a fifth, unlabelled column of
-  its own, while what it expands is the attendance it sits beside
-- **Take Attendance column widths** — Waiver holds only a ✓ or a short badge but took an equal quarter
-  of the table under the global `table-layout: fixed`, stranding the tick in the middle of an empty
-  band; it and the fixed-format Last Attended column are now pinned, so Name — the only column whose
-  content actually varies — takes the remaining width. Deliberately done with fixed widths in the
-  shared colgroup rather than by switching the table to `table-layout: auto`, which would have broken
-  the alignment between the four role tables that V4.5 built
-- **The auth pages' subtitle is legible** — the line naming the page under the wordmark was dimmed to
-  .85 opacity at the browser's `<small>` default; it is now full white and ~30% larger, via a shared
-  `.brand-subtitle` so the three pages cannot drift apart again
-
-**Test-suite and lint cleanups:**
-
-- **The `react-hooks/exhaustive-deps` suppressions in `Payments.tsx` are gone, and the dependencies
-  are honest.** Worth noting what they were: there is no ESLint in this project at all — those two
-  comments were its only trace in the entire codebase and suppressed nothing. The preselect effect now
-  states "run once" with an explicit ref instead of implying it by omitting `searchParams`, and the
-  auto-amount effect reads `amount` through the functional updater so it genuinely is not a
-  dependency. Listing `amount` would have been actively wrong: the effect would re-run on every
-  keystroke and refill the field the moment a user cleared it
-- **New `tests/shared/hardening.spec.js`** — 17 tests asserting the five `.htaccess` security headers,
-  that `portal/{cron,includes,vendor}` and `tests/` are not fetchable, that `.env` is never served,
-  and that each cron script carries its CLI guard. Nothing had ever asserted any of this, which is
-  exactly why the Docker `.htaccess` gap survived unnoticed
-
-**Dev and CI were silently less hardened than production — fixed:**
-
-- **The project's `.htaccess` was doing nothing in Docker.** It was never copied into the app image,
-  and the container ran Apache's default `AllowOverride None`, so every rule in it was inert: the
-  security headers, and the blocks on `portal/{cron,includes,vendor}` and
-  `backups`/`migrations`/`node_modules`/`tests`. `portal/cron/backup.php`, `portal/includes/*.php`,
-  `portal/vendor/autoload.php` and `tests/*.js` were all fetchable over HTTP in dev and CI. Live was
-  never affected — StackCP honours the file, confirmed by a 403 on
-  `https://noji.com/karate/portal/includes/paypal.php` — which is precisely why the gap went unseen:
-  the protections looked present in the tracked config while being absent from the environment the
-  tests actually run in. The image now copies the real `.htaccess` and enables `AllowOverride All`
-  for the app directory, plus the `headers` and `access_compat` modules its directives require. All
-  five paths above now return 403 in dev, and the five security headers are present
-- **Restating the rules in the container config was deliberately rejected** in favour of honouring
-  the real file: one source of truth cannot drift out of sync with itself. (The `.htaccess`'s HSTS
-  header is harmless over dev's plain HTTP — RFC 6797 §7.2 requires user agents to ignore an STS
-  header received over insecure transport, so it cannot poison `karate.test` the way the `.app`
-  gTLD's preloaded entry did in V4.5.)
-- **The four `portal/cron/*.php` jobs gained a CLI-only guard** — they run unattended with no
-  authentication check, and were relying entirely on webserver configuration to be unreachable. A
-  `PHP_SAPI !== 'cli'` check is defence that cannot be switched off by a misconfigured host, matching
-  the "secure by omission" principle V4.5 established for the session cookie
-
-**Internal links and redirects no longer hardcode the hostname:**
-
-- **The V4.5 "known gap, carried forward" is closed** — internal redirects were built as absolute URLs
-  from `SITE_URL` (`header('Location: ' . SITE_URL . '/login.php')`), which meant the server only
-  worked under the one hostname the live `.env` happened to name, and a stale value there would break
-  every redirect at once. `config.php` gained `base_path()`, `app_url()` and `redirect()`, deriving a
-  root-relative path from `SITE_URL`'s path component. RFC 7231 §7.1.2 has permitted relative
-  `Location` headers since 2014 and every browser supports them
-- **Of the 52 `SITE_URL` references across 15 files, the internal ones are converted and the outbound
-  ones deliberately are not.** Redirects (auth guards, logout, the Google OAuth callback's four error
-  paths, the subscription create/return landings) and in-page links (the 15 in `includes/header.php`,
-  plus login, register and the footer's feedback endpoint) are now root-relative. What stays absolute:
-  the password-reset email URL, the payment-receipt email link, `GOOGLE_REDIRECT_URI` (which must
-  match the string registered in the Google console), and PayPal's `return_url`/`cancel_url` — each
-  now carries an inline comment saying why, so they are not "helpfully" converted later
-- **Verified by browsing under a hostname `SITE_URL` does not name** — the full login → dashboard →
-  logout chain now completes over `http://localhost/karate/portal`, where it previously bounced the
-  user onto `karate.test` at the first redirect
-- **One more shell-relative link fixed** — `admin/checkin_pin.php`'s "← Classes" button was still a
-  document-relative `../instructor/attendance_sessions.php`, the exact fragility class V4.5 set out to
-  remove; it resolved correctly only because of where that page happens to sit
-
-**Schema cleanup:**
-
-- **`class_sessions.instructor_id` dropped** — the column meant neither of the two things its name
-  suggested. It was silently set to whoever *saved* the attendance sheet and was never displayed, so
-  with the taught-by set now living in `class_session_instructors` and the who-recorded-it stamp
-  living per row in `attendance.recorded_by`, keeping it would have left a third and misleading
-  answer to "who ran this class". Two code sites touched: the schema and the take-attendance INSERT
-- **`venmo` retired from `payment_method`** — never a real payment channel, just a mis-entry. Removed
-  from the ENUM in the same migration; the one dev-seed row using it is rewritten to `cash` rather
-  than deleted, so row counts stay stable for the restore-verification checks
-- **The migration is guarded and re-runnable** — `migrations/v5_drop_instructor_id_and_venmo.sql`
-  looks the foreign key up in `information_schema` rather than assuming its auto-generated name
-  (`class_sessions_ibfk_1` on dev is not guaranteed to match live), and skips each step if it has
-  already been applied. Verified by applying it twice, then wiping the database volume and confirming
-  a from-scratch seed lands on the same schema with the baseline data intact
-
-**Tests** — 535 Playwright (up from 518: +17 hardening, and the visual-capture spec skips unless
-`VISUAL=1`), 150 PHPUnit (313 assertions, up from 120: +30 two-factor), 50 Vitest, Psalm standard +
-taint both clean, strict TypeScript clean. Three specs needed updating for deliberate changes: a `.btn-success` selector on the
-pay page (renamed to `.btn-action`), the forgot-password header assertion (the page name moved from
-the `h4` to the subtitle), and an instructor belt-tests link that now has to exclude `.dropdown-item`
-because the new instructor Menu links the same route from a collapsed menu.
-
-**Class-instructor tracking** — reworks V4.7's tracking to match how the dojo actually records
-instructors: as roster people, most of whom have no login account.
-
-- **"Taught by" now lists roster instructors, not just logins** — V4.7 keyed the taught-by set to `users` (an admin, or a login linked to an instructor-type record). But this dojo's instructors are roster entries (`students` typed Instructor/Admin) and mostly have no login, so against the live data the picker showed only Noji (the single admin login) and none of the actual instructors. The feature now sources instructors from the roster — anyone typed Instructor or Admin, login or not — plus any admin login that has no roster record, so the owner account still appears and stays the default. `class_session_instructors` now carries a nullable `student_id` **and** a nullable `user_id` (exactly one set per row): a roster person is stored by `student_id`, an admin login by `user_id`. The API and UI address an instructor by a string key — `s:<student_id>` or `u:<user_id>`
-- **The migration is additive** — `migrate_class_session_instructors_v2.sql` drops the old `(session_id, user_id)` primary key, adds a surrogate `id` plus the nullable `student_id`, makes `user_id` nullable, and adds per-session uniqueness on each of student/user. Existing rows (V4.7 stored the admin by `user_id`) are preserved untouched, so the live upgrade is a pure `ALTER` with no data rewrite. `karate_schema.sql` and the fresh-install create carry the new shape
-- **Helpers reshaped** — `includes/instructors.php` moved from id-lists to key-lists (`instructor_options`, `filter_instructor_keys`, `default_instructor_keys`, `session_instructor_keys`, `set_session_instructors`); `InstructorSessionTest` now exercises the exact case that motivated the change — a roster instructor with no login
-- **This part reached live ahead of the release.** The instructor migration and its PHP files were
-  hotfixed onto the live host before V5.0 was cut, so `migrate_class_session_instructors_v2.sql` was
-  already applied there and was skipped at deploy. Getting it there cost the lesson that shaped this
-  release: the DB migration, the PHP, and the rebuilt `parent/dist/` bundle are one matched set, and
-  a partial upload rendered the attendance and classes pages blank with nothing in any log — which is
-  what the version stamp and `RELEASE.md` exist to prevent happening again
+- **The running version is visible from outside** — nothing in the shipped tree named its own version, so "what is live actually running?" could only be answered by diffing files over FTP. `portal/includes/version.php` owns a single `APP_VERSION`, rendered in the footer and returned by `api/v1/me.php`; `vite.config.ts` parses that same file at build time so the bundle carries the identical number, and a build that cannot read it fails rather than shipping an "unknown". The bundle compares the two at runtime and shows a **"Partial deploy detected"** banner naming both — the failure that once blanked the attendance page with nothing in any log
+- **`RELEASE.md`, the deploy runbook** — live is shared hosting with no build step and no Composer, and the build artifacts are deliberately untracked, so git is not the deploy manifest. Covers the matched-set rule, version bump, pre-flight, build and extraction (including the hidden `.vite/` directory the PHP shells read), live backup, deploy order, verification and rollback
+- **A visual-review harness** — `tests/visual/shots.spec.js` walks every significant page as each role at desktop and mobile widths and writes full-page PNGs. Gated behind `VISUAL=1` rather than `testIgnore`, which would exclude the file even when named explicitly. It immediately earned itself: it caught a cascade-order bug that stripped the background off every button in the SPA while leaving the server-rendered pages perfect
+- **Dev and CI were silently less hardened than production** — the project's `.htaccess` was never copied into the app image, and the container ran Apache's default `AllowOverride None`, so every rule in it was inert: the security headers, and the blocks on `portal/{cron,includes,vendor}` and `tests/`. `portal/cron/backup.php` and `portal/vendor/autoload.php` were fetchable over HTTP in dev and CI. Live was never affected (StackCP honours the file), which is precisely why it went unseen — the protections looked present in the tracked config while being absent from the environment the tests run in. The image now ships the real `.htaccess` and enables `AllowOverride All`; restating the rules in the container config was rejected in favour of one source of truth. The four cron jobs also gained a `PHP_SAPI !== 'cli'` guard, defence that cannot be switched off by a misconfigured host
+- **Internal links and redirects no longer hardcode the hostname** — closes the gap V4.5 wrote up and carried. Redirects were built from `SITE_URL`, so the server only worked under the one hostname the live `.env` named. `config.php` gained `base_path()`, `app_url()` and `redirect()`; of 52 `SITE_URL` references across 15 files the internal ones are now root-relative and the outbound ones (password-reset email, payment receipt, `GOOGLE_REDIRECT_URI`, PayPal's return URLs) deliberately are not, each carrying a comment saying why. Verified by completing a full login → dashboard → logout chain over `localhost`, a hostname `SITE_URL` does not name
+- **Two-factor authentication on admin accounts** — TOTP plus ten single-use backup codes, prompted once per browser and then trusted for 180 days rather than at every login; that trusted-device model is what makes it worth having, since the case it defends against is someone with the password signing in from their own machine. `includes/totp.php` is hand-rolled and asserted against the published vectors in RFC 4226, RFC 6238 and RFC 4648 rather than against itself, avoiding a Composer package that would need hand-uploading to a host without Composer. Accepted time steps are recorded so a code cannot be replayed inside its own ~90-second window; trusted-device cookies use a split selector/validator token, so a leaked table yields nothing usable and a wrong validator destroys the record. Enrolment holds the candidate secret in the session until a real code verifies, so a mis-scan cannot lock the account out, and disabling re-checks the password. A correct password alone produces no session at all — only a short-lived pending marker, which every existing guard already denies. Lockout recovery is SQL, documented in the migration; there is no in-app path because anyone locked out cannot reach the app. No QR code: it needs a dependency or ~500 lines of Reed-Solomon, and the CSP bars an external chart API
+- **`class_sessions.instructor_id` and the `venmo` payment method dropped** — the column meant neither thing its name suggested, being silently set to whoever *saved* the sheet and never displayed; who taught a class is `class_session_instructors` and who recorded it is `attendance.recorded_by`, so keeping it left a third misleading answer. `venmo` was never a real channel. The migration looks the foreign key up in `information_schema` rather than assuming its auto-generated name, and every step is guarded — verified by applying it twice, then wiping the database volume and confirming a from-scratch seed lands identically
+- **One stylesheet, and buttons whose colour means something** — the brand rules existed in four drifting copies. New `portal/assets/css/portal.css` is loaded by all nine entry points. `.btn-primary` had been overridden to green, so it, `.btn-outline-primary`, `.btn-outline-secondary` and `.btn-success` all rendered as one identical button across **139 uses in 38 files** — the class name carried no information and authors picked between them at random. Worse, that override lived in the SPA stylesheet which `login.php` never loads, so the same class rendered Bootstrap blue there. Buttons are now semantic: `.btn-action` green (add, edit, view, save), `.btn-nav` purple (navigation and affirmative data entry, including Edit toggles once pressed), `.btn-external` blue with a symbol, `.btn-filter` grey turning purple when applied, and destructive actions as an outline that fills on hover. Yellow left the button layer entirely and now means one thing only — attention
+- **The dojo's name, in its own typeface** — `Albertus Extra Bold` was previously loaded only by the printed certificate and member card. It now sits behind a `.brand-name` class available to every page, always black, and the name is written the same way everywhere it appears: it had drifted into a truncated "Shotokan Karate" on three auth headers and an ampersand form on the public check-in page, which had never loaded the shared stylesheet at all. The four auth pages and the two-factor challenge now share one card format
+- **Navigation and smaller fixes** — instructors previously had no navbar links at all, so every move went back through a dashboard card; they now get Roster, Attendance and a Menu dropdown, with the admin dropdown generalised into a shared component rather than copied. The Classes list's expander moved into the Present column it expands, and the Take Attendance tables pin their fixed-width columns so Name takes the slack — done with the shared colgroup rather than `table-layout: auto`, which would have broken the cross-table alignment V4.5 built. The `react-hooks/exhaustive-deps` suppressions in `Payments.tsx` are gone with the dependencies fixed honestly; notably there is no ESLint in this project at all, so those two comments were suppressing nothing
+- **Class-instructor tracking reworked** — V4.7 keyed the taught-by set to `users`, but this dojo's instructors are roster entries typed Instructor/Admin who mostly have no login, so against live data the picker showed only the single admin login. It now sources instructors from the roster, plus any admin login with no roster record; `class_session_instructors` carries a nullable `student_id` **and** a nullable `user_id`, addressed by a string key (`s:<id>` or `u:<id>`). This part reached live as a hotfix ahead of the release, and getting it there cost the lesson that shaped the rest: the migration, the PHP and the rebuilt bundle are one matched set
+- **Tests** — 535 Playwright (up from 518: +17 hardening, plus the visual-capture spec which skips unless `VISUAL=1`), 150 PHPUnit (313 assertions), 50 Vitest, Psalm standard + taint clean, strict TypeScript clean. Three specs needed updating for deliberate changes: a `.btn-success` selector renamed, the forgot-password header assertion (the page name moved to the subtitle), and an instructor belt-tests link that must now exclude `.dropdown-item` because the new Menu links the same route from a collapsed menu
 
 ---
 

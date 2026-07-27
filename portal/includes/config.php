@@ -3,7 +3,7 @@
 // Lets the container point SITE_URL at http://karate.test/... so server-side redirects
 // (logout, post-login, auth guards) stay on the Compose network, while native
 // XAMPP keeps localhost. Mirrors the same precedence in db.php.
-foreach (['SITE_URL', 'DOJO_EMAIL', 'ADMIN_EMAIL',
+foreach (['SITE_URL', 'DOJO_EMAIL', 'ADMIN_EMAIL', 'BACKUP_DIR',
           'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET',
           'PAYPAL_MODE', 'PAYPAL_CLIENT_ID', 'PAYPAL_SECRET',
           'PAYPAL_PLAN_ID', 'PAYPAL_WEBHOOK_ID'] as $_k) {

@@ -372,4 +372,177 @@ final class TwoFactorTest extends TestCase
     {
         self::assertFalse(twofa_verify_totp($this->uid, '123456'));
     }
+
+    // ── attempt_login()'s second-factor branch ────────────────────────────
+    //
+    // The security-critical part: whether a correct password, on its own, is
+    // enough to get a session. Everything above tests the pieces; this tests the
+    // decision that uses them.
+
+    private const LOGIN_USER = 'phpunit_2fa_login';
+    private const LOGIN_PASS = 'PhpunitPass123!';
+
+    /** Seed a user who can actually complete a password login. @return int uid */
+    private function seedLoginUser(bool $isAdmin): int
+    {
+        $db = db();
+        $db->prepare(
+            'INSERT INTO users (username, password_hash, email, is_admin, active) VALUES (?,?,?,?,1)'
+        )->execute([
+            self::LOGIN_USER,
+            password_hash(self::LOGIN_PASS, PASSWORD_BCRYPT),
+            'phpunit_2fa_login@example.com',
+            $isAdmin ? 1 : 0,
+        ]);
+        $uid = (int)$db->lastInsertId();
+        // attempt_login() clears rate-limit rows on success; make sure a previous
+        // test's failures cannot rate-limit this one.
+        $db->prepare('DELETE FROM login_attempts WHERE identifier = ?')->execute([self::LOGIN_USER]);
+        return $uid;
+    }
+
+    /**
+     * Empty the session without reassigning it.
+     *
+     * `$_SESSION = []` would be the obvious way, but Psalm then narrows the
+     * variable to a literal empty array and flags every later key read as
+     * accessing a value that cannot exist.
+     */
+    private function clearSession(): void
+    {
+        foreach (array_keys($this->session()) as $k) {
+            unset($_SESSION[$k]);
+        }
+    }
+
+    /**
+     * The session as a plain typed array.
+     *
+     * Psalm cannot prove $_SESSION is initialised under CLI, so reading it
+     * directly in assertions trips "possibly undefined" — the same test-only
+     * quirk V4.5 baselined. Reading through here keeps that out of the baseline.
+     *
+     * @return array<string, mixed>
+     */
+    private function session(): array
+    {
+        return $_SESSION ?? [];
+    }
+
+    private function cleanupLoginUser(): void
+    {
+        db()->prepare('DELETE FROM users WHERE username = ?')->execute([self::LOGIN_USER]);
+        $this->clearSession();
+    }
+
+    public function testEnrolledAdminGetsChallengedInsteadOfASession(): void
+    {
+        $uid = $this->seedLoginUser(true);
+        twofa_enable($uid, totp_new_secret());
+        $this->clearSession();
+
+        try {
+            self::assertSame('twofa', attempt_login(self::LOGIN_USER, self::LOGIN_PASS));
+
+            // The whole point: a correct password has produced NO session. Every
+            // role guard in the app keys off user_id, so this is what makes a
+            // half-finished login unable to reach anything.
+            self::assertArrayNotHasKey('user_id', $this->session());
+            self::assertArrayNotHasKey('role', $this->session());
+
+            $pending = twofa_pending();
+            self::assertNotNull($pending);
+            self::assertSame($uid, $pending['user_id']);
+            self::assertTrue($pending['is_admin']);
+        } finally {
+            $this->cleanupLoginUser();
+        }
+    }
+
+    public function testEnrolledNonAdminIsNotChallenged(): void
+    {
+        $uid = $this->seedLoginUser(false);
+        twofa_enable($uid, totp_new_secret());
+        $this->clearSession();
+
+        try {
+            // Enrolled, but the policy is admin-only — straight in.
+            self::assertSame('ok', attempt_login(self::LOGIN_USER, self::LOGIN_PASS));
+            self::assertSame($uid, $_SESSION['user_id']);
+        } finally {
+            $this->cleanupLoginUser();
+        }
+    }
+
+    public function testAdminWithoutEnrolmentLogsInNormally(): void
+    {
+        $uid = $this->seedLoginUser(true);
+        $this->clearSession();
+
+        try {
+            self::assertSame('ok', attempt_login(self::LOGIN_USER, self::LOGIN_PASS));
+            self::assertSame($uid, $_SESSION['user_id']);
+            self::assertSame('admin', $_SESSION['role']);
+            self::assertNull(twofa_pending());
+        } finally {
+            $this->cleanupLoginUser();
+        }
+    }
+
+    public function testWrongPasswordNeverReachesTheChallenge(): void
+    {
+        $uid = $this->seedLoginUser(true);
+        twofa_enable($uid, totp_new_secret());
+        $this->clearSession();
+
+        try {
+            self::assertSame('invalid', attempt_login(self::LOGIN_USER, 'not-the-password'));
+            self::assertNull(twofa_pending());
+        } finally {
+            $this->cleanupLoginUser();
+        }
+    }
+
+    public function testPendingLoginExpires(): void
+    {
+        $this->clearSession();
+        $_SESSION['twofa_pending'] = [
+            'user_id'  => 1,
+            'username' => 'someone',
+            'is_admin' => true,
+            'expires'  => time() - 1,
+        ];
+        // An expired half-login must not be resumable, and must not linger.
+        self::assertNull(twofa_pending());
+        self::assertArrayNotHasKey('twofa_pending', $this->session());
+    }
+
+    public function testMalformedPendingStateIsRejected(): void
+    {
+        foreach ([['user_id' => 1], ['expires' => time() + 60], 'not-an-array', []] as $bad) {
+            $this->clearSession();
+            $_SESSION['twofa_pending'] = $bad;
+            self::assertNull(twofa_pending());
+        }
+    }
+
+    public function testEstablishSessionClearsThePendingMarker(): void
+    {
+        $uid = $this->seedLoginUser(true);
+        $this->clearSession();
+        $_SESSION['twofa_pending'] = [
+            'user_id' => $uid, 'username' => self::LOGIN_USER, 'is_admin' => true,
+            'expires' => time() + 600,
+        ];
+
+        try {
+            establish_session($uid, self::LOGIN_USER, true);
+            self::assertSame($uid, $_SESSION['user_id']);
+            // Nothing resumable should survive a completed login.
+            self::assertArrayNotHasKey('twofa_pending', $this->session());
+            self::assertNull(twofa_pending());
+        } finally {
+            $this->cleanupLoginUser();
+        }
+    }
 }
